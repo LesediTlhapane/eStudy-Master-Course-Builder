@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Course, SectionId } from '../types';
+import { Course, SectionId, GeneratedCourse } from '../types';
 import { sampleCourses, blankMasterTemplate } from '../data/initialCourseData';
 import { evaluateCourseQA, QAResult } from '../utils/qaEngine';
 
-const STORAGE_KEY = 'estudy_course_builder_courses_v9';
-const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v9';
+const STORAGE_KEY = 'estudy_course_builder_courses_v12';
+const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v12';
 
-export type AppView = 'dashboard' | 'builder' | 'preview';
+export type AppView = 'cover' | 'dashboard' | 'builder' | 'preview' | 'generating' | 'generated';
 
 export interface UseCourseStoreReturn {
   courses: Course[];
@@ -26,6 +26,8 @@ export interface UseCourseStoreReturn {
   jumpToSection: (section: SectionId, fieldId?: string) => void;
   clearTargetFocusField: () => void;
   resetToSampleData: () => void;
+  startAIGeneration: () => void;
+  setGeneratedCourseForActive: (generated: GeneratedCourse) => void;
 }
 
 export function useCourseStore(): UseCourseStoreReturn {
@@ -50,11 +52,11 @@ export function useCourseStore(): UseCourseStoreReturn {
       const savedId = localStorage.getItem(ACTIVE_COURSE_KEY);
       if (savedId) return savedId;
     } catch (e) {}
-    return sampleCourses[0]?.id || 'course-ai-literacy-2026';
+    return sampleCourses[0]?.id || blankMasterTemplate.id;
   });
 
   const [activeSection, setActiveSection] = useState<SectionId>('01');
-  const [view, setView] = useState<AppView>('dashboard');
+  const [view, setView] = useState<AppView>('cover');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
 
@@ -149,6 +151,18 @@ export function useCourseStore(): UseCourseStoreReturn {
     setView('builder');
   }, []);
 
+  const startAIGeneration = useCallback(() => {
+    setView('generating');
+  }, []);
+
+  const setGeneratedCourseForActive = useCallback((generated: GeneratedCourse) => {
+    updateActiveCourse({
+      generatedCourse: generated,
+      approvalStatus: generated.qa?.status === 'approved' && generated.approvedAt ? 'approved' : 'ai_generated'
+    });
+    setView('generated');
+  }, [updateActiveCourse]);
+
   const deleteCourse = useCallback((courseId: string) => {
     setCourses(prev => {
       const remaining = prev.filter(c => c.id !== courseId);
@@ -205,6 +219,9 @@ export function useCourseStore(): UseCourseStoreReturn {
     deleteCourse,
     jumpToSection,
     clearTargetFocusField,
-    resetToSampleData
+    resetToSampleData,
+    startAIGeneration,
+    setGeneratedCourseForActive
   };
 }
+

@@ -303,6 +303,155 @@ export interface Course {
     planningNotes: CustomisationPlanningNote[];
     historicalCourses: TemplateCourseHistory[];
   };
+
+  // AI Generated Course Artifact & Status
+  generatedCourse?: GeneratedCourse;
+  approvalStatus?: CourseApprovalStatus;
+}
+
+export type CourseApprovalStatus = 'draft' | 'ai_generated' | 'approved';
+
+export type AIGenerationStage =
+  | 'idle'
+  | 'validating'
+  | 'research'
+  | 'curriculum'
+  | 'content'
+  | 'scenarios'
+  | 'assessments'
+  | 'qa_review'
+  | 'preparing'
+  | 'complete'
+  | 'error';
+
+export interface GeneratedLearningObjective {
+  id: string;
+  code: string;
+  statement: string;
+  bloomLevel?: 'Remember' | 'Understand' | 'Apply' | 'Analyze' | 'Evaluate' | 'Create';
+}
+
+export interface GeneratedLesson {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  concepts: string[];
+  contentBody: string;
+  callouts?: {
+    type: 'Tip' | 'Warning' | 'Good/Bad Example' | 'POPIA Note';
+    title: string;
+    content: string;
+  }[];
+  workplaceApplication: string;
+  aiApplication: string;
+}
+
+export interface GeneratedScenario {
+  id: string;
+  title: string;
+  type: 'Workplace' | 'AI Specific';
+  situation: string;
+  challenge: string;
+  decisionPoint: string;
+  debrief: string;
+  keyTakeaway: string;
+}
+
+export interface GeneratedQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number; // 0-indexed
+  rationale: string;
+  learningObjectiveRef?: string;
+}
+
+export interface GeneratedPracticalTask {
+  id: string;
+  title: string;
+  instructions: string;
+  deliverable: string;
+  evaluationRubric: string[];
+}
+
+export interface GeneratedModule {
+  id: string;
+  moduleNumber: number;
+  title: string;
+  subtitle: string;
+  purpose: string;
+  learningObjectives: GeneratedLearningObjective[];
+  lessons: GeneratedLesson[];
+  scenarios: GeneratedScenario[];
+  knowledgeChecks: GeneratedQuestion[];
+  practicalTask?: GeneratedPracticalTask;
+  reflection: string[];
+  summary: string;
+}
+
+export interface GeneratedAssessmentSet {
+  preCourseDiagnostic: {
+    title: string;
+    instructions: string;
+    questions: GeneratedQuestion[];
+  };
+  moduleKnowledgeChecksCount: number;
+  practicalTasks: GeneratedPracticalTask[];
+  finalAssessment: {
+    title: string;
+    passMark: string;
+    instructions: string;
+    questions: GeneratedQuestion[];
+    capstoneCaseStudy?: {
+      title: string;
+      scenario: string;
+      tasks: string[];
+      deliverable: string;
+    };
+  };
+  postCourseReflection: {
+    prompts: string[];
+    actionPlanTemplate: string;
+  };
+}
+
+export interface GeneratedSource {
+  name: string;
+  type: SourceType;
+  reference: string;
+  relevance: string;
+  verified: boolean;
+}
+
+export interface GeneratedCourseQA {
+  score: number;
+  status: 'approved' | 'review_required' | 'critical_issues';
+  passedChecks: string[];
+  warnings: string[];
+  criticalIssues: string[];
+  recommendations: string[];
+  southAfricanContextVerified: boolean;
+  popiaCompliant: boolean;
+}
+
+export interface GeneratedCourse {
+  id: string;
+  courseId: string;
+  title: string;
+  code: string;
+  version: string;
+  overview: string;
+  purpose: string;
+  targetAudience: string;
+  estimatedDuration: string;
+  learningOutcomes: string[];
+  modules: GeneratedModule[];
+  assessments: GeneratedAssessmentSet;
+  sources: GeneratedSource[];
+  qa: GeneratedCourseQA;
+  generatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
 }
 
 export type SectionId =

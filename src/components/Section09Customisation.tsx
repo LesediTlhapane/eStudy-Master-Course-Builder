@@ -72,7 +72,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
             rows={2}
             value={custom.tone}
             onChange={e => handleUpdate('tone', e.target.value)}
-            placeholder="Add context on tone, instructional voice and client expectations..."
+            placeholder="e.g. Professional, supportive, action-oriented, and accessible across corporate departments"
             className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-800 focus:border-[#052B66] outline-none"
           />
         </div>

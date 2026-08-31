@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useCourseStore } from './hooks/useCourseStore';
 import { TopBar } from './components/TopBar';
+import { CoverPage } from './components/CoverPage';
 import { CourseBuilderSidebar, SECTIONS } from './components/CourseBuilderSidebar';
 import { Dashboard } from './components/Dashboard';
 import { PromptPreview } from './components/PromptPreview';
+import { AIGenerationProgress } from './components/AIGenerationProgress';
+import { GeneratedCourseView } from './components/GeneratedCourseView';
 import { SettingsModal } from './components/SettingsModal';
 import { Section01Problem } from './components/Section01Problem';
 import { Section02Sources } from './components/Section02Sources';
@@ -34,7 +37,9 @@ export function App() {
     deleteCourse,
     jumpToSection,
     clearTargetFocusField,
-    resetToSampleData
+    resetToSampleData,
+    startAIGeneration,
+    setGeneratedCourseForActive
   } = useCourseStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -71,8 +76,18 @@ export function App() {
     }));
   };
 
+  // 1. Cover Page Fullscreen view
+  if (view === 'cover') {
+    return (
+      <CoverPage
+        onStartBuilding={() => setView('builder')}
+        onEnterDashboard={() => setView('dashboard')}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-[#45CC42] selection:text-[#052B66]">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sora flex flex-col selection:bg-[#45CC42] selection:text-[#052B66]">
       {/* Global Top Bar */}
       <TopBar
         course={activeCourse}
@@ -97,6 +112,27 @@ export function App() {
         <PromptPreview
           course={activeCourse}
           onReturnToBuilder={() => setView('builder')}
+          onStartAIGeneration={startAIGeneration}
+        />
+      )}
+
+      {view === 'generating' && (
+        <AIGenerationProgress
+          course={activeCourse}
+          onComplete={generated => setGeneratedCourseForActive(generated)}
+          onCancel={() => setView('preview')}
+        />
+      )}
+
+      {view === 'generated' && activeCourse.generatedCourse && (
+        <GeneratedCourseView
+          course={activeCourse}
+          generatedCourse={activeCourse.generatedCourse}
+          onUpdateGeneratedCourse={updated => {
+            updateActiveCourse({ generatedCourse: updated });
+          }}
+          onBackToBuilder={() => setView('builder')}
+          onBackToDashboard={() => setView('dashboard')}
         />
       )}
 
@@ -216,3 +252,4 @@ export function App() {
 }
 
 export default App;
+

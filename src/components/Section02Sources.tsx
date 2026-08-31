@@ -148,6 +148,30 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
     }
   };
 
+  const [newEvidenceRule, setNewEvidenceRule] = useState('');
+
+  const handleAddEvidenceRule = () => {
+    if (!newEvidenceRule.trim()) return;
+    onUpdate(prev => ({
+      ...prev,
+      research: {
+        ...prev.research,
+        evidenceStandards: [...prev.research.evidenceStandards, newEvidenceRule.trim()]
+      }
+    }));
+    setNewEvidenceRule('');
+  };
+
+  const handleDeleteEvidenceRule = (index: number) => {
+    onUpdate(prev => ({
+      ...prev,
+      research: {
+        ...prev.research,
+        evidenceStandards: prev.research.evidenceStandards.filter((_, i) => i !== index)
+      }
+    }));
+  };
+
   return (
     <div id="section-02-sources-container" className="space-y-8 max-w-5xl">
       {/* Header */}
@@ -175,51 +199,72 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
       </div>
 
       {/* Sources Card List */}
-      <div className="space-y-4">
-        {sources.map(src => (
-          <div
-            key={src.id}
-            id={`source-card-${src.id}`}
-            className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-[#052B66]/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group"
-          >
-            <div className="space-y-2 flex-1">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-bold text-slate-900 group-hover:text-[#052B66] transition-colors">
-                  {src.name}
-                </h3>
-                {getStatusBadge(src.status)}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
-                <span className="text-[#052B66] font-semibold">{src.type}</span>
-                <span>•</span>
-                <span className="text-slate-600">{src.reference}</span>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                {src.relevance}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-              <button
-                onClick={() => handleOpenEdit(src)}
-                className="p-2 text-slate-400 hover:text-[#052B66] hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                title="Edit Source"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDeleteSource(src.id)}
-                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                title="Delete Source"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+      {sources.length === 0 ? (
+        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-slate-100 text-[#052B66] mx-auto flex items-center justify-center">
+            <BookOpen className="w-6 h-6 stroke-[1.75]" />
           </div>
-        ))}
-      </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h4 className="text-sm font-bold text-slate-800">No research sources added yet</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Add regulatory frameworks, internal policies, industry standards, or evidence documents that ground your instructional content.
+            </p>
+          </div>
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Add First Source</span>
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sources.map(src => (
+            <div
+              key={src.id}
+              id={`source-card-${src.id}`}
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs hover:border-[#052B66]/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 group"
+            >
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-[#052B66] transition-colors">
+                    {src.name}
+                  </h3>
+                  {getStatusBadge(src.status)}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 font-medium">
+                  <span className="text-[#052B66] font-semibold">{src.type}</span>
+                  <span>•</span>
+                  <span className="text-slate-600">{src.reference}</span>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed pt-1">
+                  {src.relevance}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                <button
+                  onClick={() => handleOpenEdit(src)}
+                  className="p-2 text-slate-400 hover:text-[#052B66] hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                  title="Edit Source"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteSource(src.id)}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                  title="Delete Source"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Research Requirements Drawer Triggers */}
       <div className="space-y-3 pt-2">
@@ -360,7 +405,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                 <textarea
                   rows={3}
                   required
-                  placeholder="Explain how this regulation or evidence standard informs the course modules and scenarios."
+                  placeholder="e.g. Defines lawful processing of personal information and data privacy standards in South Africa."
                   value={formRelevance}
                   onChange={e => setFormRelevance(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none resize-none"
@@ -401,13 +446,53 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
               Rules defined to ensure all AI tools and instructional claims are backed by verifiable sources.
             </p>
 
-            <div className="space-y-2">
-              {research.evidenceStandards.map((rule, idx) => (
-                <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 flex items-start gap-2">
-                  <span className="font-bold text-[#052B66]">{idx + 1}.</span>
-                  <span>{rule}</span>
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {research.evidenceStandards.length === 0 ? (
+                <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 text-center">
+                  No evidence standards added yet. Add standards below to govern course content accuracy.
                 </div>
-              ))}
+              ) : (
+                research.evidenceStandards.map((rule, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold text-[#052B66]">{idx + 1}.</span>
+                      <span>{rule}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteEvidenceRule(idx)}
+                      className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer shrink-0"
+                      title="Remove rule"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add Rule Input */}
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <input
+                type="text"
+                value={newEvidenceRule}
+                onChange={e => setNewEvidenceRule(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddEvidenceRule();
+                  }
+                }}
+                placeholder="e.g. All factual claims backed by South African regulatory standards or peer-reviewed research"
+                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleAddEvidenceRule}
+                disabled={!newEvidenceRule.trim()}
+                className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] disabled:opacity-50 cursor-pointer shrink-0"
+              >
+                + Add Rule
+              </button>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -415,7 +500,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                 onClick={() => setShowEvidenceModal(false)}
                 className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] cursor-pointer"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
@@ -432,16 +517,48 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                 Benchmarking Reference Standard
               </h3>
             </div>
-            <div className="p-4 bg-[#052B66]/5 border border-[#052B66]/15 rounded-lg space-y-1.5">
-              <span className="text-[11px] font-bold text-[#052B66] uppercase">
-                Reference Benchmark Course:
-              </span>
-              <p className="text-xs font-bold text-slate-900">
-                Use of Artificial Intelligence in Financial Literacy (v1.0)
-              </p>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Use this course as a benchmark for tone, instructional depth, scenario branching, and assessment structure when compiling your course.
-              </p>
+            <p className="text-xs text-slate-500">
+              Define the benchmark course and instructional standard used to calibrate tone, depth, and scenarios.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Reference Benchmark Course
+                </label>
+                <input
+                  type="text"
+                  value={research.benchmarkCourseRef || ''}
+                  onChange={e => onUpdate(prev => ({
+                    ...prev,
+                    research: {
+                      ...prev.research,
+                      benchmarkCourseRef: e.target.value
+                    }
+                  }))}
+                  placeholder="e.g. Use of Artificial Intelligence in Financial Literacy (v1.0)"
+                  className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Benchmarking Calibration Notes
+                </label>
+                <textarea
+                  rows={3}
+                  value={research.benchmarkingNotes || ''}
+                  onChange={e => onUpdate(prev => ({
+                    ...prev,
+                    research: {
+                      ...prev.research,
+                      benchmarkingNotes: e.target.value
+                    }
+                  }))}
+                  placeholder="e.g. Use this reference course as a benchmark for tone, instructional depth, scenario branching, and assessment structure."
+                  className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none resize-none"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -449,7 +566,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                 onClick={() => setShowBenchmarkingModal(false)}
                 className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] cursor-pointer"
               >
-                Close
+                Done
               </button>
             </div>
           </div>

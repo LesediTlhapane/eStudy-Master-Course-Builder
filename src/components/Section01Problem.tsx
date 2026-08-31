@@ -29,7 +29,7 @@ const QUESTIONS: QuestionConfig[] = [
     fieldKey: 'taskOrSkill',
     whyAskThis: 'The Master Prompt requires a concrete, performance-focused problem statement to anchor all subsequent modules, learning objectives, and scenarios.',
     example: '“Employees are unable to effectively apply AI tools in daily workflows with proper verification, resulting in potential errors and compliance risks.”',
-    placeholder: 'e.g. Effectively apply generative AI tools in daily workflows with proper verification'
+    placeholder: 'e.g. Employees struggle to apply generative AI tools effectively in daily tasks without introducing factual errors or data leaks.'
   },
   {
     id: 2,
@@ -39,7 +39,7 @@ const QUESTIONS: QuestionConfig[] = [
     fieldKey: 'targetGroup',
     whyAskThis: 'Establishing target roles ensures the resulting training programme addresses real daily job constraints and realistic decision points.',
     example: '“Corporate employees, operations analysts, customer service consultants, and departmental team leads.”',
-    placeholder: 'e.g. Corporate employees and operational teams'
+    placeholder: 'e.g. Corporate employees, operations analysts, customer service consultants, and team leads'
   },
   {
     id: 3,
@@ -49,7 +49,7 @@ const QUESTIONS: QuestionConfig[] = [
     fieldKey: 'skillGaps',
     whyAskThis: 'Identifies the precise cognitive hurdles and tool competencies needed before practical application can succeed.',
     example: '“Lack of formal training on prompt structuring, output verification checklists, and POPIA data sanitisation techniques.”',
-    placeholder: 'e.g. Prompt structuring, output fact-checking, POPIA data sanitisation'
+    placeholder: 'e.g. Lack of structured prompt techniques, missing output verification checklists, and unawareness of POPIA data redaction'
   },
   {
     id: 4,
@@ -59,7 +59,7 @@ const QUESTIONS: QuestionConfig[] = [
     fieldKey: 'aiLiteracyGap',
     whyAskThis: 'Grounds the course in current workplace reality and explains why immediate behavioral change is critical.',
     example: '“Teams are adopting generative AI faster than policies and practical guidance can keep pace, creating compliance vulnerabilities.”',
-    placeholder: 'e.g. AI tools are already being used informally, but employees lack a shared standard for safe, effective and accountable use.'
+    placeholder: 'e.g. AI tools are already being used informally, but employees lack a shared standard for safe, verified and accountable use.'
   },
   {
     id: 5,
@@ -69,7 +69,7 @@ const QUESTIONS: QuestionConfig[] = [
     fieldKey: 'operationalImpact',
     whyAskThis: 'Defines the measurable return on learning investment and sets expectations for summative assessments.',
     example: '“Reduction in unverified AI errors by 90%, elimination of POPIA data breach risks, and improved daily reporting productivity.”',
-    placeholder: 'e.g. Poor decision-making, inadvertent data privacy breaches under POPIA, and unverified misleading communications'
+    placeholder: 'e.g. 90% reduction in unverified draft errors, zero POPIA data breaches, and faster turnaround on routine documentation'
   }
 ];
 
@@ -79,7 +79,7 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
   onContinue,
   onBack
 }) => {
-  const [currentStep, setCurrentStep] = useState(4); // Default to question 4 to match mockup Page 2 or 1
+  const [currentStep, setCurrentStep] = useState(1); // Default to question 1: Problem to solve
   const [showWhyHelp, setShowWhyHelp] = useState(false);
 
   const q = QUESTIONS[currentStep - 1] || QUESTIONS[0];

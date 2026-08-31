@@ -1,4 +1,5 @@
 import { Course } from '../types';
+import { evaluateCourseQA } from './qaEngine';
 
 export function generateMasterPrompt(course: Course): string {
   const p = course.problem;
@@ -8,6 +9,13 @@ export function generateMasterPrompt(course: Course): string {
   const e = course.ethics;
   const out = course.outputRequirements;
   const cust = course.customisation;
+
+  const qa = evaluateCourseQA(course);
+  const getCheckStatus = (checkId: string) => {
+    const item = qa.items.find(i => i.id === checkId);
+    if (!item) return 'REQUIRES REVIEW';
+    return item.isComplete ? 'CONFIRMED' : 'PENDING';
+  };
 
   // Format problem statement
   const problemStatement = `"This course addresses the inability of ${p.targetGroup || '[MISSING: TARGET GROUP]'} to effectively perform ${p.taskOrSkill || '[MISSING: TASK / SKILL]'}, resulting in ${p.operationalImpact || '[MISSING: OPERATIONAL / FINANCIAL / COMPLIANCE / PRODUCTIVITY IMPACT]'}"`;
@@ -425,13 +433,14 @@ Produce a complete training programme that meets ALL of the following criteria:
 | Benchmarked | Consistent with the Financial Literacy course quality standard |
 
 8.1 Quality Assurance Checklist Status
-• All [INSERT: …] fields replaced with course-specific content: CONFIRMED
-• Minimum 3 modules with minimum 3 scenarios each: CONFIRMED (${course.modules.length} modules configured)
-• AI ethics section fully populated and embedded in at least 2 modules: CONFIRMED
-• Pre-course diagnostic questions included (minimum 5): CONFIRMED (${s.diagnosticQuestions.length} questions)
-• Assessment structure confirmed with pass marks and weightings: CONFIRMED
-• Regulatory/compliance framework identified and referenced: CONFIRMED (${r.regulatoryFramework})
-• Language and accessibility standards met: CONFIRMED (${out.accessibilityTargetReadingLevel})
+• All [INSERT: …] fields replaced with course-specific content: ${getCheckStatus('chk-req-fields')}
+• Minimum 3 modules with workplace scenarios: ${getCheckStatus('chk-workplace-scenarios')} (${course.modules.length} modules configured)
+• AI application scenarios included: ${getCheckStatus('chk-ai-scenarios')}
+• AI ethics section fully populated & POPIA aligned: ${getCheckStatus('chk-ai-ethics')}
+• Pre-course diagnostic questions included (minimum 5): ${getCheckStatus('chk-diagnostics')} (${s.diagnosticQuestions.length} questions)
+• Assessment structure confirmed with pass marks and weightings: ${getCheckStatus('chk-assessments')}
+• Regulatory/compliance framework identified and referenced: ${getCheckStatus('chk-regulatory')} (${r.regulatoryFramework || 'Pending specification'})
+• Language and accessibility standards met: ${getCheckStatus('chk-accessibility')} (${out.accessibilityTargetReadingLevel})
 • Output reviewed against the Financial Literacy course benchmark: ${course.qa.benchmarkReviewed ? 'VERIFIED' : 'PENDING FINAL SIGN-OFF'}
 
 ================================================================================

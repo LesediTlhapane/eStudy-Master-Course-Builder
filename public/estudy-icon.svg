@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <style>
+      .navy-bg { fill: #072553; }
+      .inner-white { fill: #FFFFFF; }
+      .green-circle { fill: #38C347; }
+      .white-letter { fill: #FFFFFF; }
+    </style>
+  </defs>
+
+  <!-- Outer Pin / Teardrop outline with bottom-left corner and smooth circular top-right arc -->
+  <path class="navy-bg" d="
+    M 80 420
+    L 80 240
+    C 80 135 155 60 260 60
+    C 365 60 440 135 440 240
+    C 440 345 365 420 260 420
+    L 80 420
+    Z
+  "/>
+
+  <!-- Inner white shape -->
+  <path class="inner-white" d="
+    M 120 380
+    L 120 240
+    C 120 158 178 100 260 100
+    C 342 100 400 158 400 240
+    C 400 322 342 380 260 380
+    L 120 380
+    Z
+  "/>
+
+  <!-- Center Vibrant Green Circle -->
+  <circle class="green-circle" cx="260" cy="240" r="82" />
+
+  <!-- Bold White Lowercase 'e' with matching typography -->
+  <path class="white-letter" d="
+    M 260 190
+    C 230 190 208 212 206 242
+    H 312
+    C 310 216 288 190 260 190
+    Z
+    M 207 258
+    C 210 278 230 292 258 292
+    C 275 292 290 284 300 272
+    L 316 286
+    C 302 304 282 316 256 316
+    C 216 316 182 284 182 240
+    C 182 196 216 164 260 164
+    C 304 164 336 196 336 244
+    C 336 254 335 258 333 258
+    H 207
+    Z
+  "/>
+</svg>

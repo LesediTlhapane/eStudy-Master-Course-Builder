@@ -1,5 +1,16 @@
 import { Course, QACheckItem, SectionId } from '../types';
 
+export interface ModuleScenarioCheck {
+  moduleId: string;
+  moduleNumber: number;
+  moduleTitle: string;
+  workplaceCount: number;
+  aiCount: number;
+  totalCount: number;
+  isComplete: boolean;
+  summaryText: string;
+}
+
 export interface QAResult {
   scorePercent: number;
   totalChecks: number;
@@ -7,6 +18,8 @@ export interface QAResult {
   statusLabel: 'Almost ready to generate' | 'Ready to generate' | 'Needs attention' | 'In progress';
   statusDescription: string;
   items: QACheckItem[];
+  moduleScenarioBreakdown: ModuleScenarioCheck[];
+  mandatoryRequirementsMet: boolean;
   sectionProgress: Record<SectionId, {
     total: number;
     completed: number;
@@ -60,24 +73,43 @@ export function evaluateCourseQA(course: Course): QAResult {
   // 7. Minimum 3 modules
   const hasMinModules = Boolean(course.modules?.length >= 3);
 
-  // 8. Learning objectives defined per module
+  // 8. Learning objectives defined per module (min 3 per module)
   const hasLearningObjectives = Boolean(
-    course.modules.length > 0 &&
+    course.modules.length >= 3 &&
     course.modules.every(m => m.learningObjectives && m.learningObjectives.length >= 3)
   );
 
-  // 9. Workplace scenarios (at least 3 in module 2 or across modules)
+  // 9. Per-Module Scenario Evaluation
+  const moduleScenarioBreakdown: ModuleScenarioCheck[] = (course.modules || []).map(m => {
+    const workplaceCount = m.requirements?.scenarios?.length || 0;
+    const aiCount = m.requirements?.aiScenarios?.length || 0;
+    const totalCount = workplaceCount + aiCount;
+    // Each module should have at least 1 workplace scenario
+    const isComplete = workplaceCount >= 1;
+    return {
+      moduleId: m.id,
+      moduleNumber: m.moduleNumber,
+      moduleTitle: m.title || `Module ${m.moduleNumber}`,
+      workplaceCount,
+      aiCount,
+      totalCount,
+      isComplete,
+      summaryText: `Module ${m.moduleNumber}: ${workplaceCount} workplace + ${aiCount} AI (${isComplete ? '✓ Valid' : '⚠ Requires min 1 scenario'})`
+    };
+  });
+
   const totalScenarios = course.modules.reduce(
     (acc, m) => acc + (m.requirements?.scenarios?.length || 0),
     0
   );
-  const hasWorkplaceScenarios = totalScenarios >= 3;
-
-  // 10. AI application scenarios (at least 2)
   const totalAiScenarios = course.modules.reduce(
     (acc, m) => acc + (m.requirements?.aiScenarios?.length || 0),
     0
   );
+
+  // All modules must have at least 1 scenario and total >= 3
+  const allModulesHaveScenarios = moduleScenarioBreakdown.length >= 3 && moduleScenarioBreakdown.every(mb => mb.isComplete);
+  const hasWorkplaceScenarios = allModulesHaveScenarios && totalScenarios >= 3;
   const hasAiScenarios = totalAiScenarios >= 2;
 
   // 11. Learning design standards
@@ -143,7 +175,7 @@ export function evaluateCourseQA(course: Course): QAResult {
     },
     {
       id: 'chk-learning-objectives',
-      label: 'Learning objectives defined',
+      label: 'Learning objectives defined (min 3 per module)',
       targetSection: '04',
       isComplete: hasLearningObjectives,
       issueDescription: !hasLearningObjectives ? 'Every module must have at least 3 measurable objectives.' : undefined,
@@ -151,15 +183,17 @@ export function evaluateCourseQA(course: Course): QAResult {
     },
     {
       id: 'chk-workplace-scenarios',
-      label: 'Workplace scenarios included',
+      label: 'Workplace scenarios per module (min 1 each, 3+ total)',
       targetSection: '04',
       isComplete: hasWorkplaceScenarios,
-      issueDescription: !hasWorkplaceScenarios ? `Requires at least 3 workplace scenarios (current: ${totalScenarios}).` : undefined,
+      issueDescription: !hasWorkplaceScenarios 
+        ? `Each module must have at least 1 workplace scenario and total >= 3 (${moduleScenarioBreakdown.map(m => `M${m.moduleNumber}: ${m.workplaceCount}`).join(', ')}).`
+        : undefined,
       actionLabel: 'Go to Module Scenarios'
     },
     {
       id: 'chk-ai-scenarios',
-      label: 'AI application scenarios included',
+      label: 'AI application scenarios included (min 2 total)',
       targetSection: '04',
       isComplete: hasAiScenarios,
       issueDescription: !hasAiScenarios ? `Requires at least 2 AI tool application scenarios (current: ${totalAiScenarios}).` : undefined,
@@ -183,7 +217,7 @@ export function evaluateCourseQA(course: Course): QAResult {
     },
     {
       id: 'chk-assessments',
-      label: 'Assessments included',
+      label: 'Assessments structure & pass mark',
       targetSection: '05',
       isComplete: hasAssessments,
       issueDescription: !hasAssessments ? 'Confirm final assessment pass mark and practical task weighting.' : undefined,
@@ -191,7 +225,7 @@ export function evaluateCourseQA(course: Course): QAResult {
     },
     {
       id: 'chk-regulatory',
-      label: 'Regulatory framework included',
+      label: 'Regulatory framework & POPIA alignment',
       targetSection: '02',
       isComplete: hasRegulatory && hasPrivacy,
       issueDescription: !hasRegulatory ? 'Specify the statutory and regulatory compliance framework.' : undefined,
@@ -227,20 +261,31 @@ export function evaluateCourseQA(course: Course): QAResult {
   const totalChecks = checks.length;
   const scorePercent = Math.round((completedCount / totalChecks) * 100);
 
+  const mandatoryRequirementsMet = (
+    hasProblemStatement &&
+    hasSources &&
+    hasCourseEssentials &&
+    hasMinModules &&
+    hasLearningObjectives &&
+    hasWorkplaceScenarios &&
+    hasAiScenarios &&
+    hasAssessments
+  );
+
   let statusLabel: QAResult['statusLabel'] = 'In progress';
   let statusDescription = 'Complete all mandatory requirements before generating Master Prompt.';
 
-  if (scorePercent === 100) {
+  if (scorePercent === 100 && mandatoryRequirementsMet) {
     statusLabel = 'Ready to generate';
-    statusDescription = 'All framework requirements complete and benchmarked. Ready for final generation.';
-  } else if (scorePercent >= 80) {
+    statusDescription = 'All framework requirements complete, module scenarios verified, and benchmarked. Ready for AI generation.';
+  } else if (scorePercent >= 80 && mandatoryRequirementsMet) {
     statusLabel = 'Almost ready to generate';
     const remaining = totalChecks - completedCount;
-    statusDescription = `${remaining} issue${remaining > 1 ? 's' : ''} need attention before final generation.`;
+    statusDescription = `${remaining} minor issue${remaining > 1 ? 's' : ''} need attention before final generation.`;
   } else {
     statusLabel = 'Needs attention';
     const remaining = totalChecks - completedCount;
-    statusDescription = `${remaining} mandatory requirements remain incomplete.`;
+    statusDescription = `${remaining} mandatory requirement${remaining > 1 ? 's' : ''} remain incomplete.`;
   }
 
   // Calculate per-section progress
@@ -318,6 +363,9 @@ export function evaluateCourseQA(course: Course): QAResult {
     statusLabel,
     statusDescription,
     items: checks,
+    moduleScenarioBreakdown,
+    mandatoryRequirementsMet,
     sectionProgress
   };
 }
+

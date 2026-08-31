@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Course, LearningJourneyStep, DiagnosticQuestion } from '../types';
-import { ArrowRight, ArrowLeft, ChevronRight, Check, Plus, Trash2, BookOpen, Target, Sparkles, HelpCircle } from 'lucide-react';
+import { Course, LearningJourneyStep, DiagnosticQuestion, CourseModule } from '../types';
+import { ArrowRight, ArrowLeft, ChevronRight, Check, Plus, Minus, Trash2, BookOpen, Target, Sparkles, HelpCircle } from 'lucide-react';
 
 interface Section03StructureProps {
   course: Course;
@@ -20,6 +20,99 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
   const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
 
   const s = course.structure;
+
+  const createDefaultModule = (num: number): CourseModule => ({
+    id: `mod-${Date.now()}-${num}`,
+    moduleNumber: num,
+    title: `Module 0${num}: Workplace Practice & Mastery`,
+    subtitle: 'Practical application and execution',
+    purpose: `Build practical competence and operational mastery for Module ${num}.`,
+    keySkills: ['Operational Execution', 'Standard Compliance', 'Quality Control', 'Tool Verification'],
+    learningObjectives: [
+      `Apply core Module ${num} operational procedures to authentic workplace challenges.`,
+      'Identify risks, anomalies, and compliance criteria in routine workflows.',
+      'Evaluate automated outputs against South African statutory and institutional standards.'
+    ],
+    status: 'In progress',
+    requirements: {
+      problemDefinition: `Address specific operational bottlenecks and efficiency gaps for Module ${num}.`,
+      workplaceContext: 'South African workplace operational environment.',
+      keyTerms: 'Operational Governance, Quality Assurance, Audit Trail',
+      causes: 'Procedural variance, lack of standardisation, unverified tool outputs',
+      warningSigns: 'Rework frequency, SLA delays, compliance exceptions',
+      impactStatement: 'Improves delivery speed and reduces operational error rates.',
+      aiDemystification: 'Understanding task-specific automation boundaries and human oversight.',
+      aiInThisDomain: 'Domain-specific tool applications and validation routines.',
+      aiToolsOverview: 'Approved workplace productivity and analytics systems.',
+      responsibleAiPrinciples: 'Data privacy, human-in-the-loop sign-off, transparency.',
+      toolsAndTechniques: 'Standard checklists, verification protocols, exception handling.',
+      procedureSteps: 'Step 1: Input preparation and validation\nStep 2: Execution and generation\nStep 3: Verification and compliance sign-off',
+      roleResponsibilities: 'Operational Lead: Execution\nLine Manager: Review and compliance sign-off',
+      communicationApproach: 'Transparent logging and cross-functional handovers.',
+      supportMechanisms: 'Standard operating procedures, mentor support, escalation channels.',
+      scenarios: [
+        {
+          id: `sc-${Date.now()}-${num}-1`,
+          title: `Workplace Case: Module ${num} Execution`,
+          situation: 'A team member encounters an urgent client request requiring rapid turnaround.',
+          challenge: 'Balancing delivery speed against quality checks and POPIA data protection guidelines.',
+          decisionPoint: 'Does the practitioner follow expedited protocols or standard multi-tier sign-off?',
+          debrief: 'Demonstrates risk-based decision making and adherence to mandatory compliance gates.',
+          status: 'In progress'
+        }
+      ],
+      aiScenarios: [
+        {
+          id: `aisc-${Date.now()}-${num}-1`,
+          title: `AI Oversight: Verification in Module ${num}`,
+          isAiSpecific: true,
+          situation: 'An automated model generates a summary report with subtle data discrepancies.',
+          challenge: 'Detecting synthetic hallucinations before client transmission.',
+          decisionPoint: 'Conduct manual line-by-line reconciliation or trust system output score?',
+          debrief: 'Reinforces human-in-the-loop verification as an absolute statutory requirement.',
+          status: 'In progress'
+        }
+      ],
+      implementationStrategy: 'Phased departmental rollout with weekly review checkpoints.',
+      rolloutMethod: 'Blended digital practice with peer review sessions.',
+      meApproach: 'Quarterly compliance audit and skill proficiency tracking.',
+      improvementCycle: 'Continuous feedback loops incorporated into quarterly planning.',
+      implementationChecklistTitle: `Module ${num} Implementation Checklist`,
+      rolloutFrameworkTitle: `Module ${num} Rollout Operating Procedure`,
+      riskComplianceSectionTitle: `Module ${num} Statutory Compliance Protocol`,
+      continuousAiLearningApproach: 'Monthly prompt tuning and error analysis debriefs.',
+      aiGovernanceFramework: 'Aligned with POPIA and enterprise data retention policies.',
+      aiFeedbackReviewMechanism: 'Anonymous error reporting and supervisor review meetings.'
+    }
+  });
+
+  const handleModuleCountChange = (newCount: number) => {
+    const clamped = Math.max(1, Math.min(12, newCount));
+    onUpdate(prev => {
+      const currentMods = prev.modules || [];
+      if (clamped === currentMods.length) return prev;
+
+      if (clamped > currentMods.length) {
+        const added: CourseModule[] = [];
+        for (let i = currentMods.length + 1; i <= clamped; i++) {
+          added.push(createDefaultModule(i));
+        }
+        return {
+          ...prev,
+          modules: [...currentMods, ...added]
+        };
+      } else {
+        const trimmed = currentMods.slice(0, clamped).map((mod, idx) => ({
+          ...mod,
+          moduleNumber: idx + 1
+        }));
+        return {
+          ...prev,
+          modules: trimmed
+        };
+      }
+    });
+  };
 
   const handleStructureChange = (field: keyof typeof s, value: any) => {
     onUpdate(prev => ({
@@ -65,6 +158,49 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
     );
   };
 
+  const [newOrgBenefit, setNewOrgBenefit] = useState('');
+  const [newEmpBenefit, setNewEmpBenefit] = useState('');
+
+  const handleAddOrgBenefit = () => {
+    if (!newOrgBenefit.trim()) return;
+    handleStructureChange('organisationalBenefits', [...s.organisationalBenefits, newOrgBenefit.trim()]);
+    setNewOrgBenefit('');
+  };
+
+  const handleDeleteOrgBenefit = (index: number) => {
+    handleStructureChange(
+      'organisationalBenefits',
+      s.organisationalBenefits.filter((_, i) => i !== index)
+    );
+  };
+
+  const handleAddEmpBenefit = () => {
+    if (!newEmpBenefit.trim()) return;
+    handleStructureChange('employeeBenefits', [...s.employeeBenefits, newEmpBenefit.trim()]);
+    setNewEmpBenefit('');
+  };
+
+  const handleDeleteEmpBenefit = (index: number) => {
+    handleStructureChange(
+      'employeeBenefits',
+      s.employeeBenefits.filter((_, i) => i !== index)
+    );
+  };
+
+  // Calculate dynamic completion
+  const checkFields = [
+    Boolean(s.title?.trim()),
+    Boolean(s.estimatedDuration?.trim()),
+    Boolean(s.targetRoles?.trim()),
+    Boolean(s.deliveryFormat),
+    Boolean(s.difficultyLevel),
+    Boolean(s.purposeStatement?.trim()),
+    Boolean(s.workplaceRelevance?.trim()),
+    Boolean(s.performanceImprovement?.trim()),
+    s.diagnosticQuestions.length > 0
+  ];
+  const completedCount = checkFields.filter(Boolean).length;
+
   return (
     <div id="section-03-structure-container" className="space-y-8 max-w-5xl">
       {/* Header */}
@@ -82,8 +218,12 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-3 py-1 bg-[#45CC42]/15 text-[#052B66] rounded-full border border-[#45CC42]/30">
-            7 of 9 complete
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${
+            completedCount === 9
+              ? 'bg-[#45CC42]/20 text-[#052B66] border-[#45CC42]/40'
+              : 'bg-amber-50 text-amber-800 border-amber-200'
+          }`}>
+            {completedCount} of 9 complete
           </span>
         </div>
       </div>
@@ -102,7 +242,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
             </label>
             <input
               type="text"
-              value={s.title || course.name}
+              value={s.title}
               onChange={e => handleStructureChange('title', e.target.value)}
               placeholder="e.g. AI Literacy for the Modern Workplace"
               className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-900 focus:border-[#052B66] outline-none"
@@ -147,7 +287,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
               type="text"
               value={s.targetRoles}
               onChange={e => handleStructureChange('targetRoles', e.target.value)}
-              placeholder="e.g. Employees who use digital tools in daily work."
+              placeholder="e.g. Corporate employees, operations analysts, customer service consultants, and team leads"
               className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs text-slate-900 focus:border-[#052B66] outline-none"
             />
           </div>
@@ -169,21 +309,74 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-slate-700">
+              <label htmlFor="course-module-count-input" className="block text-xs font-bold text-slate-700">
                 Number of modules *
               </label>
               <span className="text-[10px] text-slate-400 font-medium">
-                Minimum 3
+                {course.modules.length < 3 ? 'Min 3 recommended' : '1 to 12 modules'}
               </span>
             </div>
-            <input
-              type="number"
-              min={3}
-              max={10}
-              value={course.modules.length}
-              readOnly
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-[#052B66] bg-slate-50 outline-none cursor-default"
-            />
+            
+            {/* Interactive Stepper & Input */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                id="decrement-module-count-btn"
+                onClick={() => handleModuleCountChange(course.modules.length - 1)}
+                disabled={course.modules.length <= 1}
+                title="Decrease module count"
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-[#052B66] font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+
+              <div className="relative flex-1">
+                <input
+                  id="course-module-count-input"
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={course.modules.length}
+                  onChange={e => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) {
+                      handleModuleCountChange(val);
+                    }
+                  }}
+                  className="w-full text-center py-2.5 px-3 rounded-lg border border-slate-300 text-sm font-extrabold text-[#052B66] bg-white focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66] outline-none transition-all"
+                />
+              </div>
+
+              <button
+                type="button"
+                id="increment-module-count-btn"
+                onClick={() => handleModuleCountChange(course.modules.length + 1)}
+                disabled={course.modules.length >= 12}
+                title="Increase module count"
+                className="w-10 h-10 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-[#052B66] font-bold flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Preset Selector Pills */}
+            <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+              <span className="text-[10px] text-slate-500 font-medium mr-1">Quick:</span>
+              {[2, 3, 4, 5, 6, 8].map(num => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handleModuleCountChange(num)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    course.modules.length === num
+                      ? 'bg-[#052B66] text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {num} mod
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -324,6 +517,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                   rows={3}
                   value={s.purposeStatement}
                   onChange={e => handleStructureChange('purposeStatement', e.target.value)}
+                  placeholder="e.g. Equip employees with the practical skills, ethical judgment, and critical verification habits required to harness generative AI safely."
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none"
                 />
               </div>
@@ -336,6 +530,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                   rows={2}
                   value={s.workplaceRelevance}
                   onChange={e => handleStructureChange('workplaceRelevance', e.target.value)}
+                  placeholder="e.g. Addresses immediate daily tasks including drafting, data summarisation, customer inquiries, and workflow automation."
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none"
                 />
               </div>
@@ -348,6 +543,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                   rows={2}
                   value={s.performanceImprovement}
                   onChange={e => handleStructureChange('performanceImprovement', e.target.value)}
+                  placeholder="e.g. Reduces time spent on repetitive drafting by 40% while preventing data breaches and factual hallucinations."
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none"
                 />
               </div>
@@ -373,32 +569,112 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
               Course Benefits & Outcomes
             </h3>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
-                  Organisational Benefits
+            <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Organisational Benefits */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Organisational Benefits ({s.organisationalBenefits.length})
                 </h4>
                 <div className="space-y-1.5">
-                  {s.organisationalBenefits.map((b, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                      <Check className="w-3.5 h-3.5 text-[#45CC42] shrink-0" />
-                      <span>{b}</span>
+                  {s.organisationalBenefits.length === 0 ? (
+                    <div className="p-3 bg-slate-50 border border-dashed border-slate-200 rounded text-xs text-slate-400 text-center">
+                      No organisational benefits added yet.
                     </div>
-                  ))}
+                  ) : (
+                    s.organisationalBenefits.map((b, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-[#45CC42] shrink-0" />
+                          <span>{b}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteOrgBenefit(i)}
+                          className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer shrink-0"
+                          title="Remove benefit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newOrgBenefit}
+                    onChange={e => setNewOrgBenefit(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddOrgBenefit();
+                      }
+                    }}
+                    placeholder="e.g. Standardised, compliant workplace AI adoption across departments"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddOrgBenefit}
+                    disabled={!newOrgBenefit.trim()}
+                    className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    + Add
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
-                  Employee Benefits
+              {/* Employee Benefits */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Employee Benefits ({s.employeeBenefits.length})
                 </h4>
                 <div className="space-y-1.5">
-                  {s.employeeBenefits.map((b, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-slate-700 bg-slate-50 p-2 rounded">
-                      <Check className="w-3.5 h-3.5 text-[#45CC42] shrink-0" />
-                      <span>{b}</span>
+                  {s.employeeBenefits.length === 0 ? (
+                    <div className="p-3 bg-slate-50 border border-dashed border-slate-200 rounded text-xs text-slate-400 text-center">
+                      No employee benefits added yet.
                     </div>
-                  ))}
+                  ) : (
+                    s.employeeBenefits.map((b, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-3.5 h-3.5 text-[#45CC42] shrink-0" />
+                          <span>{b}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteEmpBenefit(i)}
+                          className="text-slate-400 hover:text-rose-600 p-0.5 rounded cursor-pointer shrink-0"
+                          title="Remove benefit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newEmpBenefit}
+                    onChange={e => setNewEmpBenefit(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddEmpBenefit();
+                      }
+                    }}
+                    placeholder="e.g. Confidence in using modern digital and AI tools safely"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] outline-none bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddEmpBenefit}
+                    disabled={!newEmpBenefit.trim()}
+                    className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    + Add
+                  </button>
                 </div>
               </div>
             </div>
@@ -408,7 +684,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                 onClick={() => setShowOutcomesModal(false)}
                 className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] cursor-pointer"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
@@ -428,30 +704,41 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                   Minimum 5 diagnostic questions required by Master Prompt v9.0.
                 </p>
               </div>
-              <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                {s.diagnosticQuestions.length} questions
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                s.diagnosticQuestions.length >= 5
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+                {s.diagnosticQuestions.length} question{s.diagnosticQuestions.length !== 1 ? 's' : ''}
               </span>
             </div>
 
             <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-              {s.diagnosticQuestions.map((dq, idx) => (
-                <div key={dq.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-start justify-between gap-3 text-xs">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] bg-white px-2 py-0.5 rounded border border-slate-200">
-                      {dq.category}
-                    </span>
-                    <p className="text-slate-800 font-medium pt-1">
-                      {idx + 1}. {dq.question}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteDiagnostic(dq.id)}
-                    className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+              {s.diagnosticQuestions.length === 0 ? (
+                <div className="p-6 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 text-center space-y-1">
+                  <p className="font-semibold text-slate-700">No diagnostic questions added yet</p>
+                  <p>Add questions below to evaluate baseline learner competence across categories.</p>
                 </div>
-              ))}
+              ) : (
+                s.diagnosticQuestions.map((dq, idx) => (
+                  <div key={dq.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-start justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] bg-white px-2 py-0.5 rounded border border-slate-200">
+                        {dq.category}
+                      </span>
+                      <p className="text-slate-800 font-medium pt-1">
+                        {idx + 1}. {dq.question}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteDiagnostic(dq.id)}
+                      className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Add question form */}
@@ -470,16 +757,23 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
                 </select>
                 <input
                   type="text"
-                  placeholder="Enter diagnostic question..."
+                  placeholder="e.g. How do you currently use digital automation or AI tools in your daily job responsibilities?"
                   value={newDiagQuestion}
                   onChange={e => setNewDiagQuestion(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddDiagnostic();
+                    }
+                  }}
                   className="col-span-2 px-3 py-1.5 rounded border border-slate-300 text-xs bg-white"
                 />
               </div>
               <button
                 type="button"
                 onClick={handleAddDiagnostic}
-                className="w-full py-1.5 rounded bg-[#052B66] text-white text-xs font-semibold hover:bg-[#042150] cursor-pointer"
+                disabled={!newDiagQuestion.trim()}
+                className="w-full py-1.5 rounded bg-[#052B66] text-white text-xs font-semibold hover:bg-[#042150] disabled:opacity-50 cursor-pointer"
               >
                 + Add Diagnostic Question
               </button>

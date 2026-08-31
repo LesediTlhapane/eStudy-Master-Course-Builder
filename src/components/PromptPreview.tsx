@@ -6,11 +6,13 @@ import { Copy, Download, Check, ArrowLeft, Sparkles, FileText, Search } from 'lu
 interface PromptPreviewProps {
   course: Course;
   onReturnToBuilder: () => void;
+  onStartAIGeneration?: () => void;
 }
 
 export const PromptPreview: React.FC<PromptPreviewProps> = ({
   course,
-  onReturnToBuilder
+  onReturnToBuilder,
+  onStartAIGeneration
 }) => {
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,7 +45,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
   };
 
   return (
-    <div id="master-prompt-preview-view" className="min-h-[calc(100vh-4rem)] bg-slate-900 text-slate-100 py-8 px-6 lg:px-12 flex flex-col justify-between">
+    <div id="master-prompt-preview-view" className="min-h-[calc(100vh-4rem)] bg-slate-900 text-slate-100 py-8 px-6 lg:px-12 flex flex-col justify-between font-sora">
       <div className="max-w-6xl w-full mx-auto space-y-6">
         {/* Header Bar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
@@ -70,6 +72,17 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return to Builder</span>
             </button>
+
+            {onStartAIGeneration && (
+              <button
+                id="preview-generate-ai-course-btn"
+                onClick={onStartAIGeneration}
+                className="px-5 py-2.5 rounded-lg text-xs font-extrabold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] shadow-lg transition-all flex items-center gap-2 cursor-pointer animate-fade-up"
+              >
+                <Sparkles className="w-4 h-4 text-[#052B66]" />
+                <span>Generate Course with AI</span>
+              </button>
+            )}
 
             <button
               id="preview-copy-prompt-btn"

@@ -104,6 +104,74 @@ export const Section08QA: React.FC<Section08QAProps> = ({
         </div>
       </div>
 
+      {/* Per-Module Scenario Breakdown */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-[#052B66]">
+              Per-Module Scenario & Practical Verification
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Every module must contain at least 1 workplace scenario, with at least 3 workplace and 2 AI application scenarios across the course.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigateSection('04')}
+            className="text-xs font-semibold text-[#052B66] hover:text-[#45CC42] flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <span>Manage Scenarios</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(qaResult.moduleScenarioBreakdown || []).map(mb => (
+            <div
+              key={mb.moduleId}
+              className={`p-4 rounded-xl border transition-all ${
+                mb.isComplete
+                  ? 'bg-slate-50/80 border-slate-200'
+                  : 'bg-amber-50/80 border-amber-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-[#052B66]">
+                  Module {mb.moduleNumber}
+                </span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    mb.isComplete
+                      ? 'bg-[#45CC42]/20 text-[#052B66]'
+                      : 'bg-amber-100 text-amber-900 border border-amber-300'
+                  }`}
+                >
+                  {mb.isComplete ? '✓ Compliant' : '⚠ Action needed'}
+                </span>
+              </div>
+
+              <div className="text-xs font-medium text-slate-700 truncate mb-3" title={mb.moduleTitle}>
+                {mb.moduleTitle}
+              </div>
+
+              <div className="space-y-1.5 text-[11px] border-t border-slate-200/70 pt-2 text-slate-600">
+                <div className="flex items-center justify-between">
+                  <span>Workplace Scenarios:</span>
+                  <span className={`font-semibold ${mb.workplaceCount >= 1 ? 'text-slate-900' : 'text-amber-700 font-bold'}`}>
+                    {mb.workplaceCount} {mb.workplaceCount >= 1 ? '✓' : '(min 1)'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>AI Application Scenarios:</span>
+                  <span className="font-semibold text-slate-900">
+                    {mb.aiCount}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Grouped Requirement Cards List */}
       <div className="space-y-4">
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">

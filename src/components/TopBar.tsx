@@ -53,6 +53,18 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Quick Dashboard link */}
         <button
+          id="topbar-cover-btn"
+          onClick={() => onNavigateView('cover')}
+          className={`text-xs font-medium px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+            view === 'cover'
+              ? 'bg-[#052B66]/10 text-[#052B66] font-semibold'
+              : 'text-slate-600 hover:text-[#052B66] hover:bg-slate-100'
+          }`}
+        >
+          <span>Cover</span>
+        </button>
+
+        <button
           id="topbar-dashboard-btn"
           onClick={() => onNavigateView('dashboard')}
           className={`text-xs font-medium px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -64,6 +76,21 @@ export const TopBar: React.FC<TopBarProps> = ({
           <LayoutDashboard className="w-3.5 h-3.5" />
           <span>Dashboard</span>
         </button>
+
+        {course.generatedCourse && (
+          <button
+            id="topbar-generated-view-btn"
+            onClick={() => onNavigateView('generated')}
+            className={`text-xs font-medium px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+              view === 'generated'
+                ? 'bg-[#45CC42]/20 text-[#052B66] font-bold border border-[#45CC42]/40'
+                : 'text-slate-600 hover:text-[#052B66] hover:bg-slate-100'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#45CC42]" />
+            <span>Generated Course</span>
+          </button>
+        )}
       </div>
 
       {/* Centre: Current Course Name & Workspace Status */}

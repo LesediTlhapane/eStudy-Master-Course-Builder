@@ -63,6 +63,7 @@ export const Section07Output: React.FC<Section07OutputProps> = ({
               type="text"
               value={output.accessibilityTargetReadingLevel}
               onChange={e => handleUpdate('accessibilityTargetReadingLevel', e.target.value)}
+              placeholder="e.g. Plain language · NQF Level 4 / Grade 12 equivalent reading comprehension"
               className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs text-slate-900 focus:border-[#052B66] outline-none"
             />
           </div>
@@ -75,6 +76,7 @@ export const Section07Output: React.FC<Section07OutputProps> = ({
               type="text"
               value={output.outputFormat}
               onChange={e => handleUpdate('outputFormat', e.target.value)}
+              placeholder="e.g. LMS-Ready SCORM / xAPI compliant structured digital course with interactive modules and printable action plans"
               className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs text-slate-900 focus:border-[#052B66] outline-none"
             />
           </div>

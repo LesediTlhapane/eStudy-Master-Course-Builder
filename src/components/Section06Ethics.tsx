@@ -70,7 +70,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
               handleUpdateField('confidentialityRequirements', e.target.value);
             }}
             className="w-full p-3 rounded-lg border border-slate-200 text-xs text-slate-800 focus:border-[#052B66] outline-none"
-            placeholder="Specify data anonymisation rules and sanitisation checklists..."
+            placeholder="e.g. Mandatory zero-PII input rule, client data redaction protocols, and strict prohibition of non-enterprise AI instances."
           />
         </div>
 
@@ -93,7 +93,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
               handleUpdateField('accountabilityMechanism', e.target.value);
             }}
             className="w-full p-3 rounded-lg border border-slate-200 text-xs text-slate-800 focus:border-[#052B66] outline-none"
-            placeholder="Define review workflows and final approval sign-offs..."
+            placeholder="e.g. Mandatory human review and sign-off for high-impact decisions, loan rejections, customer communications, and financial summaries."
           />
         </div>
 
@@ -113,7 +113,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
             value={ethics.aiBiasRisk}
             onChange={e => handleUpdateField('aiBiasRisk', e.target.value)}
             className="w-full p-3 rounded-lg border border-slate-200 text-xs text-slate-800 focus:border-[#052B66] outline-none"
-            placeholder="Include bias audit questions and cross-checking steps..."
+            placeholder="e.g. Screen for demographic or linguistic bias in AI resume ranking, marketing personas, and automated credit risk evaluations."
           />
         </div>
 
@@ -133,7 +133,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
             value={ethics.aiDisclosureRequirement}
             onChange={e => handleUpdateField('aiDisclosureRequirement', e.target.value)}
             className="w-full p-3 rounded-lg border border-slate-200 text-xs text-slate-800 focus:border-[#052B66] outline-none"
-            placeholder="Define disclosure labels and communication protocols..."
+            placeholder="e.g. Include disclosure notice 'Drafted with AI assistance, verified and approved by [Employee Name]' on official external reports."
           />
         </div>
       </div>
