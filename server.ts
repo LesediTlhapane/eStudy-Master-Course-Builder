@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { generateCourseWithGemini, generateLocalFallbackCourse } from './src/server/geminiService';
+import { generateCourseWithGemini, generateLocalFallbackCourse, regenerateCoursePart } from './src/server/geminiService';
 
 async function startServer() {
   const app = express();
@@ -41,14 +41,13 @@ async function startServer() {
   // POST /api/courses/regenerate-part
   app.post('/api/courses/regenerate-part', async (req, res) => {
     try {
-      const { course, partType, targetId } = req.body;
+      const { course, partType, targetId, currentGeneratedCourse } = req.body;
       if (!course || !partType) {
         return res.status(400).json({ error: 'Missing course or partType in request body.' });
       }
 
-      // Generate a fresh version
-      const freshCourse = await generateCourseWithGemini(course);
-      return res.json({ success: true, course: freshCourse, regeneratedPart: { partType, targetId } });
+      const result = await regenerateCoursePart(course, partType, targetId, currentGeneratedCourse);
+      return res.json(result);
     } catch (error: any) {
       console.error('Error regenerating part:', error);
       return res.status(500).json({ error: error?.message || 'Failed to regenerate course component.' });

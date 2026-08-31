@@ -8,7 +8,7 @@ export type SourceType =
   | 'Case study'
   | 'Benchmarking source';
 
-export type SourceStatus = 'Required' | 'Verified' | 'Review' | 'Not started';
+export type SourceStatus = 'Required' | 'Verified' | 'Review' | 'Not verified' | 'Not started';
 
 export interface ResearchSource {
   id: string;
@@ -183,12 +183,12 @@ export interface Course {
     code: string;
     industryDomain: string;
     targetRoles: string;
-    aiIntegrationLevel: 'Awareness' | 'Applied' | 'Advanced';
+    aiIntegrationLevel: '' | 'Awareness' | 'Applied' | 'Advanced';
     setaNqfLevel: string;
     deliveryLanguages: string;
     estimatedDuration: string;
     deliveryFormat: string;
-    difficultyLevel: 'Foundational' | 'Intermediate' | 'Advanced';
+    difficultyLevel: '' | 'Foundational' | 'Intermediate' | 'Advanced';
     
     // Overview
     purposeStatement: string;
@@ -216,7 +216,7 @@ export interface Course {
     jobRoles: string;
     departments: string;
     experienceLevel: string;
-    aiFamiliarityBaseline: 'None' | 'Basic' | 'Intermediate';
+    aiFamiliarityBaseline: '' | 'None' | 'Basic' | 'Intermediate';
     
     // Prerequisites
     prerequisiteKnowledge: string;

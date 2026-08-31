@@ -15,7 +15,7 @@ export const blankMasterTemplate: Course = {
     skillGaps: '',
     constraints: '',
     aiLiteracyGap: '',
-    digitalReadinessLevel: 'Basic digital familiarity (email, browser, office productivity suites)',
+    digitalReadinessLevel: '',
     aiEthicsComplianceRisk: ''
   },
   research: {
@@ -31,14 +31,14 @@ export const blankMasterTemplate: Course = {
   structure: {
     title: '',
     code: 'EST-NEW-01',
-    industryDomain: 'Cross-Sector / Corporate',
+    industryDomain: '',
     targetRoles: '',
-    aiIntegrationLevel: 'Applied',
-    setaNqfLevel: 'NQF Level 5 (Aligned)',
-    deliveryLanguages: 'English (South African Business Standard)',
+    aiIntegrationLevel: '',
+    setaNqfLevel: '',
+    deliveryLanguages: '',
     estimatedDuration: '',
-    deliveryFormat: 'Self-paced online with interactive activities',
-    difficultyLevel: 'Foundational',
+    deliveryFormat: '',
+    difficultyLevel: '',
     purposeStatement: '',
     workplaceRelevance: '',
     performanceImprovement: '',
@@ -56,42 +56,13 @@ export const blankMasterTemplate: Course = {
     jobRoles: '',
     departments: '',
     experienceLevel: '',
-    aiFamiliarityBaseline: 'Basic',
+    aiFamiliarityBaseline: '',
     prerequisiteKnowledge: '',
     prerequisiteExperience: '',
     toolsSystems: '',
     digitalLiteracyLevel: '',
     diagnosticQuestions: [],
-    learningJourney: [
-      {
-        id: 'step-1',
-        stepNumber: 1,
-        title: 'Understand',
-        subtitle: 'Foundational concepts',
-        description: 'Demystify underlying concepts, set realistic expectations, and identify operational boundaries.'
-      },
-      {
-        id: 'step-2',
-        stepNumber: 2,
-        title: 'Apply',
-        subtitle: 'Tools & workflows',
-        description: 'Practice high-impact workflows, prompt structures, and everyday productivity techniques.'
-      },
-      {
-        id: 'step-3',
-        stepNumber: 3,
-        title: 'Evaluate',
-        subtitle: 'Outputs & quality',
-        description: 'Critique generated outputs, detect errors or bias, and apply rigorous verification checks.'
-      },
-      {
-        id: 'step-4',
-        stepNumber: 4,
-        title: 'Embed',
-        subtitle: 'Sustained practice',
-        description: 'Sustain ethical standards, data privacy compliance, and transparent team collaboration.'
-      }
-    ]
+    learningJourney: []
   },
   modules: [
     {

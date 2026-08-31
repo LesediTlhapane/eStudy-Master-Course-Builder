@@ -67,10 +67,10 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
       }
     ];
 
-    const workplaceScenarios: GeneratedScenario[] = (m.requirements?.scenarios && m.requirements.scenarios.length > 0)
+    const workplaceScenarios: GeneratedScenario[] = (m.requirements?.scenarios && m.requirements.scenarios.length >= 3)
       ? m.requirements.scenarios.map((sc, scIdx) => ({
           id: `scenario-${modNum}-${scIdx + 1}`,
-          title: sc.title || `Workplace Scenario ${scIdx + 1}`,
+          title: sc.title || `Workplace Scenario ${scIdx + 1}: Practical Application`,
           type: 'Workplace' as const,
           situation: sc.situation || `An employee in ${s.targetRoles || 'the department'} encounters operational resistance while implementing ${m.title}.`,
           challenge: sc.challenge || `Conflicting priorities between short-term throughput and long-term compliance.`,
@@ -81,13 +81,33 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
       : [
           {
             id: `scenario-${modNum}-1`,
-            title: `Operational Decision in ${m.title}`,
+            title: `Operational Execution in ${m.title}`,
             type: 'Workplace' as const,
             situation: `During peak operating hours, a process breakdown occurs regarding ${p.taskOrSkill || 'core operations'}.`,
             challenge: `Meeting tight delivery deadlines without violating compliance standards.`,
             decisionPoint: `Choose between implementing an unverified shortcut or initiating standard contingency protocols.`,
             debrief: `Contingency protocols preserve quality and regulatory compliance, preventing downstream remediation costs.`,
             keyTakeaway: `Follow standardised contingency procedures during operational stress.`
+          },
+          {
+            id: `scenario-${modNum}-2`,
+            title: `Cross-Functional Collaboration & Quality Gate`,
+            type: 'Workplace' as const,
+            situation: `A hand-off between team leads lacks documented sign-off on critical variables for ${m.title}.`,
+            challenge: `Deciding whether to proceed on informal verbal confirmation or hold the release until formal sign-off.`,
+            decisionPoint: `Enforce quality gate standards vs expediting the hand-off to satisfy timeline pressure.`,
+            debrief: `Formal sign-offs establish accountability and prevent downstream systemic failures in South African regulated operations.`,
+            keyTakeaway: `Quality gates are mandatory governance checkpoints, not discretionary delays.`
+          },
+          {
+            id: `scenario-${modNum}-3`,
+            title: `Compliance Audit & Remediation Decision`,
+            type: 'Workplace' as const,
+            situation: `An internal spot-check reveals recurring variance in procedural records linked to ${p.processFailures || 'process inconsistencies'}.`,
+            challenge: `Addressing root causes collaboratively without creating blame culture or psychological hazard.`,
+            decisionPoint: `Initiate a root-cause remediation workshop vs issuing punitive notices.`,
+            debrief: `Psychological safety and systemic remediation yield sustainable capability improvement and genuine risk reduction.`,
+            keyTakeaway: `Focus on systemic root causes rather than superficial individual fault.`
           }
         ];
 
@@ -96,7 +116,7 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
           id: `ai-scenario-${modNum}-${scIdx + 1}`,
           title: sc.title || `AI Application Scenario ${scIdx + 1}`,
           type: 'AI Specific' as const,
-          situation: sc.situation || `A team member uses an AI tool to generate financial or operational reports for external review.`,
+          situation: sc.situation || `A team member uses an AI tool to generate operational deliverables for review.`,
           challenge: sc.challenge || `The AI output contains plausible hallucinations regarding South African regulatory references.`,
           decisionPoint: sc.decisionPoint || `How should the supervisor verify the accuracy of the AI-generated findings?`,
           debrief: sc.debrief || `Supervisors must perform line-by-line verification against authoritative sources before releasing any AI-assisted documentation.`,
@@ -107,7 +127,7 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
             id: `ai-scenario-${modNum}-ai-1`,
             title: `AI Tool Assisted Decision & Verification`,
             type: 'AI Specific' as const,
-            situation: `An AI analysis tool flags multiple non-conforming entries in a dataset.`,
+            situation: `An AI analysis tool flags multiple non-conforming entries in a domain dataset.`,
             challenge: `Distinguishing between genuine anomalies and false positive pattern errors.`,
             decisionPoint: `Conduct manual spot-checks on flagged samples before taking corrective action.`,
             debrief: `Cross-referencing flagged items with source records ensures fair and accurate outcomes.`,
@@ -141,6 +161,45 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
         correctAnswer: 1,
         rationale: `Human-in-the-loop oversight and POPIA compliance are mandatory pillars in the eStudy pedagogical standard.`,
         learningObjectiveRef: m.learningObjectives?.[1] || 'AI Governance'
+      },
+      {
+        id: `qc-${modNum}-3`,
+        question: `How should a team member react when an AI tool produces an unexpected result or recommendation?`,
+        options: [
+          `Accept it immediately because AI models analyze larger datasets`,
+          `Pause and independently verify the calculation or fact against authoritative records`,
+          `Delete the entire task without logging the issue`,
+          `Share the output directly with external stakeholders`
+        ],
+        correctAnswer: 1,
+        rationale: `Independent verification against source records prevents the propagation of hallucinations or systemic errors.`,
+        learningObjectiveRef: m.learningObjectives?.[1] || 'Critical Evaluation'
+      },
+      {
+        id: `qc-${modNum}-4`,
+        question: `Under POPIA Act 4 of 2013, what must be done prior to inputting workplace records into digital tools?`,
+        options: [
+          `Nothing, as internal records are exempt from data privacy laws`,
+          `Ensure lawful processing conditions are met and personal identifiers are de-identified or protected`,
+          `Upload all employee records to public cloud repositories`,
+          `Disclose all passwords in shared documents`
+        ],
+        correctAnswer: 1,
+        rationale: `POPIA Section 11 mandates lawful processing conditions and appropriate technical measures to safeguard personal information.`,
+        learningObjectiveRef: m.learningObjectives?.[2] || 'POPIA Compliance'
+      },
+      {
+        id: `qc-${modNum}-5`,
+        question: `What distinguishes effective workplace execution from superficial task completion?`,
+        options: [
+          `Speed of delivery over accuracy`,
+          `Continuous application of standard operating procedures, proactive risk mitigation, and continuous reflection`,
+          `Delegating all decisions to automated algorithms`,
+          `Avoiding documentation to save time`
+        ],
+        correctAnswer: 1,
+        rationale: `Sustainable performance relies on rigorous standard operating procedures, active risk management, and structured feedback loops.`,
+        learningObjectiveRef: m.learningObjectives?.[0] || 'Operational Excellence'
       }
     ];
 
@@ -372,3 +431,92 @@ Requirements:
     return generateLocalFallbackCourse(course);
   }
 }
+
+export async function regenerateCoursePart(
+  course: Course,
+  partType: string,
+  targetId: string,
+  currentGeneratedCourse?: GeneratedCourse
+): Promise<{ success: boolean; course: GeneratedCourse; updatedPart: any }> {
+  // Generate a baseline fresh version
+  const freshCourse = await generateCourseWithGemini(course);
+  
+  if (!currentGeneratedCourse) {
+    return {
+      success: true,
+      course: freshCourse,
+      updatedPart: null
+    };
+  }
+
+  // Surgical granular update preserving other elements
+  let updatedCourse: GeneratedCourse = { ...currentGeneratedCourse };
+  let updatedPart: any = null;
+
+  if (partType === 'module') {
+    const freshMod = freshCourse.modules.find(m => m.id === targetId || `module-${m.moduleNumber}` === targetId) || freshCourse.modules[0];
+    if (freshMod) {
+      updatedPart = freshMod;
+      updatedCourse.modules = updatedCourse.modules.map(m => (m.id === targetId || `module-${m.moduleNumber}` === targetId) ? freshMod : m);
+    }
+  } else if (partType === 'lesson') {
+    for (const freshMod of freshCourse.modules) {
+      const freshLesson = freshMod.lessons.find(l => l.id === targetId);
+      if (freshLesson) {
+        updatedPart = freshLesson;
+        updatedCourse.modules = updatedCourse.modules.map(m => ({
+          ...m,
+          lessons: m.lessons.map(l => l.id === targetId ? freshLesson : l)
+        }));
+        break;
+      }
+    }
+  } else if (partType === 'scenario') {
+    for (const freshMod of freshCourse.modules) {
+      const freshSc = freshMod.scenarios.find(s => s.id === targetId);
+      if (freshSc) {
+        updatedPart = freshSc;
+        updatedCourse.modules = updatedCourse.modules.map(m => ({
+          ...m,
+          scenarios: m.scenarios.map(s => s.id === targetId ? freshSc : s)
+        }));
+        break;
+      }
+    }
+  } else if (partType === 'knowledge_check') {
+    for (const freshMod of freshCourse.modules) {
+      const freshQ = freshMod.knowledgeChecks.find(q => q.id === targetId);
+      if (freshQ) {
+        updatedPart = freshQ;
+        updatedCourse.modules = updatedCourse.modules.map(m => ({
+          ...m,
+          knowledgeChecks: m.knowledgeChecks.map(q => q.id === targetId ? freshQ : q)
+        }));
+        break;
+      }
+    }
+  } else if (partType === 'diagnostic') {
+    updatedPart = freshCourse.assessments.preCourseDiagnostic;
+    updatedCourse.assessments = {
+      ...updatedCourse.assessments,
+      preCourseDiagnostic: freshCourse.assessments.preCourseDiagnostic
+    };
+  } else if (partType === 'capstone') {
+    updatedPart = freshCourse.assessments.finalAssessment;
+    updatedCourse.assessments = {
+      ...updatedCourse.assessments,
+      finalAssessment: freshCourse.assessments.finalAssessment
+    };
+  } else {
+    // Whole course regeneration fallback
+    updatedCourse = freshCourse;
+    updatedPart = freshCourse;
+  }
+
+  return {
+    success: true,
+    course: updatedCourse,
+    updatedPart
+  };
+}
+

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Course } from '../types';
 import { generateMasterPrompt } from '../utils/promptGenerator';
-import { Copy, Download, Check, ArrowLeft, Sparkles, FileText, Search } from 'lucide-react';
+import { Copy, Download, Check, ArrowLeft, Sparkles, FileText, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface PromptPreviewProps {
   course: Course;
@@ -17,9 +17,12 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const promptText = generateMasterPrompt(course);
+  const promptText = useMemo(() => generateMasterPrompt(course), [course]);
   const wordCount = promptText.trim().split(/\s+/).length;
   const charCount = promptText.length;
+
+  // Count [INSERT: placeholders
+  const pendingPlaceholdersCount = (promptText.match(/\[INSERT:[^\]]+\]/g) || []).length;
 
   const handleCopy = async () => {
     try {
@@ -57,10 +60,10 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
               <span className="text-xs text-slate-400 font-mono">v9.0 Master Prompt</span>
             </div>
             <h1 className="text-2xl font-extrabold text-white tracking-tight">
-              {course.name || course.structure.title}
+              {course.name || course.structure.title || 'Untitled Course'}
             </h1>
             <p className="text-xs text-slate-400">
-              Deterministic prompt compiled from all 9 sections ready for AI generation.
+              Deterministic prompt compiled strictly from your inputs across all 9 sections.
             </p>
           </div>
 
@@ -118,7 +121,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
 
         {/* Stats & Search Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80 text-xs">
-          <div className="flex items-center gap-4 text-slate-300">
+          <div className="flex flex-wrap items-center gap-4 text-slate-300">
             <span>
               <strong className="text-white font-mono">{wordCount.toLocaleString()}</strong> words
             </span>
@@ -127,8 +130,19 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
               <strong className="text-white font-mono">{charCount.toLocaleString()}</strong> characters
             </span>
             <span>•</span>
-            <span>
-              <strong className="text-[#45CC42] font-mono">9</strong> sections verified
+            <span className="flex items-center gap-1">
+              {pendingPlaceholdersCount === 0 ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#45CC42]" />
+                  <span className="text-[#45CC42] font-semibold">100% Custom Populated</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-amber-300 font-mono">{pendingPlaceholdersCount}</span>
+                  <span className="text-slate-400">fields pending input</span>
+                </>
+              )}
             </span>
           </div>
 
@@ -164,3 +178,4 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
     </div>
   );
 };
+
