@@ -331,7 +331,7 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
 
   const qa: GeneratedCourseQA = {
     score: 96,
-    status: 'approved',
+    status: 'review_required',
     passedChecks: [
       'All 9 Master Prompt v9.0 sections fully structured and populated',
       `Complete ${generatedModules.length}-module curriculum aligned with Bloom's Taxonomy`,
@@ -343,6 +343,7 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
     warnings: [],
     criticalIssues: [],
     recommendations: [
+      'Conduct human instructional sign-off before exporting for LMS production.',
       'Review industry-specific case study details prior to final LMS packaging.',
       'Ensure participant cohort has completed the pre-course diagnostic before module 1 kickoff.'
     ],

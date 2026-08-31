@@ -87,7 +87,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
       const res = await fetch('/api/courses/regenerate-part', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ course, partType, targetId })
+        body: JSON.stringify({ course, partType, targetId, currentGeneratedCourse: generatedCourse })
       });
 
       if (res.ok) {
