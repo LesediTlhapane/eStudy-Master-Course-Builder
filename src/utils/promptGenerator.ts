@@ -1,21 +1,17 @@
 import { Course } from '../types';
-import { evaluateCourseQA } from './qaEngine';
 
+/**
+ * Generates the complete, verbatim eStudy South Africa Master Course Generation Prompt
+ * exactly as structured in the Master Prompt Template v9.0 document.
+ */
 export function generateMasterPrompt(course: Course): string {
-  const p = course.problem || {} as any;
-  const r = course.research || {} as any;
-  const s = course.structure || {} as any;
-  const ld = course.learningDesign || {} as any;
-  const e = course.ethics || {} as any;
-  const out = course.outputRequirements || {} as any;
-  const cust = course.customisation || {} as any;
-
-  const qa = evaluateCourseQA(course);
-  const getCheckStatus = (checkId: string) => {
-    const item = qa.items.find(i => i.id === checkId);
-    if (!item) return 'REQUIRES REVIEW';
-    return item.isComplete ? 'CONFIRMED' : 'PENDING REVIEW';
-  };
+  const p = course.problem || ({} as any);
+  const r = course.research || ({} as any);
+  const s = course.structure || ({} as any);
+  const ld = course.learningDesign || ({} as any);
+  const e = course.ethics || ({} as any);
+  const out = course.outputRequirements || ({} as any);
+  const cust = course.customisation || ({} as any);
 
   // Helper to format string or placeholder
   const val = (v: string | undefined | null, placeholder: string) => {
@@ -23,468 +19,624 @@ export function generateMasterPrompt(course: Course): string {
     return placeholder;
   };
 
-  // Format problem statement formula
-  const problemStatement = `"This course addresses the inability of ${val(p.targetGroup, '[INSERT: TARGET GROUP]')} to effectively perform ${val(p.taskOrSkill, '[INSERT: TASK / SKILL]')}, resulting in ${val(p.operationalImpact, '[INSERT: OPERATIONAL / FINANCIAL / COMPLIANCE / PRODUCTIVITY IMPACT]')}"`;
+  // 1. Problem Statement
+  const targetGroupVal = val(p.targetGroup, '[INSERT: TARGET GROUP]');
+  const taskOrSkillVal = val(p.taskOrSkill, '[INSERT: TASK / SKILL]');
+  const impactVal = val(
+    p.operationalImpact,
+    '[INSERT: OPERATIONAL / FINANCIAL / COMPLIANCE / PRODUCTIVITY IMPACT]'
+  );
+  const problemStatementText = `"This course addresses the inability of ${targetGroupVal} to effectively perform ${taskOrSkillVal}, resulting in ${impactVal}."`;
 
-  // Format root causes
-  const activeRootCauses = (p.rootCauses || []).filter((rc: string) => rc && rc.trim().length > 0);
-  const rootCausesFormatted = activeRootCauses.length > 0
-    ? activeRootCauses.map((rc: string) => `• ${rc}`).join('\n')
-    : `• ${p.rootCauses?.[0] || '[INSERT: PRIMARY ROOT CAUSE]'}\n• ${p.rootCauses?.[1] || '[INSERT: SECONDARY ROOT CAUSE]'}`;
+  // 1.2 Root Causes
+  const rc1 = p.rootCauses?.[0] ? p.rootCauses[0].trim() : '[INSERT: ROOT CAUSE 1]';
+  const rc2 = p.rootCauses?.[1] ? p.rootCauses[1].trim() : '[INSERT: ROOT CAUSE 2]';
 
-  // Format sources
-  const activeSources = (r.sources || []).filter((src: any) => src && (src.name || src.reference));
-  const sourcesFormatted = activeSources.length > 0
-    ? activeSources.map((src: any, i: number) => `[SOURCE ${i + 1}] ${src.name || 'Reference'} (${src.type || 'Standard'}) — ${src.reference || ''} | Relevance: ${src.relevance || 'Core'} [Status: ${src.status || 'Verified'}]`).join('\n')
-    : '[INSERT: AUTHORITATIVE REFERENCE SOURCES (Minimum 2 Required)]';
+  // 2.1 Sources
+  const activeSources = (r.sources || []).filter(
+    (src: any) => src && (src.name || src.reference)
+  );
+  const sourcesFormatted =
+    activeSources.length > 0
+      ? activeSources
+          .map(
+            (src: any, i: number) =>
+              `[INSERT: LINK ${i + 1} — ${src.name || 'URL or document title'}${
+                src.reference ? ` (${src.reference})` : ''
+              }]`
+          )
+          .join('\n')
+      : `[INSERT: LINK 1 — URL or document title]\n[INSERT: LINK 2 — URL or document title]\n[INSERT: LINK 3 — URL or document title (add more as needed)]`;
 
-  // Format diagnostic questions
-  const activeDiagnostics = (s.diagnosticQuestions || []).filter((dq: any) => dq && dq.question && dq.question.trim().length > 0);
-  const diagnosticsFormatted = activeDiagnostics.length > 0
-    ? activeDiagnostics.map((dq: any, i: number) => `Question ${i + 1} [${dq.category || 'Diagnostic'}]: ${dq.question}${dq.purpose ? ` (Purpose: ${dq.purpose})` : ''}`).join('\n')
-    : '[INSERT: PRE-COURSE DIAGNOSTIC QUESTIONS (5–10 Required, with at least 2 AI Readiness Questions)]';
+  // 3.4 Benefits
+  const orgB1 = s.organisationalBenefits?.[0]
+    ? s.organisationalBenefits[0].trim()
+    : '[INSERT: ORGANISATIONAL BENEFIT 1]';
+  const orgB2 = s.organisationalBenefits?.[1]
+    ? s.organisationalBenefits[1].trim()
+    : '[INSERT: ORGANISATIONAL BENEFIT 2]';
 
-  // Format module overview table
-  const activeModules = (course.modules || []);
-  const moduleTableFormatted = activeModules.length > 0
-    ? activeModules.map((m, i) => 
-        `| ${i + 1} | ${m.title || `[INSERT: MODULE ${i + 1} TITLE]`} | ${m.purpose || '[INSERT: MODULE PURPOSE]'} | ${(m.keySkills || []).join(', ') || '[INSERT: KEY SKILLS]'} |`
-      ).join('\n')
-    : '| 1 | [INSERT: MODULE 1 TITLE] | [INSERT: PURPOSE] | [INSERT: KEY SKILLS] |';
+  const empB1 = s.employeeBenefits?.[0]
+    ? s.employeeBenefits[0].trim()
+    : '[INSERT: EMPLOYEE BENEFIT 1]';
+  const empB2 = s.employeeBenefits?.[1]
+    ? s.employeeBenefits[1].trim()
+    : '[INSERT: EMPLOYEE BENEFIT 2]';
 
-  // Format assessment table
-  const activeAssessments = (ld.assessments || []).filter((a: any) => a && (a.description || a.type));
-  const assessmentTableFormatted = activeAssessments.length > 0
-    ? activeAssessments.map((a: any) => 
-        `| ${a.type || 'Assessment'} | ${a.description || '[INSERT: DESCRIPTION]'} | ${a.timing || '[INSERT: TIMING]'} | ${a.weighting || '[INSERT: WEIGHTING]'}${a.passMark ? ` (Pass: ${a.passMark})` : ''} |`
-      ).join('\n')
-    : '| [INSERT: ASSESSMENT TYPE] | [INSERT: DESCRIPTION] | [INSERT: TIMING] | [INSERT: WEIGHTING] |';
+  const riskB1 = s.riskReductionOutcomes?.[0]
+    ? s.riskReductionOutcomes[0].trim()
+    : '[INSERT: RISK REDUCTION OUTCOME 1]';
+  const riskB2 = s.riskReductionOutcomes?.[1]
+    ? s.riskReductionOutcomes[1].trim()
+    : '[INSERT: RISK REDUCTION OUTCOME 2]';
 
-  // Format customisation planning table
-  const activePlanningNotes = (cust.planningNotes || []).filter((pn: any) => pn && (pn.whatChanges || pn.notes));
-  const planningTableFormatted = activePlanningNotes.length > 0
-    ? activePlanningNotes.map((pn: any) => 
-        `| ${pn.templateSection || 'Section'} | ${pn.whatChanges || ''} | ${pn.notes || ''} |`
-      ).join('\n')
-    : '| [Template Section] | [What Changes] | [Notes] |';
+  // 3.8 Diagnostic Questions
+  const activeDiagnostics = (s.diagnosticQuestions || []).filter(
+    (dq: any) => dq && dq.question && dq.question.trim().length > 0
+  );
+  const diagnosticsFormatted =
+    activeDiagnostics.length > 0
+      ? activeDiagnostics
+          .map(
+            (dq: any, i: number) =>
+              `[INSERT: DIAGNOSTIC QUESTION ${i + 1} — ${dq.category || 'Domain check'}: ${
+                dq.question
+              }]`
+          )
+          .join('\n')
+      : `[INSERT: DIAGNOSTIC QUESTION 1 — General domain knowledge]
+[INSERT: DIAGNOSTIC QUESTION 2 — Awareness of the problem]
+[INSERT: DIAGNOSTIC QUESTION 3 — Current workplace practices]
+[INSERT: DIAGNOSTIC QUESTION 4 — AI awareness / digital readiness]
+[INSERT: DIAGNOSTIC QUESTION 5 — Ethics / compliance awareness]
+[INSERT: DIAGNOSTIC QUESTIONS 6–10 — Add as needed]`;
 
-  // Format history table
-  const activeHistory = (cust.historicalCourses || []).filter((hc: any) => hc && (hc.courseTitle || hc.industry));
-  const historyTableFormatted = activeHistory.length > 0
-    ? activeHistory.map((hc: any) => 
-        `| ${hc.courseTitle || ''} | ${hc.industry || ''} | ${hc.dateBuilt || ''} | ${hc.version || ''} |`
-      ).join('\n')
-    : '| [Course Title] | [Industry] | [Date Built] | [Version] |';
+  // 3.9 Module Overview Table
+  const modulesList = course.modules || [];
+  const moduleTableFormatted =
+    modulesList.length > 0
+      ? modulesList
+          .map(
+            (m, i) =>
+              `${i + 1} | ${val(m.title, `[INSERT: MODULE ${i + 1} TITLE]`)} | ${val(
+                m.purpose,
+                `[INSERT: MODULE ${i + 1} PURPOSE]`
+              )} | ${
+                m.keySkills && m.keySkills.length > 0
+                  ? m.keySkills.join(', ')
+                  : `[INSERT: MODULE ${i + 1} KEY SKILLS]`
+              }`
+          )
+          .join('\n')
+      : `1 | [INSERT: MODULE 1 TITLE] | [INSERT: MODULE 1 PURPOSE] | [INSERT: MODULE 1 KEY SKILLS]
+2 | [INSERT: MODULE 2 TITLE] | [INSERT: MODULE 2 PURPOSE] | [INSERT: MODULE 2 KEY SKILLS]
+3 | [INSERT: MODULE 3 TITLE] | [INSERT: MODULE 3 PURPOSE] | [INSERT: MODULE 3 KEY SKILLS]
+4 (optional) | [INSERT: MODULE 4 (optional) TITLE] | [INSERT: MODULE 4 (optional) PURPOSE] | [INSERT: MODULE 4 (optional) KEY SKILLS]
+5 (optional) | [INSERT: MODULE 5 (optional) TITLE] | [INSERT: MODULE 5 (optional) PURPOSE] | [INSERT: MODULE 5 (optional) KEY SKILLS]`;
 
-  // Format Learning Journey
-  const activeJourney = (s.learningJourney || []).filter((step: any) => step && (step.title || step.description));
-  const journeyFormatted = activeJourney.length > 0
-    ? activeJourney.map((step: any) => `${step.stepNumber || 1}. ${step.title || 'Phase'}: ${step.subtitle || ''} — ${step.description || ''}`).join('\n↓\n')
-    : '[INSERT: LEARNING JOURNEY FLOW (e.g. 1. Understand → 2. Apply → 3. Evaluate → 4. Embed)]';
+  // Module 1, 2, 3 Data extraction
+  const m1 = modulesList[0] || ({} as any);
+  const m2 = modulesList[1] || ({} as any);
+  const m3 = modulesList[2] || ({} as any);
 
-  // Format Evidence Standards
-  const activeEvidence = (r.evidenceStandards || []).filter((es: string) => es && es.trim().length > 0);
-  const evidenceFormatted = activeEvidence.length > 0
-    ? activeEvidence.map((es: string) => `• ${es}`).join('\n')
-    : '[INSERT: EVIDENCE STANDARDS]';
+  const m1Req = m1.requirements || ({} as any);
+  const m2Req = m2.requirements || ({} as any);
+  const m3Req = m3.requirements || ({} as any);
 
-  // Format Benefits
-  const orgBenefits = (s.organisationalBenefits || []).filter((b: string) => b && b.trim().length > 0);
-  const empBenefits = (s.employeeBenefits || []).filter((b: string) => b && b.trim().length > 0);
-  const riskBenefits = (s.riskReductionOutcomes || []).filter((b: string) => b && b.trim().length > 0);
+  // Scenarios for Module 2
+  const m2Scenarios = m2Req.scenarios || [];
+  const m2ScenariosFormatted =
+    m2Scenarios.length > 0
+      ? m2Scenarios
+          .map((sc: any, idx: number) => {
+            return `[INSERT: SCENARIO ${idx + 1} TITLE — ${sc.title || `Scenario ${idx + 1}`}]
+• Situation: ${val(sc.situation, '[INSERT: SITUATION]')}
+• Challenge: ${val(sc.challenge, '[INSERT: CHALLENGE]')}
+• Decision Point: ${val(sc.decisionPoint, '[INSERT: DECISION POINT]')}
+• Debrief: ${val(sc.debrief, '[INSERT: DEBRIEF]')}`;
+          })
+          .join('\n\n')
+      : `[INSERT: SCENARIO 1 TITLE]
+[INSERT: SCENARIO 2 TITLE]
+[INSERT: SCENARIO 3 TITLE]
+[INSERT: SCENARIO 4 TITLE (recommended)]
+[INSERT: SCENARIO 5 TITLE (recommended)]`;
 
-  return `================================================================================
-eStudy South Africa
+  // AI Scenarios for Module 2
+  const m2AiScenarios = m2Req.aiScenarios || [];
+  const m2AiScenariosFormatted =
+    m2AiScenarios.length > 0
+      ? m2AiScenarios
+          .map((sc: any, idx: number) => {
+            return `[INSERT: AI SCENARIO ${idx + 1} — ${sc.title || `AI Scenario ${idx + 1}`}]
+• Situation: ${val(sc.situation, '[INSERT: AI TOOL IN ACTION]')}
+• Challenge: ${val(sc.challenge, '[INSERT: CHALLENGE / OUTPUT EVALUATION]')}
+• Decision Point: ${val(sc.decisionPoint, '[INSERT: DECISION REQUIRED / HUMAN JUDGMENT]')}
+• Debrief: ${val(sc.debrief, '[INSERT: DEBRIEF]')}`;
+          })
+          .join('\n\n')
+      : `[INSERT: AI SCENARIO 1 — AI tool in action, decision required]
+[INSERT: AI SCENARIO 2 — AI output evaluation, critical thinking required]`;
+
+  // 5.3 Assessments Table
+  const activeAssessments = ld.assessments || [];
+  const practicalWeight =
+    activeAssessments.find((a: any) => a.type?.includes('Practical'))?.weighting ||
+    '[INSERT: WEIGHTING]';
+  const finalPassMark =
+    activeAssessments.find((a: any) => a.type?.includes('Final'))?.passMark ||
+    '[INSERT: PASS MARK %]';
+
+  // 9. Customisation Planning Table
+  const activePlanningNotes = (cust.planningNotes || []).filter(
+    (pn: any) => pn && (pn.whatChanges || pn.notes)
+  );
+  const planningTableFormatted =
+    activePlanningNotes.length > 0
+      ? activePlanningNotes
+          .map(
+            (pn: any) =>
+              `${pn.templateSection || 'Section'} | ${pn.whatChanges || ''} | ${
+                pn.notes || '[INSERT: YOUR PLANNING NOTES]'
+              }`
+          )
+          .join('\n')
+      : `1. Problem Statement | Industry context, target group, operational impact | [INSERT: YOUR PLANNING NOTES]
+2. Sources | Regulation, industry links, AI tools used in domain | [INSERT: YOUR PLANNING NOTES]
+3.1 Course Details | Title, code, domain, duration, NQF level | [INSERT: YOUR PLANNING NOTES]
+3.6 Target Audience | Job roles, departments, AI literacy baseline | [INSERT: YOUR PLANNING NOTES]
+4. Module Content | Scenarios, terminology, tools, procedures | [INSERT: YOUR PLANNING NOTES]
+6. Ethics | Domain-specific risks, AI bias context, data laws | [INSERT: YOUR PLANNING NOTES]
+7.4 Accessibility | Reading level, language, cultural context | [INSERT: YOUR PLANNING NOTES]`;
+
+  // 9.1 Course History Table
+  const activeHistory = cust.historicalCourses || [];
+  const historyTableFormatted =
+    activeHistory.length > 0
+      ? activeHistory
+          .map(
+            (hc: any) =>
+              `${val(hc.courseTitle, '[INSERT: COURSE TITLE]')} | ${val(
+                hc.industry,
+                '[INSERT: INDUSTRY]'
+              )} | ${val(hc.dateBuilt, '[INSERT: DATE]')} | ${val(
+                hc.version,
+                '[INSERT: VERSION]'
+              )}`
+          )
+          .join('\n')
+      : `Use of Artificial Intelligence in Financial Literacy | Financial Services | 2025 | v1.0 — BENCHMARK
+[INSERT: COURSE 2 TITLE] | [INSERT: INDUSTRY] | [INSERT: DATE] | [INSERT: VERSION]
+[INSERT: COURSE 3 TITLE] | [INSERT: INDUSTRY] | [INSERT: DATE] | [INSERT: VERSION]
+[INSERT: COURSE 4 TITLE] | [INSERT: INDUSTRY] | [INSERT: DATE] | [INSERT: VERSION]`;
+
+  const courseTitle = val(s.title || course.name, '[INSERT: COURSE TITLE]');
+
+  return `eStudy South Africa
 MASTER COURSE GENERATION PROMPT
-– AI-Enhanced Universal Scalable Template (v9.0)
+– AI-Enhanced Universal Scalable Template
 Built on the foundation of the Use of Artificial Intelligence in Financial Literacy course
-================================================================================
 
 📋 HOW TO USE THIS TEMPLATE 
-This document is a structured prompt template for AI-assisted course generation at eStudy South Africa.
-Every field is populated through the eStudy Course Builder digital framework.
+This document is a structured prompt template for AI-assisted course generation at eStudy South 
+Africa. Each [INSERT: …] bracket is a field you replace with course-specific content before submitting 
+the prompt to your AI engine.
 
-✅ Reference Course Benchmark:
-"Use of Artificial Intelligence in Financial Literacy" — benchmark for tone, depth, and structure.
+✅ Reference Course (Already Built)
+Use of Artificial Intelligence in Financial Literacy — use this course as a benchmark for tone, 
+depth, and structure when populating this template.
 
 STEP-BY-STEP USAGE:
-1. All sections and parameters have been populated directly from validated course data.
-2. Section headings, standards, and numbering remain 100% compliant with Master Prompt v9.0.
-3. Submit this completed prompt to the AI content engine for full course generation.
+1. Replace every [INSERT: …] field with the relevant course-specific information.
+2. Keep all section headings and numbering exactly as shown.
+3. Submit the completed prompt to your AI content engine for full course generation.
 4. Review AI output against the Financial Literacy course as a quality benchmark.
 5. Deploy to LMS without further structural modification.
 
---------------------------------------------------------------------------------
 🚀 FINAL EXECUTION COMMAND 
---------------------------------------------------------------------------------
-You are an expert instructional designer, curriculum developer, and AI learning architect for eStudy South Africa.
+You are an expert instructional designer, curriculum developer, and AI learning architect.
 
 Generate a complete, structured, industry-ready training programme for:
-${s.title || course.name || '[INSERT: COURSE TITLE]'}
+${courseTitle} ← e.g. Use of Artificial Intelligence in Financial Literacy
 
-Ensure the course aligns with eStudy South Africa's instructional design standards:
-- Aligned to South African workplace standards and legislation (POPIA, NQF).
-- Minimum 3 modules with clear learning progression.
-- Minimum 3–5 workplace scenarios per module + minimum 2 AI application scenarios.
-- Minimum 5 knowledge-check questions per module with comprehensive rationales.
-- 5–10 diagnostic questions with at least 2 AI / technology readiness questions.
-- Clear distinction between AI assistance and mandatory human verification.
-- Output ready for LMS deployment.
+Ensure the course aligns with eStudy South Africa's instructional design standards, is AI-literacy 
+informed, scenario-driven, and immediately deployable on an LMS.
 
 ================================================================================
-1. IDENTIFY PROBLEM / CHALLENGE / DEVELOPMENT AREA
+1. IDENTIFY PROBLEM / CHALLENGE / DEVELOPMENT AREA 
 ================================================================================
-Define the workplace performance gap clearly.
+Define the workplace performance gap clearly. Use the sentence format below, then expand.
 
-1.1 Required Problem Statement
+1.1 Required Problem Statement 
 Complete the following statement:
-${problemStatement}
+${problemStatementText}
 
-📌 Reference Course Benchmark Example:
-"This course addresses the inability of employees and consumers to effectively apply AI tools in personal and organisational financial management, resulting in poor financial decisions, vulnerability to digital fraud, and missed productivity gains."
+📌 Example (Financial Literacy course):
+"This course addresses the inability of employees and consumers to effectively apply AI tools in 
+personal and organisational financial management, resulting in poor financial decisions, vulnerability 
+to digital fraud, and missed productivity gains."
 
-1.2 Root Cause Analysis (10 Core Dimensions)
-• Target Group: ${val(p.targetGroup, '[INSERT: TARGET GROUP]')}
-• Specific Task or Skill: ${val(p.taskOrSkill, '[INSERT: TASK / SKILL]')}
-• Operational Impact: ${val(p.operationalImpact, '[INSERT: OPERATIONAL IMPACT]')}
+1.2 Root Cause Analysis 
+Expand on the following:
+• Root causes of the problem:
+${rc1}
+${rc2}
+• Process or system failures involved:
+${val(p.processFailures, '[INSERT: PROCESS / SYSTEM FAILURE]')}
+• Skills or knowledge gaps:
+${val(p.skillGaps, '[INSERT: SKILL / KNOWLEDGE GAP]')}
+• Organisational or environmental constraints:
+${val(p.constraints, '[INSERT: CONSTRAINT]')}
 
-• Root Causes of the Problem:
-${rootCausesFormatted}
-
-• Process or System Failures Involved:
-${val(p.processFailures, '[INSERT: PROCESS / SYSTEM FAILURES]')}
-
-• Skills or Knowledge Gaps:
-${val(p.skillGaps, '[INSERT: SKILLS / KNOWLEDGE GAPS]')}
-
-• Organisational or Environmental Constraints:
-${val(p.constraints, '[INSERT: ORGANISATIONAL / ENVIRONMENTAL CONSTRAINTS]')}
-
-1.3 AI-Specific Considerations
+1.3 AI-Specific Considerations (NEW) 
 Because this template supports AI-integrated courses, also address:
-• AI Literacy Gap — what AI concepts are unknown to the target group:
+• AI literacy gap — what AI concepts are unknown to the target group?
 ${val(p.aiLiteracyGap, '[INSERT: AI LITERACY GAP]')}
-
-• Data and Digital Readiness — what baseline digital skills are assumed:
-${val(p.digitalReadinessLevel, '[INSERT: DATA & DIGITAL READINESS LEVEL]')}
-
-• Ethical or Compliance Risks Introduced by AI Use in this domain:
-${val(p.aiEthicsComplianceRisk, '[INSERT: AI ETHICS & COMPLIANCE RISKS]')}
+• Data and digital readiness — what baseline digital skills are assumed?
+${val(p.digitalReadinessLevel, '[INSERT: DIGITAL READINESS LEVEL]')}
+• Ethical or compliance risks introduced by AI use in this domain:
+${val(p.aiEthicsComplianceRisk, '[INSERT: AI ETHICS / COMPLIANCE RISK]')}
 
 ================================================================================
-2. SOURCES OF INFORMATION (RESEARCH LAYER)
+2. SOURCES OF INFORMATION (RESEARCH LAYER) 
 ================================================================================
 Provide the AI engine with all relevant sources. These will be converted into practical, workplace-applicable training content — not theoretical summaries.
 
-2.1 Reference Links & Documents
+2.1 Reference Links (if available) 
 ${sourcesFormatted}
 
-2.2 Industry / Regulatory Sources
+2.2 Industry / Regulatory Sources 
 Specify the regulatory or standards framework applicable to this course:
-${val(r.regulatoryFramework, '[INSERT: REGULATORY / STANDARDS FRAMEWORK (e.g. POPIA Act 4 of 2013, King IV Code of Corporate Governance)]')}
+${val(
+    r.regulatoryFramework,
+    '[INSERT: REGULATORY FRAMEWORK] ← e.g. POPIA, FSCA, NCA, ISO, King IV, SETA SAQA unit standards'
+  )}
 
-2.3 AI & Technology Sources
+2.3 AI & Technology Sources (NEW) 
 For courses with AI components, include:
 • AI tools or platforms used in this domain:
-${val(r.aiToolsPlatformName, '[INSERT: AI TOOLS OR PLATFORMS]')}
-
+${val(r.aiToolsPlatformName, '[INSERT: AI TOOL / PLATFORM NAME]')}
 • Relevant AI ethics framework:
-${val(r.aiEthicsFramework, '[INSERT: RELEVANT AI ETHICS FRAMEWORK (e.g. UNESCO AI Ethics, SA DCDT Policy Framework)]')}
-
+${val(
+    r.aiEthicsFramework,
+    '[INSERT: AI ETHICS FRAMEWORK] ← e.g. UNESCO AI Ethics, EU AI Act, SA DCDT AI Policy'
+  )}
 • Industry case studies or use cases:
-${val(r.caseStudyUseCases, '[INSERT: INDUSTRY CASE STUDIES / USE CASES]')}
-
-• Evidence Standards:
-${evidenceFormatted}
-
-• Benchmarking Notes:
-${val(r.benchmarkingNotes, '[INSERT: BENCHMARKING NOTES]')}
+${val(r.caseStudyUseCases, '[INSERT: CASE STUDY / USE CASE]')}
 
 ================================================================================
-3. COURSE STRUCTURE
+3. COURSE STRUCTURE 
 ================================================================================
 
-3.1 Course Details
-| Field | Value |
-| --- | --- |
-| Course Name | ${val(s.title || course.name, '[INSERT: COURSE NAME]')} |
-| Course Code / ID | ${val(s.code || course.code, '[INSERT: COURSE CODE / ID]')} |
-| Industry / Domain | ${val(s.industryDomain, '[INSERT: INDUSTRY / DOMAIN]')} |
-| Target Role Group | ${val(s.targetRoles, '[INSERT: TARGET ROLE GROUP]')} |
-| AI Integration Level | ${val(s.aiIntegrationLevel, '[INSERT: AI INTEGRATION LEVEL]')} |
-| SETA / NQF Alignment | ${val(s.setaNqfLevel, '[INSERT: SETA / NQF ALIGNMENT]')} |
-| Delivery Language(s) | ${val(s.deliveryLanguages, '[INSERT: DELIVERY LANGUAGES]')} |
-| Estimated Duration | ${val(s.estimatedDuration, '[INSERT: ESTIMATED DURATION]')} |
-| Delivery Format | ${val(s.deliveryFormat, '[INSERT: DELIVERY FORMAT]')} |
-| Difficulty Level | ${val(s.difficultyLevel, '[INSERT: DIFFICULTY LEVEL]')} |
-| Number of Modules | ${(course.modules || []).length} (Minimum 3 Required) |
+3.1 Course Details 
+Field | Your Input
+Course Name | ${val(s.title || course.name, '[INSERT: COURSE TITLE]')}
+Course Code / ID | ${val(s.code || course.code, '[INSERT: COURSE CODE]')}
+Industry / Domain | ${val(s.industryDomain, '[INSERT: INDUSTRY DOMAIN]')}
+Target Role Group | ${val(s.targetRoles, '[INSERT: TARGET ROLES]')}
+AI Integration Level | ${val(
+    s.aiIntegrationLevel,
+    '[INSERT: AI INTEGRATION LEVEL — e.g. Awareness / Applied / Advanced]'
+  )}
+SETA / NQF Alignment (if applicable) | ${val(s.setaNqfLevel, '[INSERT: SETA / NQF LEVEL]')}
+Language(s) | ${val(s.deliveryLanguages, '[INSERT: DELIVERY LANGUAGE(S)]')}
+Estimated Duration | ${val(s.estimatedDuration, '[INSERT: HOURS / CPD CREDITS]')}
 
-3.2 Course Overview
+3.2 Course Overview 
+Provide a 3–5 sentence overview covering:
 • Purpose of the course:
 ${val(s.purposeStatement, '[INSERT: PURPOSE STATEMENT]')}
-
 • Workplace relevance:
 ${val(s.workplaceRelevance, '[INSERT: WORKPLACE RELEVANCE]')}
-
 • Expected performance improvement:
-${val(s.performanceImprovement, '[INSERT: EXPECTED PERFORMANCE IMPROVEMENT]')}
-
+${val(s.performanceImprovement, '[INSERT: PERFORMANCE IMPROVEMENT]')}
 • AI or technology angle of this course:
-${val(s.aiTechAngle, '[INSERT: AI / TECHNOLOGY ANGLE]')}
+${val(s.aiTechAngle, '[INSERT: AI / TECH ANGLE]')}
 
-3.3 About the Course
+3.3 About the Course 
 • What the course covers:
-${val(s.scopeSummary, '[INSERT: COURSE SCOPE SUMMARY]')}
-
+${val(s.scopeSummary, '[INSERT: SCOPE SUMMARY]')}
 • Why it is important in today's AI-enabled workplace:
-${val(s.aiEraRelevance, '[INSERT: RELEVANCE IN AI ERA]')}
-
+${val(s.aiEraRelevance, '[INSERT: AI-ERA RELEVANCE]')}
 • How it improves job performance:
 ${val(s.performanceLink, '[INSERT: PERFORMANCE LINK]')}
 
-3.4 Benefits of the Course
-• Organisational Benefits:
-${orgBenefits.length > 0 ? orgBenefits.map((b: string) => `• ${b}`).join('\n') : '[INSERT: ORGANISATIONAL BENEFITS]'}
+3.4 Benefits of the Course 
+Organisational Benefits | Employee Benefits | Risk Reduction
+${orgB1} | ${empB1} | ${riskB1}
+${orgB2} | ${empB2} | ${riskB2}
 
-• Employee Benefits:
-${empBenefits.length > 0 ? empBenefits.map((b: string) => `• ${b}`).join('\n') : '[INSERT: EMPLOYEE BENEFITS]'}
+3.5 Course Description 
+• Scope of learning:
+${val(s.scope, '[INSERT: SCOPE]')}
+• Key competencies developed:
+${val(s.keyCompetencies, '[INSERT: KEY COMPETENCIES]')}
+• Real workplace application:
+${val(s.realWorldApplication, '[INSERT: REAL WORLD APPLICATION]')}
+• AI-specific skills built in this course:
+${val(s.aiSkillsDeveloped, '[INSERT: AI SKILLS DEVELOPED]')}
 
-• Risk Reduction Outcomes:
-${riskBenefits.length > 0 ? riskBenefits.map((b: string) => `• ${b}`).join('\n') : '[INSERT: RISK REDUCTION OUTCOMES]'}
+3.6 Target Audience 
+• Job roles:
+${val(s.jobRoles || s.targetRoles, '[INSERT: JOB ROLES]')}
+• Departments:
+${val(s.departments, '[INSERT: DEPARTMENTS]')}
+• Experience level:
+${val(s.experienceLevel, '[INSERT: EXPERIENCE LEVEL]')}
+• AI familiarity assumed:
+${val(
+    s.aiFamiliarityBaseline,
+    '[INSERT: AI FAMILIARITY BASELINE] ← e.g. None / Basic / Intermediate'
+  )}
 
-3.5 Course Description
-• Scope of learning: ${val(s.scope, '[INSERT: SCOPE OF LEARNING]')}
-• Key competencies developed: ${val(s.keyCompetencies, '[INSERT: KEY COMPETENCIES]')}
-• Real workplace application: ${val(s.realWorldApplication, '[INSERT: REAL WORKPLACE APPLICATION]')}
-• AI-specific skills built in this course: ${val(s.aiSkillsDeveloped, '[INSERT: AI-SPECIFIC SKILLS BUILT]')}
+3.7 Prerequisites 
+• Required knowledge:
+${val(s.prerequisiteKnowledge, '[INSERT: PREREQUISITE KNOWLEDGE]')}
+• Required experience:
+${val(s.prerequisiteExperience, '[INSERT: PREREQUISITE EXPERIENCE]')}
+• Tool / system familiarity:
+${val(s.toolsSystems, '[INSERT: TOOLS / SYSTEMS]')}
+• Digital literacy minimum:
+${val(s.digitalLiteracyLevel, '[INSERT: DIGITAL LITERACY LEVEL]')}
 
-3.6 Target Audience
-• Job roles: ${val(s.jobRoles || s.targetRoles, '[INSERT: TARGET JOB ROLES]')}
-• Departments: ${val(s.departments, '[INSERT: DEPARTMENTS]')}
-• Experience level: ${val(s.experienceLevel, '[INSERT: EXPERIENCE LEVEL]')}
-• AI familiarity assumed: ${val(s.aiFamiliarityBaseline, '[INSERT: AI FAMILIARITY BASELINE]')}
-
-3.7 Prerequisites
-• Required knowledge: ${val(s.prerequisiteKnowledge, '[INSERT: PREREQUISITE KNOWLEDGE]')}
-• Required experience: ${val(s.prerequisiteExperience, '[INSERT: PREREQUISITE EXPERIENCE]')}
-• Tool / system familiarity: ${val(s.toolsSystems, '[INSERT: TOOL / SYSTEM FAMILIARITY]')}
-• Digital literacy minimum: ${val(s.digitalLiteracyLevel, '[INSERT: DIGITAL LITERACY MINIMUM]')}
-
-3.8 Pre-Course Diagnostic Questions (5–10 Questions, Minimum 2 AI Readiness)
+3.8 Pre-Course Diagnostic Questions 
+Provide 5–10 questions to assess current knowledge and awareness. Include at least 2 questions 
+related to AI or technology readiness.
 ${diagnosticsFormatted}
 
-3.9 Module Overview Table (Minimum 3 Modules)
-| # | Module Title | Purpose | Key Skills |
-| --- | --- | --- | --- |
+3.9 Module Overview Table (Minimum 3 Modules) 
+# | Module Title | Purpose | Key Skills
 ${moduleTableFormatted}
 
-Learning Journey Flow:
-${journeyFormatted}
-
 ================================================================================
-4. MODULE STRUCTURE
+4. MODULE STRUCTURE 
 ================================================================================
 
-${(course.modules || []).map((m, idx) => `
+MODULE 1: FOUNDATIONAL UNDERSTANDING 
+Build foundational awareness before practical application. This module sets the cognitive and 
+contextual baseline.
+
+4.1.1 Core Content Requirements 
+• Definition of the problem area:
+${val(m1Req.problemDefinition, '[INSERT: DEFINITION]')}
+• Workplace context:
+${val(m1Req.workplaceContext, '[INSERT: WORKPLACE CONTEXT]')}
+• Core concepts and terminology:
+${val(m1Req.keyTerms, '[INSERT: KEY TERMS / CONCEPTS]')}
+• Causes and contributing factors:
+${val(m1Req.causes, '[INSERT: CAUSES]')}
+• Early warning signs or indicators:
+${val(m1Req.warningSigns, '[INSERT: WARNING SIGNS]')}
+• Organisational impact:
+${val(m1Req.impactStatement, '[INSERT: IMPACT STATEMENT]')}
+
+4.1.2 AI Literacy Foundation (NEW) 
+For AI-integrated courses, Module 1 must also include:
+• What AI is and is not (demystification):
+${val(m1Req.aiDemystification, '[INSERT: AI DEMYSTIFICATION CONTENT]')}
+• How AI is used in this specific domain:
+${val(m1Req.aiInThisDomain, '[INSERT: AI IN THIS DOMAIN]')}
+• Key AI tools relevant to this course:
+${val(m1Req.aiToolsOverview, '[INSERT: AI TOOLS OVERVIEW]')}
+• Responsible and ethical AI use principles:
+${val(m1Req.responsibleAiPrinciples, '[INSERT: RESPONSIBLE AI PRINCIPLES]')}
+
+📌 Financial Literacy Example:
+Module 1 covered: What is AI? AI in personal finance (budgeting apps, robo-advisors), AI in banking 
+(fraud detection, credit scoring), and ethical use of AI financial data.
+
 --------------------------------------------------------------------------------
-MODULE ${idx + 1}: ${(m.title || `[INSERT: MODULE ${idx + 1} TITLE]`).toUpperCase()}
-Purpose: ${val(m.purpose, '[INSERT: MODULE PURPOSE]')}
-Learning Objectives (Minimum 3 Bloom-Aligned Objectives):
-${(m.learningObjectives || []).filter(obj => obj && obj.trim().length > 0).length > 0 ? (m.learningObjectives || []).filter(obj => obj && obj.trim().length > 0).map(obj => `• ${obj}`).join('\n') : '[INSERT: LEARNING OBJECTIVES (Minimum 3 Bloom-Aligned Objectives)]'}
+MODULE 2: PRACTICAL APPLICATION & INTERVENTION 
+--------------------------------------------------------------------------------
+Convert knowledge into workplace action. All content must be scenario-based and immediately 
+applicable.
 
-4.${idx + 1}.1 Core Content Requirements
-• Definition of the problem area: ${val(m.requirements?.problemDefinition, '[INSERT: PROBLEM DEFINITION FOR THIS MODULE]')}
-• Workplace context: ${val(m.requirements?.workplaceContext, '[INSERT: WORKPLACE CONTEXT]')}
-• Core concepts and terminology: ${val(m.requirements?.keyTerms, '[INSERT: CORE CONCEPTS AND TERMINOLOGY]')}
-• Causes and contributing factors: ${val(m.requirements?.causes, '[INSERT: CAUSES AND CONTRIBUTING FACTORS]')}
-• Early warning signs or indicators: ${val(m.requirements?.warningSigns, '[INSERT: EARLY WARNING SIGNS OR INDICATORS]')}
-• Organisational impact: ${val(m.requirements?.impactStatement, '[INSERT: ORGANISATIONAL IMPACT]')}
+4.2.1 Tools, Techniques & Procedures 
+• Tools and techniques relevant to this role:
+${val(m2Req.toolsAndTechniques, '[INSERT: TOOLS & TECHNIQUES]')}
+• Step-by-step workplace procedures:
+${val(m2Req.procedureSteps, '[INSERT: PROCEDURE STEPS]')}
+• Role responsibilities (manager vs employee):
+${val(m2Req.roleResponsibilities, '[INSERT: ROLE RESPONSIBILITIES]')}
+• Communication approaches:
+${val(m2Req.communicationApproach, '[INSERT: COMMUNICATION APPROACH]')}
+• Support mechanisms available:
+${val(m2Req.supportMechanisms, '[INSERT: SUPPORT MECHANISMS]')}
 
-4.${idx + 1}.2 AI Literacy & Tools Foundation
-• AI Demystification: ${val(m.requirements?.aiDemystification, '[INSERT: AI DEMYSTIFICATION]')}
-• How AI is used in this domain: ${val(m.requirements?.aiInThisDomain, '[INSERT: HOW AI IS USED IN THIS DOMAIN]')}
-• Key AI tools overview: ${val(m.requirements?.aiToolsOverview, '[INSERT: KEY AI TOOLS OVERVIEW]')}
-• Responsible AI principles: ${val(m.requirements?.responsibleAiPrinciples, '[INSERT: RESPONSIBLE AI PRINCIPLES]')}
+4.2.2 Workplace Scenarios (Minimum 3–5 Required) 
+Each scenario must include a situation, challenge, decision point, and debrief.
+${m2ScenariosFormatted}
 
-4.${idx + 1}.3 Tools, Techniques & Procedures
-• Tools and techniques: ${val(m.requirements?.toolsAndTechniques, '[INSERT: TOOLS AND TECHNIQUES]')}
-• Step-by-step procedures: ${val(m.requirements?.procedureSteps, '[INSERT: STEP-BY-STEP PROCEDURES]')}
-• Role responsibilities (Manager vs Employee): ${val(m.requirements?.roleResponsibilities, '[INSERT: ROLE RESPONSIBILITIES (Manager vs Employee)]')}
-• Communication approach: ${val(m.requirements?.communicationApproach, '[INSERT: COMMUNICATION APPROACH]')}
-• Support mechanisms: ${val(m.requirements?.supportMechanisms, '[INSERT: SUPPORT MECHANISMS]')}
+4.2.3 AI Application Scenarios (NEW) 
+Include at least 2 scenarios demonstrating AI tools in action in this domain:
+📌 Financial Literacy Example:
+Scenario: A learner uses an AI budgeting tool to analyse their monthly expenses. They must identify 
+an AI-generated recommendation that contains an error and explain how they verified it using human 
+judgment.
+${m2AiScenariosFormatted}
 
-4.${idx + 1}.4 Workplace Scenarios (Minimum 3–5 Required Per Module)
-${(m.requirements?.scenarios || []).filter(sc => sc && (sc.title || sc.situation)).length > 0 ? (m.requirements?.scenarios || []).filter(sc => sc && (sc.title || sc.situation)).map((sc, scIdx) => 
-  `Scenario ${scIdx + 1}: ${sc.title || `Workplace Scenario ${scIdx + 1}`}\n• Situation: ${val(sc.situation, '[INSERT: SITUATION]')}\n• Challenge: ${val(sc.challenge, '[INSERT: CHALLENGE]')}\n• Decision Point: ${val(sc.decisionPoint, '[INSERT: DECISION POINT]')}\n• Debrief: ${val(sc.debrief, '[INSERT: DEBRIEF]')}`
-).join('\n\n') : '[INSERT: WORKPLACE SCENARIOS (Minimum 3–5 Required Per Module)]'}
+--------------------------------------------------------------------------------
+MODULE 3: IMPLEMENTATION & WORKPLACE INTEGRATION 
+--------------------------------------------------------------------------------
+Ensure learners can translate training into sustained workplace behaviour and organisational change.
 
-4.${idx + 1}.5 AI Application Scenarios
-${(m.requirements?.aiScenarios || []).filter(sc => sc && (sc.title || sc.situation)).length > 0 ? (m.requirements?.aiScenarios || []).filter(sc => sc && (sc.title || sc.situation)).map((sc, scIdx) => 
-  `AI Scenario ${scIdx + 1}: ${sc.title || `AI Scenario ${scIdx + 1}`}\n• Situation & AI Tool: ${val(sc.situation, '[INSERT: SITUATION & AI TOOL]')}\n• Challenge & Output: ${val(sc.challenge, '[INSERT: CHALLENGE & OUTPUT]')}\n• Decision Point & Human Verification: ${val(sc.decisionPoint, '[INSERT: DECISION POINT & HUMAN VERIFICATION]')}\n• Debrief: ${val(sc.debrief, '[INSERT: DEBRIEF]')}`
-).join('\n\n') : '[INSERT: AI APPLICATION SCENARIOS (Minimum 1 Per Module, 2+ Across Course)]'}
+4.3.1 Implementation Requirements 
+• Implementation strategies:
+${val(m3Req.implementationStrategy, '[INSERT: IMPLEMENTATION STRATEGY]')}
+• Workplace rollout methods:
+${val(m3Req.rolloutMethod, '[INSERT: ROLLOUT METHOD]')}
+• Monitoring and evaluation approach:
+${val(m3Req.meApproach, '[INSERT: M&E APPROACH]')}
+• Continuous improvement practices:
+${val(m3Req.improvementCycle, '[INSERT: IMPROVEMENT CYCLE]')}
 
-4.${idx + 1}.6 Implementation & Governance Deliverables
-• Implementation strategy: ${val(m.requirements?.implementationStrategy, '[INSERT: IMPLEMENTATION STRATEGY]')}
-• Rollout method: ${val(m.requirements?.rolloutMethod, '[INSERT: ROLLOUT METHOD]')}
-• Monitoring & evaluation: ${val(m.requirements?.meApproach, '[INSERT: MONITORING & EVALUATION APPROACH]')}
-• Continuous improvement: ${val(m.requirements?.improvementCycle, '[INSERT: CONTINUOUS IMPROVEMENT APPROACH]')}
-• Implementation Checklist: ${val(m.requirements?.implementationChecklistTitle, '[INSERT: IMPLEMENTATION CHECKLIST TITLE]')}
-• Rollout Framework: ${val(m.requirements?.rolloutFrameworkTitle, '[INSERT: ROLLOUT FRAMEWORK TITLE]')}
-• Risk & Compliance: ${val(m.requirements?.riskComplianceSectionTitle, '[INSERT: RISK & COMPLIANCE SECTION TITLE]')}
-• AI Governance Framework: ${val(m.requirements?.aiGovernanceFramework, '[INSERT: AI GOVERNANCE FRAMEWORK]')}
-• Continuous Learning Approach: ${val(m.requirements?.continuousAiLearningApproach, '[INSERT: CONTINUOUS LEARNING APPROACH]')}
-`).join('\n')}
+4.3.2 Mandatory Deliverables 
+Module 3 must include all of the following:
+${val(
+    m3Req.implementationChecklistTitle,
+    '[INSERT: IMPLEMENTATION CHECKLIST TITLE] ← e.g. AI Financial Literacy 30-Day Action Plan'
+  )}
+${val(m3Req.rolloutFrameworkTitle, '[INSERT: CAMPAIGN / ROLLOUT FRAMEWORK TITLE]')}
+${val(m3Req.riskComplianceSectionTitle, '[INSERT: RISK & COMPLIANCE SECTION TITLE]')}
+
+4.3.3 AI Governance & Continuous Learning (NEW) 
+Because AI evolves rapidly, Module 3 must address:
+• How learners stay current with AI developments in this domain:
+${val(m3Req.continuousAiLearningApproach, '[INSERT: CONTINUOUS AI LEARNING APPROACH]')}
+• Organisational AI policy or governance framework:
+${val(m3Req.aiGovernanceFramework, '[INSERT: AI GOVERNANCE FRAMEWORK]')}
+• Feedback loop — how AI tool performance is reviewed:
+${val(m3Req.aiFeedbackReviewMechanism, '[INSERT: AI FEEDBACK / REVIEW MECHANISM]')}
 
 ================================================================================
-5. LEARNING DESIGN REQUIREMENTS
+5. LEARNING DESIGN REQUIREMENTS 
 ================================================================================
 All courses generated using this template must meet the following instructional design standards:
 
-5.1 Core Design Standards
-• Structured module flow with clear learning progression (Discover → Practise → Evaluate → Apply → Reflect)
-• Scenario-based learning: Minimum 3–5 workplace scenarios per module
-• Knowledge checks at the end of each module: Minimum 5 questions with remediation rationales
+5.1 Core Design Standards 
+• Structured module flow with clear learning progression
+• Scenario-based learning (minimum 3–5 per module)
+• Knowledge checks at the end of each module (minimum 5 questions)
 • Real workplace application focus throughout
 • Critical thinking development — learners must evaluate, not just recall
 
-Learning Sequence Framework:
-1. Discover: Concepts, terminology, and South African workplace context
-2. Practise: Guided application or AI tool prompt simulation
-3. Evaluate: Critique outputs, identify hallucinations/errors, verify data
-4. Apply: Make realistic workplace decisions in realistic scenarios
-5. Reflect: Commit to an actionable 30-day workplace practice
-
-5.2 AI-Enhanced Learning Design
+5.2 AI-Enhanced Learning Design (NEW) 
+For AI-integrated courses, also include:
 • Interactive AI tool demonstrations or simulations:
-${val(ld.aiDemoSimulationDescription, '[INSERT: INTERACTIVE AI TOOL DEMONSTRATIONS OR SIMULATIONS]')}
-
+${val(ld.aiDemoSimulationDescription, '[INSERT: AI DEMO / SIMULATION DESCRIPTION]')}
 • Prompt engineering exercises (if applicable):
-${val(ld.promptExerciseDescription, '[INSERT: PROMPT ENGINEERING EXERCISES]')}
-
+${val(ld.promptExerciseDescription, '[INSERT: PROMPT EXERCISE DESCRIPTION]')}
 • AI output evaluation tasks — learners critique AI-generated content:
-${val(ld.aiEvaluationTask, '[INSERT: AI OUTPUT EVALUATION TASKS]')}
-
+${val(ld.aiEvaluationTask, '[INSERT: AI EVALUATION TASK]')}
 • Human-AI collaboration activities:
-${val(ld.collaborationActivity, '[INSERT: HUMAN-AI COLLABORATION ACTIVITIES]')}
+${val(ld.collaborationActivity, '[INSERT: COLLABORATION ACTIVITY]')}
 
-5.3 Assessment Design
-| Assessment Type | Description | When | Weighting |
-| --- | --- | --- | --- |
-${assessmentTableFormatted}
+5.3 Assessment Design 
+Assessment Type | Description | When | Weighting
+Pre-Course Diagnostic | Baseline knowledge check | Before Module 1 | Ungraded
+Module Knowledge Checks | Per-module MCQ / scenario quiz | End of each module | Formative
+Practical Application Task | Workplace-based exercise | After Module 2 | ${practicalWeight}
+Final Assessment | Summative — all modules | After Module 3 | Pass Mark: ${finalPassMark}
+Post-Course Reflection | Self-assessment against learning goals | After completion | Ungraded
 
 ================================================================================
-6. ETHICS, COMPLIANCE & AI RESPONSIBILITY
+6. ETHICS, COMPLIANCE & AI RESPONSIBILITY 
 ================================================================================
-All eStudy courses must embed ethical principles throughout — not as a standalone module, but woven into all scenarios and learning activities.
+All eStudy courses must embed ethical principles throughout — not as a standalone module, but 
+woven into all scenarios and learning activities.
 
-6.1 Core Ethics Requirements
-• Confidentiality requirements: ${val(e.confidentialityRequirements, '[INSERT: CONFIDENTIALITY REQUIREMENTS]')}
-• Data privacy principles (POPIA Act 4 of 2013): ${val(e.dataPrivacyFramework, '[INSERT: DATA PRIVACY PRINCIPLES (e.g. POPIA Act 4 of 2013)]')}
-• Ethical workplace behaviour standards: ${val(e.ethicsStandards, '[INSERT: ETHICAL WORKPLACE BEHAVIOUR STANDARDS]')}
-• Psychological safety considerations: ${val(e.psychologicalSafetyNotes, '[INSERT: PSYCHOLOGICAL SAFETY CONSIDERATIONS]')}
-• Responsible decision-making principles: ${val(e.decisionMakingFramework, '[INSERT: RESPONSIBLE DECISION-MAKING PRINCIPLES]')}
-• Accountability in workplace actions: ${val(e.accountabilityMechanism, '[INSERT: ACCOUNTABILITY IN WORKPLACE ACTIONS]')}
+6.1 Core Ethics Requirements 
+• Confidentiality requirements relevant to this domain:
+${val(e.confidentialityRequirements, '[INSERT: CONFIDENTIALITY REQUIREMENTS]')}
+• Data privacy principles:
+${val(e.dataPrivacyFramework, '[INSERT: DATA PRIVACY FRAMEWORK] ← e.g. POPIA, GDPR')}
+• Ethical workplace behaviour standards:
+${val(e.ethicsStandards, '[INSERT: ETHICS STANDARDS]')}
+• Psychological safety considerations:
+${val(e.psychologicalSafetyNotes, '[INSERT: PSYCHOLOGICAL SAFETY NOTES]')}
+• Responsible decision-making principles:
+${val(e.decisionMakingFramework, '[INSERT: DECISION-MAKING FRAMEWORK]')}
+• Accountability in workplace actions:
+${val(e.accountabilityMechanism, '[INSERT: ACCOUNTABILITY MECHANISM]')}
 
-6.2 AI Ethics & Responsible AI (MANDATORY)
+6.2 AI Ethics & Responsible AI (NEW — MANDATORY) 
+For all AI-integrated courses, the following must be explicitly addressed:
 • Bias and fairness — how AI bias may affect outcomes in this domain:
-${val(e.aiBiasRisk, '[INSERT: AI BIAS AND FAIRNESS SAFEGUARDS]')}
-
+${val(e.aiBiasRisk, '[INSERT: AI BIAS RISK]')}
 • Transparency — when and how to disclose AI use:
-${val(e.aiDisclosureRequirement, '[INSERT: TRANSPARENCY & DISCLOSURE REQUIREMENTS]')}
-
+${val(e.aiDisclosureRequirement, '[INSERT: AI DISCLOSURE REQUIREMENT]')}
 • Human oversight — decisions that must never be fully delegated to AI:
-${val(e.humanOverrideScenarios, '[INSERT: HUMAN OVERSIGHT & OVERRIDE SCENARIOS]')}
-
+${val(e.humanOverrideScenarios, '[INSERT: HUMAN OVERRIDE SCENARIOS]')}
 • Data sovereignty and consent — who owns the data AI processes:
-${val(e.dataSovereigntyContext, '[INSERT: DATA SOVEREIGNTY AND CONSENT REQUIREMENTS]')}
-
+${val(e.dataSovereigntyContext, '[INSERT: DATA SOVEREIGNTY CONTEXT]')}
 • AI and job displacement — honest framing for learners:
-${val(e.aiWorkforceImpactNarrative, '[INSERT: AI & WORKFORCE IMPACT NARRATIVE]')}
-
+${val(e.aiWorkforceImpactNarrative, '[INSERT: AI WORKFORCE IMPACT NARRATIVE]')}
 • Applicable AI governance framework:
-${val(e.aiGovernanceReference, '[INSERT: APPLICABLE AI GOVERNANCE FRAMEWORK]')}
+${val(
+    e.aiGovernanceReference,
+    '[INSERT: AI GOVERNANCE REFERENCE] ← e.g. SA DCDT National AI Policy, UNESCO AI Ethics'
+  )}
 
 📌 Financial Literacy Example:
-"Learners were taught: AI financial tools may reflect historical bias in credit scoring (e.g. racial or gender bias in training data). Always verify AI recommendations against your own financial context and seek human advice for major decisions."
+Learners were taught: AI financial tools may reflect historical bias in credit scoring (e.g. racial or 
+gender bias in training data). Always verify AI recommendations against your own financial context 
+and seek human advice for major decisions.
 
 ================================================================================
-7. OUTPUT FORMAT RULES
+7. OUTPUT FORMAT RULES 
 ================================================================================
 The AI-generated course output must meet all of the following standards before LMS deployment:
 
-7.1 Structural Requirements
+7.1 Structural Requirements 
 • Professionally structured with numbered sections exactly as per this template
 • Suitable for LMS deployment without structural modification
 • Follows corporate instructional design standards
 • Uses formal, inclusive, workplace-appropriate language throughout
 • Fully self-contained — no external references needed to interpret the content
 
-7.2 Content Quality Standards
+7.2 Content Quality Standards 
 • All scenarios are realistic, role-specific, and contextualised to the South African workplace
 • AI tools referenced are current, accessible, and appropriate for the target audience
 • Statistics and claims are sourced from reputable, current industry references
 • Examples reflect demographic and sectoral diversity
 
-7.3 AI Content Standards
+7.3 AI Content Standards (NEW) 
 • All AI tool references must be verifiable and available to learners
 • AI-generated content within the course must be clearly labelled as AI-assisted
 • Scenarios involving AI must include both successful use cases and failure/limitation cases
 • Prompt examples (if included) must be practical and immediately usable
 
-7.4 Accessibility & Inclusivity
-• Reading level appropriate for target audience: ${val(out.accessibilityTargetReadingLevel, '[INSERT: TARGET READING LEVEL (e.g. NQF Level 4 / Grade 12)]')}
-• Language accessibility: Plain language principles applied (${out.plainLanguageApplied ? 'Enforced' : 'Standard'})
-• Cultural inclusivity: ${val(out.culturalInclusivityNotes, '[INSERT: CULTURAL INCLUSIVITY REQUIREMENTS]')}
-• Formatting requirements: ${val(out.formattingRequirements, '[INSERT: FORMATTING REQUIREMENTS]')}
+7.4 Accessibility & Inclusivity 
+• Reading level appropriate for target audience:
+${val(
+    out.accessibilityTargetReadingLevel,
+    '[INSERT: TARGET READING LEVEL] ← e.g. NQF 4 / Grade 12 equivalent'
+  )}
+• Language accessibility — plain language principles applied
+• Cultural inclusivity — examples reflect South African workplace diversity
+• Accommodates varied digital literacy levels
 
 ================================================================================
-8. FINAL OUTPUT REQUIREMENT
+8. FINAL OUTPUT REQUIREMENT 
 ================================================================================
 Produce a complete training programme that meets ALL of the following criteria:
 
-| Requirement | Standard |
-| --- | --- |
-| Industry-ready | Deployable in a corporate or regulated environment without modification |
-| Scenario-driven | Minimum 3 scenarios per module; minimum 2 AI-specific scenarios |
-| Performance-focused | Every module links to a measurable workplace behaviour change |
-| Scalable | Structure reusable across industries with only domain fields changed |
-| AI-integrated | AI tools, ethics, and responsible use embedded throughout |
-| Immediately deployable | Complete, self-contained, LMS-ready on delivery |
-| South Africa compliant | Aligned to applicable SA legislation (POPIA, NQF) and workplace standards |
-| Benchmarked | Consistent with the Financial Literacy course quality standard |
+Requirement | Standard
+Industry-ready | Deployable in a corporate or regulated environment without modification
+Scenario-driven | Minimum 3 scenarios per module; minimum 2 AI-specific scenarios
+Performance-focused | Every module links to a measurable workplace behaviour change
+Scalable | Structure reusable across industries with only [INSERT] fields changed
+AI-integrated | AI tools, ethics, and responsible use embedded throughout
+Immediately deployable | Complete, self-contained, LMS-ready on delivery
+South Africa compliant | Aligned to applicable SA legislation and workplace standards
+Benchmarked | Consistent with the Financial Literacy course quality standard
 
-8.1 Quality Assurance Checklist Status
-• All required fields completed: ${getCheckStatus('chk-req-fields')}
-• Authoritative research sources & regulatory references: ${getCheckStatus('chk-sources')}
-• Minimum 3 modules configured: ${getCheckStatus('chk-min-modules')} (${(course.modules || []).length} modules)
-• Pre-course diagnostic questions (5–10 Qs, min 2 AI readiness): ${getCheckStatus('chk-diagnostics')} (${(s.diagnosticQuestions || []).length} questions)
-• Learning objectives defined (min 3 per module): ${getCheckStatus('chk-learning-objectives')}
-• Workplace scenarios (min 3 per module): ${getCheckStatus('chk-workplace-scenarios')}
-• AI application scenarios included: ${getCheckStatus('chk-ai-scenarios')}
-• Instructional progression & 5 knowledge checks per module: ${getCheckStatus('chk-learning-design')}
-• Ethics, compliance & POPIA requirements addressed: ${getCheckStatus('chk-ai-ethics')}
-• Output formatting & plain language reading level: ${getCheckStatus('chk-accessibility')}
-• Quality review against Financial Literacy benchmark: ${course.qa.benchmarkReviewed ? 'CONFIRMED' : 'PENDING REVIEW'}
-• Customisation & framework safeguards locked: ${getCheckStatus('chk-customisation')}
+8.1 Quality Assurance Checklist 
+Before submitting for LMS deployment, confirm all of the following:
+• All [INSERT: …] fields have been replaced with course-specific content
+• Minimum 3 modules with minimum 3 scenarios each
+• AI ethics section is fully populated and embedded in at least 2 modules
+• Pre-course diagnostic questions included (minimum 5)
+• Assessment structure confirmed with pass marks and weightings
+• Regulatory/compliance framework identified and referenced
+• Language and accessibility standards met
+• Output reviewed against the Financial Literacy course benchmark
 
 ================================================================================
-9. CUSTOMISATION GUIDE FOR NEW COURSES
+9. CUSTOMISATION GUIDE FOR NEW COURSES (NEW) 
 ================================================================================
-Use the table below to plan your customisation before populating the template. This is an internal planning aid — it is not submitted to the AI engine.
+Use the table below to plan your customisation before populating the template. This is an internal 
+planning aid — it is not submitted to the AI engine.
 
-| Template Section | What Changes Per Course | Your Notes |
-| --- | --- | --- |
+Template Section | What Changes Per Course | Your Notes
 ${planningTableFormatted}
 
-9.1 Courses Built Using This Template
-| Course Title | Industry | Date Built | Version |
-| --- | --- | --- | --- |
+9.1 Courses Built Using This Template 
+Track all courses generated from this master template:
+Course Title | Industry | Date Built | Version
 ${historyTableFormatted}
 
-================================================================================
 END OF MASTER PROMPT TEMPLATE v9.0
 eStudy South Africa · Confidential & Proprietary · Not for Distribution
-================================================================================
 `;
 }
-

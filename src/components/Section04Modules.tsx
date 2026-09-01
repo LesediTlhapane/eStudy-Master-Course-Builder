@@ -17,6 +17,10 @@ import {
   Clock,
   Edit2
 } from 'lucide-react';
+import { SlideHeader } from './SlideHeader';
+import { SlideFooter } from './SlideFooter';
+import { FrameworkCallout } from './FrameworkCallout';
+import { EditorialField } from './EditorialField';
 
 interface Section04ModulesProps {
   course: Course;
@@ -201,40 +205,42 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
   };
 
   return (
-    <div id="section-04-modules-container" className="space-y-8 max-w-5xl">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-bold font-mono text-[#052B66]">04</span>
-            <h2 className="text-2xl font-extrabold text-[#052B66] tracking-tight">
-              Module Structure
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Build the learning architecture module by module, then expand only what you need.
-          </p>
-        </div>
+    <div id="section-04-modules-container" className="space-y-6 max-w-6xl">
+      {/* Slide Header */}
+      <SlideHeader
+        sectionNumber="04"
+        title="Module Structure & Workplace Scenario Architecture"
+        subtitle="Build out each module with core workplace knowledge, procedures, scenarios, and statutory deliverables."
+        slideNumber="11"
+        totalSlides="39"
+        badgeText={`${modules.length} Modules Active`}
+      />
 
-        <button
-          id="add-module-header-btn"
-          onClick={handleAddModule}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-sm transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>+ Add Module</span>
-        </button>
-      </div>
+      {/* Framework Requirement Callout */}
+      <FrameworkCallout
+        title="Framework Requirement"
+        requirement="Minimum 3 workplace scenarios per module. Recommended: 3–5. Every module must include practical procedures and complete implementation deliverables (Checklist, Rollout Procedure, Statutory Risk Protocol)."
+        variant="requirement"
+      />
 
       {/* Module Navigation Tabs List */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-          <span>MODULES ({modules.length} OF MINIMUM 3)</span>
-          <span>Click a module to customize</span>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66]">
+            COURSE MODULES ({modules.length} OF MINIMUM 3)
+          </span>
+          <button
+            id="add-module-header-btn"
+            onClick={handleAddModule}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] shadow-xs transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>+ Add Module</span>
+          </button>
         </div>
 
         {modules.length === 0 ? (
-          <div className="p-8 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center space-y-3">
+          <div className="p-8 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-center space-y-3">
             <Layers className="w-8 h-8 text-slate-400 mx-auto" />
             <div className="space-y-1">
               <h4 className="text-sm font-bold text-slate-700">No modules in this course yet</h4>
@@ -251,98 +257,43 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
             </button>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {modules.map((m, idx) => {
               const isSelected = safeActiveIndex === idx;
               const stats = getModuleStats(m);
 
-              const statusBadgeText = !stats.isStarted
-                ? 'Not started'
-                : stats.completedCategories === 6
-                ? '6 of 6 complete'
-                : `${stats.completedCategories} of 6 complete`;
-
-              const statusBadgeStyle = !stats.isStarted
-                ? 'bg-slate-100 text-slate-600 border-slate-200'
-                : stats.completedCategories === 6
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-200';
-
               return (
-                <div
+                <button
                   key={m.id}
-                  className={`rounded-xl border transition-all ${
+                  onClick={() => setActiveModuleIndex(idx)}
+                  className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
                     isSelected
-                      ? 'border-[#052B66] bg-white shadow-xs'
+                      ? 'border-[#052B66] bg-[#052B66]/5 ring-1 ring-[#052B66] shadow-xs'
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
-                  <div
-                    onClick={() => setActiveModuleIndex(idx)}
-                    className="p-4 flex items-center justify-between gap-4 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <span className="font-mono text-sm font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded shrink-0">
-                        0{idx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 hover:text-[#052B66] transition-colors truncate">
-                          {m.title?.trim() ? m.title : `Module 0${idx + 1} (Untitled Module)`}
-                        </h3>
-                        <p className="text-xs text-slate-500 truncate">
-                          {m.subtitle?.trim() ? m.subtitle : 'Click to define title, subtitle & workplace learning requirements'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusBadgeStyle}`}>
-                        {statusBadgeText}
-                      </span>
-                      {isSelected ? (
-                        <ChevronDown className="w-4 h-4 text-[#052B66]" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="font-mono text-xs font-black text-[#052B66] bg-slate-100 px-2 py-0.5 rounded">
+                      M0{idx + 1}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      stats.completedCategories >= 5
+                        ? 'bg-[#45CC42]/20 text-[#052B66] border-[#45CC42]/40'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                    }`}>
+                      {stats.scenarioCount} scenarios
+                    </span>
                   </div>
 
-                  {/* Sub-preview banner if selected */}
-                  {isSelected && (
-                    <div className="px-5 pb-4 pt-1 border-t border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11.5px] text-slate-600">
-                      <span className="flex items-center gap-1">
-                        {stats.coreFilled >= 2 ? (
-                          <Check className="w-3.5 h-3.5 text-[#45CC42]" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-slate-300 mr-0.5" />
-                        )}
-                        Core Content ({stats.coreFilled}/4)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        {stats.aiFilled >= 1 ? (
-                          <Check className="w-3.5 h-3.5 text-[#45CC42]" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-slate-300 mr-0.5" />
-                        )}
-                        AI Literacy ({stats.aiFilled}/2)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        {stats.toolsFilled >= 1 ? (
-                          <Check className="w-3.5 h-3.5 text-[#45CC42]" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-slate-300 mr-0.5" />
-                        )}
-                        Tools & Procedures ({stats.toolsFilled}/2)
-                      </span>
-                      <span className="flex items-center gap-1 text-[#052B66] font-semibold">
-                        ● Scenarios ({stats.scenarioCount})
-                      </span>
-                      <span className="flex items-center gap-1 text-[#052B66] font-semibold">
-                        ● AI Scenarios ({stats.aiScenarioCount})
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  <div className="w-full">
+                    <h4 className="text-xs font-bold text-[#052B66] truncate">
+                      {m.title?.trim() ? m.title : `Module 0${idx + 1}`}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {m.subtitle?.trim() ? m.subtitle : 'Click to edit module content'}
+                    </p>
+                  </div>
+                </button>
               );
             })}
           </div>
@@ -351,24 +302,21 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
 
       {/* Active Module Detail Section */}
       {activeModule && (
-        <div className="bg-white rounded-xl border border-slate-200 p-7 shadow-xs space-y-7">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
-              <span className="text-[11px] font-bold text-[#052B66] uppercase tracking-wider">
-                EDITING MODULE {safeActiveIndex + 1} OF {modules.length}
+              <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider">
+                SLIDE {11 + safeActiveIndex * 2} · MODULE {safeActiveIndex + 1} SPECIFICATION
               </span>
-              <h3 className="text-xl font-extrabold text-[#052B66] tracking-tight mt-0.5">
+              <h3 className="text-lg font-extrabold text-[#052B66] tracking-tight mt-0.5">
                 {activeModule.title?.trim() ? activeModule.title : `Module 0${safeActiveIndex + 1}: Module Template`}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Turn core knowledge into workplace action through tools, procedures and scenarios.
-              </p>
             </div>
 
             {modules.length > 1 && (
               <button
                 onClick={() => handleDeleteModule(safeActiveIndex)}
-                className="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded transition-colors self-start cursor-pointer flex items-center gap-1"
+                className="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg transition-colors self-start cursor-pointer flex items-center gap-1"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Delete Module</span>
@@ -377,53 +325,41 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
           </div>
 
           {/* Module Title & Subtitle Inputs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 bg-slate-50/70 border border-slate-200 rounded-xl">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                Module Title *
-              </label>
-              <input
-                type="text"
-                value={activeModule.title}
-                onChange={e => handleUpdateModule(safeActiveIndex, { title: e.target.value })}
-                placeholder="e.g. Introduction to AI Literacy"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs text-slate-900 font-semibold focus:border-[#052B66] outline-none bg-white"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <EditorialField
+              label="[MODULE TITLE]"
+              value={activeModule.title}
+              onChange={val => handleUpdateModule(safeActiveIndex, { title: val })}
+              placeholder="e.g. Introduction to AI Literacy & Verification"
+              required
+            />
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                Module Subtitle / Focus Area *
-              </label>
-              <input
-                type="text"
-                value={activeModule.subtitle}
-                onChange={e => handleUpdateModule(safeActiveIndex, { subtitle: e.target.value })}
-                placeholder="e.g. Foundational understanding & core concepts"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs text-slate-900 focus:border-[#052B66] outline-none bg-white"
-              />
-            </div>
+            <EditorialField
+              label="[MODULE SUBTITLE / FOCUS AREA]"
+              value={activeModule.subtitle}
+              onChange={val => handleUpdateModule(safeActiveIndex, { subtitle: val })}
+              placeholder="e.g. Foundational understanding & core concepts"
+              required
+            />
           </div>
 
           {/* Module Purpose & Learning Objectives Inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                Module purpose *
-              </label>
-              <textarea
-                rows={3}
-                value={activeModule.purpose}
-                onChange={e => handleUpdateModule(safeActiveIndex, { purpose: e.target.value })}
-                placeholder="e.g. Enable learners to use generative AI safely, verify outputs, and make accountable decisions in real workflows."
-                className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-800 focus:border-[#052B66] outline-none"
-              />
-            </div>
+            <EditorialField
+              label="[MODULE PURPOSE]"
+              value={activeModule.purpose}
+              onChange={val => handleUpdateModule(safeActiveIndex, { purpose: val })}
+              placeholder="e.g. Enable learners to use generative AI safely, verify outputs, and make accountable decisions in real workflows."
+              helperText="The distinct mission and behavioral objective of this module."
+              multiline
+              rows={3}
+              required
+            />
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-700">
-                  Learning objectives ({(activeModule.learningObjectives || []).length} defined) *
+                <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase">
+                  [LEARNING OBJECTIVES] ({(activeModule.learningObjectives || []).length} DEFINED) *
                 </label>
                 <span className="text-[10px] text-slate-400 font-medium">1 objective per line</span>
               </div>
@@ -435,329 +371,232 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
                     learningObjectives: e.target.value.split('\n').filter(Boolean)
                   })
                 }
-                placeholder={"e.g. Construct multi-part prompts with context, role, and constraints\nApply fact-checking workflows to AI drafts\nExecute redaction of personal information"}
-                className="w-full p-3 rounded-lg border border-slate-300 text-xs text-slate-800 focus:border-[#052B66] outline-none font-sans"
+                placeholder={"Apply core prompt engineering frameworks\nExecute line-by-line verification checklists\nSanitise personal data in compliance with POPIA"}
+                className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg p-3 focus:border-[#052B66] outline-none leading-relaxed resize-y"
               />
             </div>
           </div>
 
-          {/* 10 Expandable Module Requirement Accordion Cards */}
+          {/* 6 Structured Requirement Accordion Drawers */}
           <div className="space-y-3 pt-2">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Module Design Requirements (Expand to configure)
+              Module Design Requirements & Deliverables
             </h4>
 
             {/* Category 1: Core Content */}
-            {(() => {
-              const req = activeModule.requirements || {};
-              const coreFilled = [req.problemDefinition, req.workplaceContext, req.keyTerms, req.warningSigns].filter(v => Boolean(v?.trim())).length;
-              const isComp = coreFilled === 4;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'core-content' ? null : 'core-content')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : coreFilled > 0 ? 'border-l-amber-400' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">Core Content</span>
-                      <span className="text-[11px] text-slate-500">{coreFilled} of 4 complete</span>
-                    </div>
-                    {openCategory === 'core-content' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'core-content' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Problem Definition</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.problemDefinition}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'problemDefinition', e.target.value)}
-                            placeholder="e.g. Ineffective, vague prompts resulting in poor outputs and wasted work hours, combined with unverified claims."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Workplace Context</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.workplaceContext}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'workplaceContext', e.target.value)}
-                            placeholder="e.g. Everyday corporate knowledge work, reporting, customer inquiries, and administrative tasks."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Key Terms & Concepts</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.keyTerms}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'keyTerms', e.target.value)}
-                            placeholder="e.g. Role Prompting, Few-Shot Examples, Hallucination Auditing, Redaction, Zero-Data Retention."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Warning Signs / Impact</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.warningSigns}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'warningSigns', e.target.value)}
-                            placeholder="e.g. Pasting sensitive company data into open web tools; accepting plausible-sounding incorrect answers."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'core-content' ? null : 'core-content')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    1. Core Content & Workplace Context
+                  </span>
                 </div>
-              );
-            })()}
+                {openCategory === 'core-content' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              {openCategory === 'core-content' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <EditorialField
+                      label="[PROBLEM DEFINITION]"
+                      value={activeModule.requirements.problemDefinition}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'problemDefinition', val)}
+                      placeholder="e.g. Ineffective, vague prompts resulting in poor outputs and wasted work hours."
+                    />
+                    <EditorialField
+                      label="[WORKPLACE CONTEXT]"
+                      value={activeModule.requirements.workplaceContext}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'workplaceContext', val)}
+                      placeholder="e.g. Everyday corporate knowledge work, reporting, customer inquiries."
+                    />
+                    <EditorialField
+                      label="[KEY TERMS & CONCEPTS]"
+                      value={activeModule.requirements.keyTerms}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'keyTerms', val)}
+                      placeholder="e.g. Role Prompting, Few-Shot Examples, Hallucination Auditing, Redaction."
+                    />
+                    <EditorialField
+                      label="[WARNING SIGNS & RISKS]"
+                      value={activeModule.requirements.warningSigns}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'warningSigns', val)}
+                      placeholder="e.g. Pasting sensitive company data into open web tools; accepting unverified answers."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Category 2: AI Literacy Foundation */}
-            {(() => {
-              const req = activeModule.requirements || {};
-              const aiFilled = [req.aiDemystification, req.responsibleAiPrinciples].filter(v => Boolean(v?.trim())).length;
-              const isComp = aiFilled === 2;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'ai-literacy' ? null : 'ai-literacy')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : aiFilled > 0 ? 'border-l-amber-400' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">AI Literacy Foundation</span>
-                      <span className="text-[11px] text-slate-500">{aiFilled} of 2 complete</span>
-                    </div>
-                    {openCategory === 'ai-literacy' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'ai-literacy' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">What AI is and is not (demystification)</label>
-                          <textarea
-                            rows={2}
-                            value={activeModule.requirements.aiDemystification}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'aiDemystification', e.target.value)}
-                            placeholder="e.g. AI is statistical pattern prediction based on training data; it does not possess consciousness, real-time facts, or moral reasoning."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Responsible and Ethical AI Use Principles</label>
-                          <textarea
-                            rows={2}
-                            value={activeModule.requirements.responsibleAiPrinciples}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'responsibleAiPrinciples', e.target.value)}
-                            placeholder="e.g. Never treat AI output as authoritative truth without human validation; protect confidentiality unconditionally."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'ai-literacy' ? null : 'ai-literacy')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    2. AI Literacy & Responsible Principles
+                  </span>
                 </div>
-              );
-            })()}
+                {openCategory === 'ai-literacy' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              {openCategory === 'ai-literacy' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <EditorialField
+                      label="[AI DEMYSTIFICATION]"
+                      value={activeModule.requirements.aiDemystification}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'aiDemystification', val)}
+                      placeholder="e.g. Explain how LLMs generate tokens statistically without conscious intent."
+                    />
+                    <EditorialField
+                      label="[RESPONSIBLE AI PRINCIPLES]"
+                      value={activeModule.requirements.responsibleAiPrinciples}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'responsibleAiPrinciples', val)}
+                      placeholder="e.g. Human accountability, transparent attribution, zero-leakage data ethics."
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Category 3: Tools, Techniques & Procedures */}
-            {(() => {
-              const req = activeModule.requirements || {};
-              const toolsFilled = [req.toolsAndTechniques, req.procedureSteps].filter(v => Boolean(v?.trim())).length;
-              const isComp = toolsFilled === 2;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'tools-techniques' ? null : 'tools-techniques')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : toolsFilled > 0 ? 'border-l-amber-400' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">Tools, Techniques & Procedures</span>
-                      <span className="text-[11px] text-slate-500">{toolsFilled} of 2 complete</span>
-                    </div>
-                    {openCategory === 'tools-techniques' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'tools-techniques' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Tools & Techniques</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.toolsAndTechniques}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'toolsAndTechniques', e.target.value)}
-                            placeholder="e.g. The 4-Part Prompt Framework (Role, Context, Task, Constraints), Side-by-side Verification Table."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Step-by-step Procedures</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.procedureSteps}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'procedureSteps', e.target.value)}
-                            placeholder="e.g. 1. Frame task. 2. Redact sensitive info. 3. Run prompt. 4. Verify against primary source. 5. Refine."
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'tools-procedures' ? null : 'tools-procedures')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    3. Tools, Techniques & SOP Procedures
+                  </span>
                 </div>
-              );
-            })()}
+                {openCategory === 'tools-procedures' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
 
-            {/* Category 4: Workplace Scenarios (Embeds ScenarioBuilder) */}
-            {(() => {
-              const scenarios = activeModule.requirements?.scenarios || [];
-              const isComp = scenarios.length >= 3;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'workplace-scenarios' ? null : 'workplace-scenarios')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : scenarios.length > 0 ? 'border-l-[#052B66]' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">Workplace Scenarios (Minimum 3 required)</span>
-                      <span className="text-[11px] font-semibold text-[#052B66]">
-                        {scenarios.length} configured
-                      </span>
-                    </div>
-                    {openCategory === 'workplace-scenarios' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'workplace-scenarios' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <ScenarioBuilder
-                        scenarios={scenarios}
-                        isAiSpecific={false}
-                        minRequired={3}
-                        onUpdateScenarios={newScenarios => handleUpdateRequirements(safeActiveIndex, 'scenarios', newScenarios)}
-                      />
-                    </div>
-                  )}
+              {openCategory === 'tools-procedures' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <EditorialField
+                      label="[TOOLS & TECHNIQUES]"
+                      value={activeModule.requirements.toolsAndTechniques}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'toolsAndTechniques', val)}
+                      placeholder="e.g. 4-part prompt framework: Context, Role, Task, Format."
+                      multiline
+                      rows={3}
+                    />
+                    <EditorialField
+                      label="[STEP-BY-STEP PROCEDURE / SOP]"
+                      value={activeModule.requirements.procedureSteps}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'procedureSteps', val)}
+                      placeholder={"Step 1: Frame the workplace prompt\nStep 2: Execute generation\nStep 3: Run 3-point fact verification"}
+                      multiline
+                      rows={3}
+                    />
+                  </div>
                 </div>
-              );
-            })()}
+              )}
+            </div>
 
-            {/* Category 5: AI Application Scenarios (Embeds ScenarioBuilder) */}
-            {(() => {
-              const aiScenarios = activeModule.requirements?.aiScenarios || [];
-              const isComp = aiScenarios.length >= 2;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'ai-scenarios' ? null : 'ai-scenarios')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : aiScenarios.length > 0 ? 'border-l-[#052B66]' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">AI Application Scenarios (Minimum 2 required)</span>
-                      <span className="text-[11px] font-semibold text-[#052B66]">
-                        {aiScenarios.length} configured
-                      </span>
-                    </div>
-                    {openCategory === 'ai-scenarios' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'ai-scenarios' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <ScenarioBuilder
-                        scenarios={aiScenarios}
-                        isAiSpecific={true}
-                        minRequired={2}
-                        onUpdateScenarios={newAiScenarios => handleUpdateRequirements(safeActiveIndex, 'aiScenarios', newAiScenarios)}
-                      />
-                    </div>
-                  )}
+            {/* Category 4: Workplace Scenarios */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'scenarios' ? null : 'scenarios')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    4. Workplace Scenarios ({(activeModule.requirements.scenarios || []).length} Configured)
+                  </span>
                 </div>
-              );
-            })()}
+                {openCategory === 'scenarios' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
 
-            {/* Category 6: Implementation & Governance */}
-            {(() => {
-              const req = activeModule.requirements || {};
-              const govFilled = [req.implementationChecklistTitle, req.rolloutFrameworkTitle, req.riskComplianceSectionTitle].filter(v => Boolean(v?.trim())).length;
-              const isComp = govFilled === 3;
-
-              return (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenCategory(openCategory === 'governance' ? null : 'governance')}
-                    className={`w-full p-4 bg-slate-50/70 hover:bg-slate-100/70 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 ${
-                      isComp ? 'border-l-[#45CC42]' : govFilled > 0 ? 'border-l-amber-400' : 'border-l-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-slate-900">Implementation, Mandatory Deliverables & Governance</span>
-                      <span className="text-[11px] text-slate-500">{govFilled} of 3 complete</span>
-                    </div>
-                    {openCategory === 'governance' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                  </button>
-
-                  {openCategory === 'governance' && (
-                    <div className="p-5 bg-white space-y-4 border-t border-slate-100">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Implementation Checklist Title</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.implementationChecklistTitle}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'implementationChecklistTitle', e.target.value)}
-                            placeholder="e.g. AI 30-Day Action Plan"
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Rollout Framework Title</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.rolloutFrameworkTitle}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'rolloutFrameworkTitle', e.target.value)}
-                            placeholder="e.g. Departmental Rollout Guide"
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Risk & Compliance Title</label>
-                          <input
-                            type="text"
-                            value={activeModule.requirements.riskComplianceSectionTitle}
-                            onChange={e => handleUpdateRequirements(safeActiveIndex, 'riskComplianceSectionTitle', e.target.value)}
-                            placeholder="e.g. Risk Mitigation Matrix"
-                            className="w-full p-2 border border-slate-300 rounded text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              {openCategory === 'scenarios' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <ScenarioBuilder
+                    scenarios={activeModule.requirements.scenarios || []}
+                    onChange={scenarios => handleUpdateRequirements(safeActiveIndex, 'scenarios', scenarios)}
+                    moduleTitle={activeModule.title || `Module 0${safeActiveIndex + 1}`}
+                  />
                 </div>
-              );
-            })()}
+              )}
+            </div>
+
+            {/* Category 5: AI-Specific Oversight Scenarios */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'ai-scenarios' ? null : 'ai-scenarios')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    5. AI-Specific Decision Scenarios ({(activeModule.requirements.aiScenarios || []).length} Configured)
+                  </span>
+                </div>
+                {openCategory === 'ai-scenarios' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              {openCategory === 'ai-scenarios' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <ScenarioBuilder
+                    scenarios={activeModule.requirements.aiScenarios || []}
+                    onChange={scenarios => handleUpdateRequirements(safeActiveIndex, 'aiScenarios', scenarios)}
+                    moduleTitle={`${activeModule.title || `Module 0${safeActiveIndex + 1}`} (AI Oversight)`}
+                    isAiOnly
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Category 6: Implementation Deliverables & Statutory Governance */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenCategory(openCategory === 'governance' ? null : 'governance')}
+                className="w-full p-4 bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between cursor-pointer text-left border-l-4 border-l-[#45CC42]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                    6. Mandatory Deliverables (Checklist, Rollout, Risk Matrix)
+                  </span>
+                </div>
+                {openCategory === 'governance' ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+
+              {openCategory === 'governance' && (
+                <div className="p-5 bg-white space-y-4 border-t border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <EditorialField
+                      label="[IMPLEMENTATION CHECKLIST TITLE]"
+                      value={activeModule.requirements.implementationChecklistTitle}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'implementationChecklistTitle', val)}
+                      placeholder="e.g. AI 30-Day Workplace Action Plan"
+                    />
+                    <EditorialField
+                      label="[ROLLOUT FRAMEWORK TITLE]"
+                      value={activeModule.requirements.rolloutFrameworkTitle}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'rolloutFrameworkTitle', val)}
+                      placeholder="e.g. Departmental Rollout & SOP Guide"
+                    />
+                    <EditorialField
+                      label="[RISK & COMPLIANCE PROTOCOL]"
+                      value={activeModule.requirements.riskComplianceSectionTitle}
+                      onChange={val => handleUpdateRequirements(safeActiveIndex, 'riskComplianceSectionTitle', val)}
+                      placeholder="e.g. POPIA Data Risk Mitigation Matrix"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -769,19 +608,20 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
           className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>← Back</span>
+          <span>← Back to Structure</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <button
-            id="section-04-continue-btn"
-            onClick={onContinue}
-            className="px-6 py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>Continue to Learning Design →</span>
-          </button>
-        </div>
+        <button
+          id="section-04-continue-btn"
+          onClick={onContinue}
+          className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+        >
+          <span>Continue to Learning Design (Section 05) →</span>
+        </button>
       </div>
+
+      {/* Slide Footer */}
+      <SlideFooter currentSlide="11" totalSlides="39" />
     </div>
   );
 };

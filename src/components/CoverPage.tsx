@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BrandLogo } from './BrandLogo';
-import { ArrowRight, BookOpen, CheckCircle2, Sparkles, Shield, Cpu, Layers, HelpCircle, X, ChevronRight } from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, Sparkles, Shield, Cpu, Layers, HelpCircle, X, ChevronRight, LayoutTemplate, Building2, Calendar, UserCheck } from 'lucide-react';
 
 interface CoverPageProps {
   onStartBuilding: () => void;
@@ -14,7 +14,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [showFrameworkModal, setShowFrameworkModal] = useState(false);
 
-  // Animated knowledge graph background
+  // Subtle animated knowledge graph background with low opacity (matches PowerPoint constellation motif)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -34,8 +34,8 @@ export const CoverPage: React.FC<CoverPageProps> = ({
 
     window.addEventListener('resize', handleResize);
 
-    // Node particle definition
-    const nodeCount = Math.min(45, Math.floor((width * height) / 25000));
+    // Node particle definition with very subtle, low opacity
+    const nodeCount = Math.min(35, Math.floor((width * height) / 32000));
     const nodes: Array<{
       x: number;
       y: number;
@@ -50,11 +50,11 @@ export const CoverPage: React.FC<CoverPageProps> = ({
       nodes.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.45,
-        vy: (Math.random() - 0.5) * 0.45,
-        radius: Math.random() * 2.5 + 1.2,
-        baseAlpha: Math.random() * 0.4 + 0.2,
-        isAccent: Math.random() > 0.75
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        radius: Math.random() * 2.2 + 1.2,
+        baseAlpha: Math.random() * 0.25 + 0.1,
+        isAccent: Math.random() > 0.7
       });
     }
 
@@ -72,23 +72,23 @@ export const CoverPage: React.FC<CoverPageProps> = ({
 
       ctx.clearRect(0, 0, width, height);
 
-      // Draw connection lines
+      // Draw connection lines with very low opacity
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[i].x - nodes[j].x;
           const dy = nodes[i].y - nodes[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const maxDist = 160;
+          const maxDist = 170;
 
           if (dist < maxDist) {
-            const alpha = (1 - dist / maxDist) * 0.18;
+            const alpha = (1 - dist / maxDist) * 0.12;
             ctx.beginPath();
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
             ctx.strokeStyle = nodes[i].isAccent || nodes[j].isAccent
-              ? `rgba(69, 204, 66, ${alpha * 1.5})`
+              ? `rgba(69, 204, 66, ${alpha * 1.3})`
               : `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 0.85;
             ctx.stroke();
           }
         }
@@ -107,7 +107,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
         ctx.fillStyle = node.isAccent
-          ? `rgba(69, 204, 66, ${node.baseAlpha * 1.4})`
+          ? `rgba(69, 204, 66, ${node.baseAlpha * 1.3})`
           : `rgba(255, 255, 255, ${node.baseAlpha})`;
         ctx.fill();
       }
@@ -125,16 +125,16 @@ export const CoverPage: React.FC<CoverPageProps> = ({
   }, []);
 
   return (
-    <div id="cover-page-root" className="min-h-screen bg-[#052B66] text-white flex flex-col relative overflow-hidden font-sora selection:bg-[#45CC42] selection:text-[#052B66]">
-      {/* Background Canvas */}
+    <div id="cover-page-root" className="min-h-screen bg-[#052B66] text-white flex flex-col relative overflow-hidden font-sans selection:bg-[#45CC42] selection:text-[#052B66]">
+      {/* Background Canvas with subtle constellation effect */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 pointer-events-none z-0 opacity-40"
+        className="absolute inset-0 pointer-events-none z-0 opacity-30"
       />
 
-      {/* Decorative Radial Glows */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-blue-600/10 blur-[140px] pointer-events-none rounded-full" />
-      <div className="absolute bottom-10 right-10 w-[400px] h-[400px] bg-[#45CC42]/10 blur-[120px] pointer-events-none rounded-full" />
+      {/* Decorative Subtle Radial Glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-blue-600/10 blur-[130px] pointer-events-none rounded-full" />
+      <div className="absolute bottom-10 right-10 w-[350px] h-[350px] bg-[#45CC42]/10 blur-[100px] pointer-events-none rounded-full" />
 
       {/* Top Header */}
       <header className="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between border-b border-white/10">
@@ -168,95 +168,170 @@ export const CoverPage: React.FC<CoverPageProps> = ({
         </div>
       </header>
 
-      {/* Main Hero Section */}
-      <main className="relative z-10 flex-1 flex flex-col justify-center items-center px-6 py-12 max-w-5xl mx-auto text-center">
-        {/* Organization Tag */}
-        <div className="animate-fade-up inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-[11px] font-bold tracking-wider uppercase text-slate-200 mb-6 shadow-inner">
-          <span className="w-2 h-2 rounded-full bg-[#45CC42] animate-pulse" />
-          <span>eStudy South Africa · Authoring Platform</span>
+      {/* Main Slide 1 Blueprint Container */}
+      <main className="relative z-10 flex-1 flex flex-col justify-center px-6 py-10 max-w-7xl mx-auto w-full">
+        {/* PowerPoint Blueprint Card (Slide 1 representation) */}
+        <div className="bg-white/5 backdrop-blur-xs border border-white/15 rounded-3xl p-8 lg:p-12 shadow-2xl relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Column: PowerPoint Slide 1 Typography & Structure */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* eStudy South Africa */}
+              <div className="space-y-1">
+                <p className="text-xs sm:text-sm font-semibold tracking-wide text-slate-300 uppercase">
+                  eStudy South Africa
+                </p>
+                <h2 className="text-xl sm:text-2xl font-extrabold tracking-wider text-[#45CC42] uppercase">
+                  MASTER COURSE TEMPLATE
+                </h2>
+              </div>
+
+              {/* [COURSE TITLE] */}
+              <div className="space-y-2 pt-2">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-[1.15]">
+                  AI-Powered Master Course Authoring
+                </h1>
+                <p className="text-sm sm:text-base text-slate-300 font-medium tracking-wide">
+                  Enterprise Instructional Design Workspace · Universal Framework v9.0
+                </p>
+              </div>
+
+              {/* Metadata row: [CLIENT / ORGANISATION] [DATE] */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    [CLIENT / ORGANISATION]
+                  </span>
+                  <div className="text-slate-200 font-medium truncate">
+                    eStudy South Africa Enterprise Cohort
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    [DATE]
+                  </span>
+                  <div className="text-slate-200 font-medium">
+                    {new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Green Accent Line & Professional Workspace Tag (matching Slide 1 bottom) */}
+              <div className="pt-4 space-y-3">
+                <div className="w-48 h-1 bg-[#45CC42] rounded-full" />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-300 gap-2">
+                  <span className="font-medium">
+                    Professional course design workspace · Master Prompt v9.0
+                  </span>
+                  <span className="text-slate-400 font-mono text-[11px]">
+                    [AUTHOR / COURSE DESIGNER]
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-4">
+                <button
+                  id="cover-start-building-btn"
+                  onClick={onStartBuilding}
+                  className="px-8 py-3.5 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] active:scale-98 transition-all shadow-lg hover:shadow-[#45CC42]/25 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Start Building Course</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  id="cover-enter-dashboard-btn"
+                  onClick={onEnterDashboard}
+                  className="px-6 py-3.5 rounded-xl text-xs font-semibold text-slate-200 bg-white/10 hover:bg-white/15 border border-white/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LayoutTemplate className="w-4 h-4 text-[#45CC42]" />
+                  <span>Open Workspace</span>
+                </button>
+
+                <button
+                  id="cover-view-framework-btn"
+                  onClick={() => setShowFrameworkModal(true)}
+                  className="px-5 py-3.5 rounded-xl text-xs font-medium text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                  <span>View Framework</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Structured Slide 1 Visual Frames ([INSERT CLIENT LOGO] & [INSERT COURSE VISUAL]) */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Insert Client Logo Frame */}
+              <div className="p-6 rounded-2xl bg-white/5 border border-dashed border-white/20 flex flex-col items-center justify-center text-center text-xs text-slate-400 min-h-[110px]">
+                <Building2 className="w-6 h-6 text-[#45CC42] mb-1.5 opacity-80" />
+                <span className="font-bold tracking-wider uppercase text-[10px] text-slate-300">
+                  [INSERT CLIENT LOGO]
+                </span>
+                <span className="text-[11px] text-slate-400 mt-0.5">
+                  eStudy Enterprise Visual Identity
+                </span>
+              </div>
+
+              {/* Insert Course Visual Frame */}
+              <div className="p-8 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-dashed border-white/20 flex flex-col items-center justify-center text-center text-xs text-slate-300 min-h-[220px] relative overflow-hidden group">
+                <div className="w-12 h-12 rounded-xl bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <span className="font-bold tracking-wider uppercase text-[11px] text-white">
+                  [INSERT COURSE VISUAL]
+                </span>
+                <p className="text-[11px] text-slate-300 max-w-xs mt-1 leading-relaxed">
+                  9-Section Curriculum Architecture, Bloom's Outcomes, South African Scenarios & POPIA Governance
+                </p>
+
+                {/* Subtle Constellation Lines in Corner */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 opacity-40 text-[10px] font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#45CC42]" />
+                  <span>v9.0 Master Standard</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Main Heading */}
-        <h1 className="animate-fade-up text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.15] text-white max-w-4xl mb-6">
-          Build <span className="text-[#45CC42]">smarter courses</span> with AI.
-        </h1>
-
-        {/* Subheading */}
-        <p className="animate-fade-up text-base sm:text-lg text-slate-200 max-w-2xl font-normal leading-relaxed mb-4">
-          A guided digital workspace for designing, validating and generating high-quality learning experiences.
-        </p>
-
-        {/* Supporting Explanation */}
-        <p className="animate-fade-up text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed mb-8">
-          Transform the eStudy Master Course Generation Framework into a structured course, then use AI to turn your course specification into complete learning content.
-        </p>
-
-        {/* CTA Buttons */}
-        <div className="animate-fade-up flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-12">
-          <button
-            id="cover-start-building-btn"
-            onClick={onStartBuilding}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl text-sm font-extrabold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] active:scale-97 transition-all shadow-lg hover:shadow-[#45CC42]/25 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>Start Building</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
-          <button
-            id="cover-view-framework-btn"
-            onClick={() => setShowFrameworkModal(true)}
-            className="w-full sm:w-auto px-6 py-4 rounded-xl text-sm font-semibold text-slate-200 bg-white/10 hover:bg-white/15 border border-white/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <BookOpen className="w-4 h-4 text-[#45CC42]" />
-            <span>View Framework</span>
-          </button>
-        </div>
-
-        {/* Trust Indicator */}
-        <div className="animate-fade-up inline-flex items-center gap-2.5 text-xs text-slate-300 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-[#45CC42]" />
-          <span>Built around the eStudy Master Course Generation Framework v9.0</span>
-          <span className="text-[#45CC42] font-semibold pl-1 border-l border-white/15">● Framework ready</span>
-        </div>
-
-        {/* 4 Core Pillars Grid */}
-        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-16 text-left">
+        {/* 4 Core Pillars Overview */}
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 text-left">
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs hover:border-[#45CC42]/40 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
+            <div className="w-8 h-8 rounded-lg bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
               <Layers className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">1. Guided Authoring</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h3 className="text-xs font-bold text-white mb-1">1. Guided Authoring</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Complete the 9-section master prompt with real-time field validation.
             </p>
           </div>
 
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs hover:border-[#45CC42]/40 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
+            <div className="w-8 h-8 rounded-lg bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
               <Shield className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">2. Scenario-Driven</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h3 className="text-xs font-bold text-white mb-1">2. Scenario-Driven</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Enforce realistic South African workplace scenarios, ethics & POPIA compliance.
             </p>
           </div>
 
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs hover:border-[#45CC42]/40 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
+            <div className="w-8 h-8 rounded-lg bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
               <Cpu className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">3. AI Generation</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h3 className="text-xs font-bold text-white mb-1">3. AI Generation</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Turn verified specifications into complete module content and assessments.
             </p>
           </div>
 
           <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs hover:border-[#45CC42]/40 transition-colors">
-            <div className="w-9 h-9 rounded-xl bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
+            <div className="w-8 h-8 rounded-lg bg-[#45CC42]/20 text-[#45CC42] flex items-center justify-center mb-3">
               <CheckCircle2 className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">4. Human Review</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <h3 className="text-xs font-bold text-white mb-1">4. Human Review</h3>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
               Review AI scorecard, edit granular components, and sign off before deployment.
             </p>
           </div>
@@ -264,7 +339,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 py-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
+      <footer className="relative z-10 w-full max-w-7xl mx-auto px-6 py-5 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
         <div>
           eStudy South Africa · Master Course Generation Platform
         </div>
@@ -277,7 +352,7 @@ export const CoverPage: React.FC<CoverPageProps> = ({
             onClick={onEnterDashboard}
             className="text-slate-200 hover:text-[#45CC42] transition-colors cursor-pointer"
           >
-            Enter Dashboard →
+            Enter Workspace →
           </button>
         </div>
       </footer>
@@ -368,3 +443,4 @@ export const CoverPage: React.FC<CoverPageProps> = ({
     </div>
   );
 };
+

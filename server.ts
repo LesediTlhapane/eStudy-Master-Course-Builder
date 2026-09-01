@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { generateCourseWithGemini, generateLocalFallbackCourse, regenerateCoursePart } from './src/server/geminiService';
+import { generateCourseWithGemini, generateLocalFallbackCourse, regenerateCoursePart, processCopilotChat } from './src/server/geminiService';
 
 async function startServer() {
   const app = express();
@@ -17,6 +17,28 @@ async function startServer() {
       version: '9.0',
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY')
     });
+  });
+
+  // POST /api/copilot/chat
+  app.post('/api/copilot/chat', async (req, res) => {
+    try {
+      const { messages, currentCourse, activeSection, qaResult } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Missing messages array in request body.' });
+      }
+
+      const response = await processCopilotChat({
+        messages,
+        currentCourse: currentCourse || {},
+        activeSection: activeSection || '01',
+        qaResult: qaResult || null
+      });
+
+      return res.json({ success: true, ...response });
+    } catch (error: any) {
+      console.error('Error in copilot chat:', error);
+      return res.status(500).json({ error: error?.message || 'Failed to process chat message.' });
+    }
   });
 
   // POST /api/courses/generate

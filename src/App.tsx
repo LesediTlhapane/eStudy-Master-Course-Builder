@@ -17,6 +17,7 @@ import { Section06Ethics } from './components/Section06Ethics';
 import { Section07Output } from './components/Section07Output';
 import { Section08QA } from './components/Section08QA';
 import { Section09Customisation } from './components/Section09Customisation';
+import { FloatingCourseCopilot } from './components/FloatingCourseCopilot';
 import { SectionId } from './types';
 
 export function App() {
@@ -236,6 +237,18 @@ export function App() {
           </main>
         </div>
       )}
+
+      {/* Floating AI Course Copilot */}
+      <FloatingCourseCopilot
+        course={activeCourse}
+        activeSection={activeSection}
+        view={view}
+        qaResult={qaResult}
+        onUpdateCourse={updateActiveCourse}
+        onJumpToSection={(sec, field) => jumpToSection(sec, field)}
+        onStartAIGeneration={startAIGeneration}
+        onNavigateView={setView}
+      />
 
       {/* Settings / Backup Modal */}
       <SettingsModal

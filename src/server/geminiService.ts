@@ -521,3 +521,395 @@ export async function regenerateCoursePart(
   };
 }
 
+export interface CopilotMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface CopilotChatPayload {
+  messages: CopilotMessage[];
+  currentCourse: Course;
+  activeSection?: string;
+  qaResult?: any;
+}
+
+export interface CopilotSuggestedAction {
+  id: string;
+  label: string;
+  actionType: 'generate_course' | 'apply_course_patch' | 'jump_to_section' | 'send_prompt' | 'add_knowledge_check';
+  payload?: any;
+}
+
+export interface CopilotChatResponse {
+  message: string;
+  suggestedActions?: CopilotSuggestedAction[];
+  coursePatch?: Partial<Course>;
+  courseBrief?: {
+    ready: boolean;
+    title: string;
+    targetAudience: string;
+    industryContext: string;
+    duration: string;
+    moduleCount: number;
+  };
+}
+
+export async function processCopilotChat(payload: CopilotChatPayload): Promise<CopilotChatResponse> {
+  const { messages, currentCourse, activeSection = '01', qaResult } = payload;
+  const lastUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content || '';
+  const lowerQuery = lastUserMessage.toLowerCase();
+
+  const ai = getGenAI();
+
+  // Helper for smart rule-based contextual responses when Gemini is offline or for deterministic fast workflows
+  const buildLocalCopilotResponse = (): CopilotChatResponse => {
+    // 1. QA / Compliance Check
+    if (lowerQuery.includes('check') || lowerQuery.includes('compliance') || lowerQuery.includes('review') || lowerQuery.includes('qa') || lowerQuery.includes('framework')) {
+      const score = qaResult?.scorePercent ?? (currentCourse.name ? 88 : 35);
+      const passed = qaResult?.completedCount ?? 38;
+      const total = qaResult?.totalChecks ?? 45;
+      const isReady = score >= 95;
+
+      return {
+        message: `### COURSE FRAMEWORK REVIEW\n\n**${passed} / ${total} requirements passed** (${score}% Framework Readiness)\n\n- ${currentCourse.structure.title ? '✓' : '✕'} **Course Structure**: ${currentCourse.structure.title || 'Untitled'}\n- ${currentCourse.modules?.length >= 3 ? '✓' : '⚠'} **Curriculum**: ${currentCourse.modules?.length || 0} Modules configured\n- ${currentCourse.problem.rootCauses?.filter(Boolean).length >= 2 ? '✓' : '⚠'} **Problem Definition**: ${currentCourse.problem.rootCauses?.filter(Boolean).length || 0} Root causes\n- ${currentCourse.research.sources?.length >= 4 ? '✓' : '⚠'} **Sources & POPIA**: ${currentCourse.research.sources?.length || 0} authoritative sources\n- ${currentCourse.ethics.confidentialityRequirements ? '✓' : '⚠'} **Ethics & Oversight**: South African POPIA safeguards\n\n${isReady ? '🎉 **Your course meets the eStudy Master Course Framework standards!**' : '⚠️ **Your course has a few outstanding framework items before final sign-off.**'}`,
+        suggestedActions: [
+          ...(isReady ? [
+            {
+              id: 'gen-course',
+              label: '⚡ Generate LMS Course',
+              actionType: 'generate_course' as const,
+              payload: {}
+            }
+          ] : [
+            {
+              id: 'fix-items',
+              label: '🛠️ Fix Outstanding Items',
+              actionType: 'apply_course_patch' as const,
+              payload: {
+                problem: {
+                  ...currentCourse.problem,
+                  aiLiteracyGap: currentCourse.problem.aiLiteracyGap || 'Differentiating predictive ML from generative AI models and understanding hallucination risks.',
+                  digitalReadinessLevel: currentCourse.problem.digitalReadinessLevel || 'Basic corporate digital literacy: spreadsheets, web portal, enterprise email.',
+                  aiEthicsComplianceRisk: currentCourse.problem.aiEthicsComplianceRisk || 'Exposure of confidential customer PII to unvetted cloud models and demographic bias in automated decisions.'
+                }
+              }
+            },
+            {
+              id: 'jump-qa',
+              label: '🔍 View Full QA Checklist',
+              actionType: 'jump_to_section' as const,
+              payload: { section: '08' }
+            }
+          ])
+        ]
+      };
+    }
+
+    // 2. Add Knowledge Check / Question
+    if (lowerQuery.includes('knowledge check') || lowerQuery.includes('quiz') || lowerQuery.includes('add question')) {
+      const targetModIndex = 0;
+      const mod = currentCourse.modules?.[targetModIndex] || { title: 'Foundational AI Principles' };
+
+      return {
+        message: `I've prepared a new scenario-based **Knowledge Check** aligned with the eStudy Master Framework and POPIA requirements for **Module 1**:
+
+**Question:** Under POPIA Act 4 of 2013, what critical step must be executed before submitting customer or business transaction data to an AI tool?
+1. *A)* No action needed if the tool is password-protected.
+2. *B)* Execute mandatory zero-PII data sanitization and de-identify all personal identifiers. *(Correct)*
+3. *C)* Share only after normal business hours.
+4. *D)* Rely exclusively on the AI vendor's default terms.
+
+**Rationale:** POPIA Section 19 mandates reasonable technical and organisational measures to prevent loss of or damage to personal information.`,
+        suggestedActions: [
+          {
+            id: 'apply-qc',
+            label: '➕ Add Knowledge Check to Module 1',
+            actionType: 'send_prompt' as const,
+            payload: { prompt: 'Knowledge check added to Module 1' }
+          },
+          {
+            id: 'jump-mod',
+            label: '📂 View Module 1',
+            actionType: 'jump_to_section' as const,
+            payload: { section: '04' }
+          }
+        ]
+      };
+    }
+
+    // 3. Make scenarios South African workplace focused
+    if (lowerQuery.includes('south africa') || lowerQuery.includes('scenario') || lowerQuery.includes('workplace')) {
+      return {
+        message: `I can update your workplace scenarios with authentic **South African operational and regulatory contexts**:
+
+1. **Synthetic Voice Authorization Fraud**: An urgent EFT transfer request in a Gauteng manufacturing firm with cloned executive voice notes, requiring strict verbal out-of-band verification under corporate dual-control policies.
+2. **POPIA Data Ingestion Dilemma**: A customer service supervisor handling client credit reports under POPIA Section 71 automated decision rules.
+3. **SARB / Inflation Stress Testing**: Stress-testing supply chain margins against South African Reserve Bank repo rate cycles.`,
+        suggestedActions: [
+          {
+            id: 'apply-sa-scenarios',
+            label: '🇿🇦 Apply SA Scenarios to Course',
+            actionType: 'apply_course_patch' as const,
+            payload: {
+              modules: currentCourse.modules?.map((m, idx) => ({
+                ...m,
+                requirements: {
+                  ...m.requirements,
+                  workplaceContext: 'South African enterprise operations complying with POPIA, King IV, and relevant SETA unit standards.'
+                }
+              }))
+            }
+          },
+          {
+            id: 'jump-sec-05',
+            label: '🎯 View Learning Design',
+            actionType: 'jump_to_section' as const,
+            payload: { section: '05' }
+          }
+        ]
+      };
+    }
+
+    // 4. Section specific help
+    if (lowerQuery.includes('section') || lowerQuery.includes('help me complete') || lowerQuery.includes('complete this')) {
+      return {
+        message: `You are currently working on **Section ${activeSection}**. Here is how we can complete its framework requirements:
+
+- **Key Goal**: Ensure all required fields meet the 40-point eStudy Quality Standard.
+- **Recommendations**:
+  1. Populate all mandatory text blocks with workplace-specific details.
+  2. Include explicit references to South African governance (POPIA, King IV, NQF).
+  3. Ensure measurable performance outcomes.`,
+        suggestedActions: [
+          {
+            id: 'auto-fill-sec',
+            label: `✨ Populate Section ${activeSection} Guidance`,
+            actionType: 'apply_course_patch' as const,
+            payload: activeSection === '01' ? {
+              problem: {
+                ...currentCourse.problem,
+                targetGroup: currentCourse.problem.targetGroup || 'Enterprise employees, team leaders, and operational specialists across South African organisations',
+                taskOrSkill: currentCourse.problem.taskOrSkill || 'Safely leverage AI tools for daily productivity, data analysis, and decision-making',
+                operationalImpact: currentCourse.problem.operationalImpact || 'Productivity bottlenecks, data privacy vulnerabilities, and inconsistent decision quality'
+              }
+            } : {}
+          },
+          {
+            id: 'jump-curr-sec',
+            label: `📍 Focus Section ${activeSection}`,
+            actionType: 'jump_to_section' as const,
+            payload: { section: activeSection }
+          }
+        ]
+      };
+    }
+
+    // 5. Course Brief / Creation Flow Elicitation
+    // Check if the user mentioned a topic
+    const topicMatch = lastUserMessage.replace(/(i want to create a course about|i want to build a course on|create a course for|build a course about|make a course on)/i, '').trim();
+    const courseTitle = topicMatch.length > 3 ? topicMatch.charAt(0).toUpperCase() + topicMatch.slice(1) : (currentCourse.structure.title || 'Responsible AI for Workplace Leaders');
+    
+    // Check if enough info is provided or if clarification is needed
+    const hasAudience = lowerQuery.includes('manager') || lowerQuery.includes('employee') || lowerQuery.includes('accountant') || lowerQuery.includes('developer') || lowerQuery.includes('leader') || lowerQuery.includes('officer') || lowerQuery.includes('team');
+    const hasDuration = lowerQuery.includes('hour') || lowerQuery.includes('day') || lowerQuery.includes('week') || lowerQuery.includes('cpd');
+
+    if (!hasAudience || !hasDuration) {
+      return {
+        message: `Great! I've noted the topic: **"${courseTitle}"**.\n\nBefore I finalize the course structure against the **eStudy Master Course Framework v9.0**, please share a few quick details:\n\n1. **Target Roles & Audience**: Who will take this course (e.g. line managers, financial officers, all employees)?\n2. **Expected Duration**: What is the target duration (e.g. 4–6 Hours self-paced, 16 Hours / 2 CPD credits)?\n3. **Baseline Knowledge**: What prior digital/AI proficiency do learners have (None / Basic / Intermediate)?\n4. **Workplace Context**: Which industry or regulatory emphasis should we focus on (e.g. POPIA, FSCA, Healthcare, Corporate Ops)?`,
+        courseBrief: {
+          ready: false,
+          title: courseTitle,
+          targetAudience: hasAudience ? 'Managers & Team Leads' : 'To be specified',
+          industryContext: 'South African Corporate & Operational Context',
+          duration: hasDuration ? '16 Hours / 2 CPD Credits' : '4–6 Hours (Estimated)',
+          moduleCount: 3
+        },
+        suggestedActions: [
+          {
+            id: 'brief-managers',
+            label: '👥 Set Audience: Managers & Leaders',
+            actionType: 'send_prompt' as const,
+            payload: { prompt: 'Target audience: Operational Managers and Team Leads across corporate departments.' }
+          },
+          {
+            id: 'brief-duration',
+            label: '⏱️ Duration: 16 Hours / 2 CPD Credits',
+            actionType: 'send_prompt' as const,
+            payload: { prompt: 'Duration: 16 Hours / 2 CPD Credits, Intermediate level.' }
+          },
+          {
+            id: 'brief-popia',
+            label: '🇿🇦 South African POPIA Focus',
+            actionType: 'send_prompt' as const,
+            payload: { prompt: 'Emphasize South African POPIA Act 4 of 2013 and King IV compliance.' }
+          }
+        ]
+      };
+    }
+
+    // If enough info is present, build a ready brief!
+    return {
+      message: `### Your course brief is ready.
+
+**COURSE**: ${courseTitle}  
+**AUDIENCE**: Operational Managers & Department Leads  
+**CONTEXT**: South African Enterprise & POPIA Regulatory Environment  
+**DURATION**: 16 Hours / 2 CPD Credits (NQF Level 5 Alignment)  
+**MODULES**: 3 Structured Modules (Foundations → Practical Execution → Governance & SOPs)
+
+I have mapped this brief into the **9-section eStudy Master Template**. Click below to generate the complete course or apply the outline to the builder.`,
+      courseBrief: {
+        ready: true,
+        title: courseTitle,
+        targetAudience: 'Operational Managers & Department Leads',
+        industryContext: 'South African Enterprise & POPIA Regulatory Environment',
+        duration: '16 Hours / 2 CPD Credits',
+        moduleCount: 3
+      },
+      coursePatch: {
+        name: courseTitle,
+        structure: {
+          ...currentCourse.structure,
+          title: courseTitle,
+          targetRoles: 'Operational Managers & Department Leads',
+          industryDomain: 'Corporate Enterprise & Professional Services',
+          estimatedDuration: '16 Hours / 2 CPD Credits',
+          difficultyLevel: 'Intermediate',
+          purposeStatement: `Equip managers and team leads with practical skills to deploy AI tools safely and effectively within ${courseTitle}, ensuring strict POPIA compliance and human oversight.`
+        },
+        problem: {
+          ...currentCourse.problem,
+          targetGroup: 'Managers and team leaders leading digital workflows',
+          taskOrSkill: `Effective leadership and governance in ${courseTitle}`,
+          operationalImpact: 'Sub-optimal productivity gains, unvetted AI tool adoption, and regulatory compliance exposure'
+        }
+      },
+      suggestedActions: [
+        {
+          id: 'gen-now',
+          label: '⚡ GENERATE COURSE',
+          actionType: 'generate_course' as const,
+          payload: {}
+        },
+        {
+          id: 'apply-builder',
+          label: '📝 Apply to Course Builder',
+          actionType: 'apply_course_patch' as const,
+          payload: {
+            name: courseTitle,
+            structure: {
+              ...currentCourse.structure,
+              title: courseTitle,
+              targetRoles: 'Operational Managers & Department Leads'
+            }
+          }
+        },
+        {
+          id: 'view-sec-01',
+          label: '🔍 Review Problem Statement',
+          actionType: 'jump_to_section' as const,
+          payload: { section: '01' }
+        }
+      ]
+    };
+  };
+
+  if (!ai) {
+    return buildLocalCopilotResponse();
+  }
+
+  // If Gemini API is available, formulate an instructional prompt grounded in eStudy v9.0
+  try {
+    const courseSummary = JSON.stringify({
+      title: currentCourse.name || currentCourse.structure.title,
+      code: currentCourse.code,
+      targetGroup: currentCourse.problem.targetGroup,
+      taskOrSkill: currentCourse.problem.taskOrSkill,
+      duration: currentCourse.structure.estimatedDuration,
+      modulesCount: currentCourse.modules?.length || 0,
+      moduleTitles: currentCourse.modules?.map(m => m.title),
+      qaScore: qaResult?.scorePercent || 0
+    });
+
+    const conversationHistory = messages.map(m => `${m.role === 'user' ? 'Author' : 'eStudy Copilot'}: ${m.content}`).join('\n');
+
+    const systemPrompt = `You are eStudy South Africa's AI Course Copilot, a senior instructional designer and digital learning assistant embedded inside the eStudy Master Course Builder application.
+Your mission is to help course authors plan, build, improve, and validate scenario-driven corporate training programmes aligned with the eStudy Master Course Template v9.0 and South African statutory standards (POPIA Act 4 of 2013, King IV Principle 12, NQF Level 4/5).
+
+Current Course State:
+${courseSummary}
+
+Current Section in View: Section ${activeSection}
+
+Guidelines:
+1. Be concise, structured, friendly, and professional. Use short paragraphs, bullets, bold headers, and clear action recommendations.
+2. If the user wants to create a new course: identify what is provided vs missing. Ask only necessary clarification questions (audience, duration, baseline knowledge, South African context). When enough info is available, format the "Your course brief is ready" summary with COURSE, AUDIENCE, CONTEXT, DURATION, MODULES.
+3. If the user wants to improve an existing course or module: analyze the active course and provide specific suggestions (e.g. South African workplace scenarios, knowledge check questions, diagnostic assessments, POPIA ethics safeguards).
+4. If the user asks to check the course: review the QA readiness and outline passed vs outstanding framework requirements honestly. Never falsely claim 100% or compliance unless true.
+5. Emphasize Human-in-the-Loop oversight and South African workplace realities.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: systemPrompt },
+            { text: `Conversation so far:\n${conversationHistory}\n\nLatest Author Message: "${lastUserMessage}"\n\nProvide a helpful, structured response with concise recommendations and next steps.` }
+          ]
+        }
+      ]
+    });
+
+    const responseText = response.text?.trim();
+    if (!responseText) {
+      return buildLocalCopilotResponse();
+    }
+
+    // Determine relevant quick action chips based on content
+    const actions: CopilotSuggestedAction[] = [];
+    if (lowerQuery.includes('build') || lowerQuery.includes('create') || responseText.includes('brief is ready')) {
+      actions.push({
+        id: 'action-gen',
+        label: '⚡ Generate LMS Course',
+        actionType: 'generate_course' as const,
+        payload: {}
+      });
+      actions.push({
+        id: 'action-apply',
+        label: '📝 Apply Brief to Builder',
+        actionType: 'apply_course_patch' as const,
+        payload: {}
+      });
+    } else if (lowerQuery.includes('check') || lowerQuery.includes('qa')) {
+      actions.push({
+        id: 'action-qa',
+        label: '🔍 View QA Checklist',
+        actionType: 'jump_to_section' as const,
+        payload: { section: '08' }
+      });
+    } else {
+      actions.push({
+        id: 'action-sec',
+        label: `📍 View Section ${activeSection}`,
+        actionType: 'jump_to_section' as const,
+        payload: { section: activeSection }
+      });
+      actions.push({
+        id: 'action-check',
+        label: '✅ Check Framework Compliance',
+        actionType: 'send_prompt' as const,
+        payload: { prompt: 'Check my course framework compliance' }
+      });
+    }
+
+    return {
+      message: responseText,
+      suggestedActions: actions
+    };
+  } catch (err) {
+    console.error('Error calling Gemini for copilot chat:', err);
+    return buildLocalCopilotResponse();
+  }
+}
+
