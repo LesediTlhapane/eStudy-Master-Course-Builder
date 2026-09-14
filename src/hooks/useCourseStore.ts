@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Course, SectionId, GeneratedCourse } from '../types';
-import { sampleCourses, blankMasterTemplate } from '../data/initialCourseData';
+import { sampleCourses, blankMasterTemplate, createScratchCourse, availableTemplates, CourseTemplateOption } from '../data/initialCourseData';
 import { evaluateCourseQA, QAResult } from '../utils/qaEngine';
 
-const STORAGE_KEY = 'estudy_course_builder_courses_v12';
-const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v12';
+const STORAGE_KEY = 'estudy_course_builder_courses_v14';
+const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v14';
 
 export type AppView = 'cover' | 'dashboard' | 'builder' | 'preview' | 'generating' | 'generated';
 
@@ -16,11 +16,14 @@ export interface UseCourseStoreReturn {
   saveStatus: 'saved' | 'saving';
   qaResult: QAResult;
   targetFocusField: string | null;
+  availableTemplates: CourseTemplateOption[];
   setView: (view: AppView) => void;
   setActiveSection: (section: SectionId) => void;
   updateActiveCourse: (updater: Partial<Course> | ((prev: Course) => Course)) => void;
   switchCourse: (courseId: string) => void;
   createNewCourse: (title?: string) => void;
+  startFromScratch: (title?: string) => void;
+  continueFromTemplate: (templateId: string) => void;
   startFromMasterTemplate: () => void;
   deleteCourse: (courseId: string) => void;
   jumpToSection: (section: SectionId, fieldId?: string) => void;
@@ -31,7 +34,7 @@ export interface UseCourseStoreReturn {
 }
 
 export function useCourseStore(): UseCourseStoreReturn {
-  // Load courses from localStorage or default to sampleCourses
+  // When launching this web application, default to starting from scratch (no pre-existing course info)
   const [courses, setCourses] = useState<Course[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -44,7 +47,7 @@ export function useCourseStore(): UseCourseStoreReturn {
     } catch (e) {
       console.error('Failed to load courses from localStorage:', e);
     }
-    return sampleCourses;
+    return [createScratchCourse('Untitled Course')];
   });
 
   const [activeCourseId, setActiveCourseId] = useState<string>(() => {
@@ -52,7 +55,7 @@ export function useCourseStore(): UseCourseStoreReturn {
       const savedId = localStorage.getItem(ACTIVE_COURSE_KEY);
       if (savedId) return savedId;
     } catch (e) {}
-    return sampleCourses[0]?.id || blankMasterTemplate.id;
+    return courses[0]?.id || 'scratch-new-course';
   });
 
   const [activeSection, setActiveSection] = useState<SectionId>('01');
@@ -62,8 +65,8 @@ export function useCourseStore(): UseCourseStoreReturn {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Active course reference
-  const activeCourse = courses.find(c => c.id === activeCourseId) || courses[0] || blankMasterTemplate;
+  // Active course reference - fallback to a fresh scratch course
+  const activeCourse = courses.find(c => c.id === activeCourseId) || courses[0] || createScratchCourse('Untitled Course');
 
   // QA calculation
   const qaResult = evaluateCourseQA(activeCourse);
@@ -111,18 +114,24 @@ export function useCourseStore(): UseCourseStoreReturn {
     setActiveSection('01');
   }, []);
 
-  const createNewCourse = useCallback((title: string = 'Untitled eStudy Course') => {
-    const newId = `course-${Date.now()}`;
+  // Explicit Start from Scratch: creates a completely empty course with zero existing information
+  const startFromScratch = useCallback((title: string = 'Untitled Course') => {
+    const freshCourse = createScratchCourse(title);
+    setCourses(prev => [freshCourse, ...prev]);
+    setActiveCourseId(freshCourse.id);
+    setActiveSection('01');
+    setView('builder');
+  }, []);
+
+  // Explicit Continue from an Existing Template
+  const continueFromTemplate = useCallback((templateId: string) => {
+    const templateOpt = availableTemplates.find(t => t.id === templateId) || availableTemplates[0];
+    const newId = `course-from-${templateOpt.id}-${Date.now()}`;
     const newCourse: Course = {
-      ...blankMasterTemplate,
+      ...JSON.parse(JSON.stringify(templateOpt.course)),
       id: newId,
-      name: title,
-      code: `EST-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-      lastModified: 'Just now',
-      structure: {
-        ...blankMasterTemplate.structure,
-        title: title
-      }
+      name: `${templateOpt.course.name} (Copy)`,
+      lastModified: 'Just now'
     };
 
     setCourses(prev => [newCourse, ...prev]);
@@ -130,26 +139,14 @@ export function useCourseStore(): UseCourseStoreReturn {
     setActiveSection('01');
     setView('builder');
   }, []);
+
+  const createNewCourse = useCallback((title: string = 'Untitled Course') => {
+    startFromScratch(title);
+  }, [startFromScratch]);
 
   const startFromMasterTemplate = useCallback(() => {
-    const newId = `course-${Date.now()}`;
-    const newCourse: Course = {
-      ...blankMasterTemplate,
-      id: newId,
-      name: 'New Course from Master Template v9.0',
-      code: `EST-V9-${Math.floor(100 + Math.random() * 900)}`,
-      lastModified: 'Just now',
-      structure: {
-        ...blankMasterTemplate.structure,
-        title: 'New Course from Master Template v9.0'
-      }
-    };
-
-    setCourses(prev => [newCourse, ...prev]);
-    setActiveCourseId(newId);
-    setActiveSection('01');
-    setView('builder');
-  }, []);
+    continueFromTemplate('master-template-v9');
+  }, [continueFromTemplate]);
 
   const startAIGeneration = useCallback(() => {
     setView('generating');
@@ -167,14 +164,14 @@ export function useCourseStore(): UseCourseStoreReturn {
     setCourses(prev => {
       const remaining = prev.filter(c => c.id !== courseId);
       if (remaining.length === 0) {
-        return [blankMasterTemplate];
+        return [createScratchCourse('Untitled Course')];
       }
       return remaining;
     });
 
     if (activeCourseId === courseId) {
       const remaining = courses.filter(c => c.id !== courseId);
-      const nextId = remaining[0]?.id || blankMasterTemplate.id;
+      const nextId = remaining[0]?.id || createScratchCourse('Untitled Course').id;
       setActiveCourseId(nextId);
     }
   }, [activeCourseId, courses]);
@@ -210,11 +207,14 @@ export function useCourseStore(): UseCourseStoreReturn {
     saveStatus,
     qaResult,
     targetFocusField,
+    availableTemplates,
     setView,
     setActiveSection,
     updateActiveCourse,
     switchCourse,
     createNewCourse,
+    startFromScratch,
+    continueFromTemplate,
     startFromMasterTemplate,
     deleteCourse,
     jumpToSection,

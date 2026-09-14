@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
-import { Course, LearningJourneyStep, DiagnosticQuestion, CourseModule } from '../types';
-import { ArrowRight, ArrowLeft, ChevronRight, Check, Plus, Minus, Trash2, BookOpen, Target, Sparkles, HelpCircle, Layers, Award, ShieldCheck, ListOrdered } from 'lucide-react';
+import { Course, LearningJourneyStep, DiagnosticQuestion } from '../types';
+import {
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
+  Check,
+  Plus,
+  Trash2,
+  BookOpen,
+  Target,
+  Sparkles,
+  Layers,
+  Award,
+  ListOrdered,
+  Eye,
+  Sliders
+} from 'lucide-react';
 import { SlideHeader } from './SlideHeader';
 import { SlideFooter } from './SlideFooter';
 import { FrameworkCallout } from './FrameworkCallout';
@@ -20,9 +35,8 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
   onBack
 }) => {
   const [activeSlideTab, setActiveSlideTab] = useState<'meta' | 'purpose' | 'benefits' | 'journey'>('meta');
-  const [showPurposeModal, setShowPurposeModal] = useState(false);
-  const [showOutcomesModal, setShowOutcomesModal] = useState(false);
-  const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
+  const [simpleClientView, setSimpleClientView] = useState(false);
+  const [skippedNotice, setSkippedNotice] = useState(false);
 
   const s = course.structure;
 
@@ -37,6 +51,68 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
     }));
   };
 
+  const handleSkipUnknownCourseDetails = () => {
+    onUpdate(prev => {
+      const curr = prev.structure;
+      const title = curr.title || prev.name || 'Professional Workplace Capability Course';
+      return {
+        ...prev,
+        structure: {
+          ...curr,
+          title: title,
+          code: curr.code || `EST-${new Date().getFullYear()}-01`,
+          industryDomain: curr.industryDomain || 'Corporate Enterprise & Operations',
+          targetRoles: curr.targetRoles || 'Operational specialists, consultants, and departmental team leaders',
+          estimatedDuration: curr.estimatedDuration || '16 Hours / 2 CPD Credits',
+          deliveryFormat: curr.deliveryFormat || 'Self-paced online',
+          difficultyLevel: curr.difficultyLevel || 'Intermediate',
+          aiIntegrationLevel: curr.aiIntegrationLevel || 'Applied',
+          setaNqfLevel: curr.setaNqfLevel || 'NQF Level 5 Alignment',
+          deliveryLanguages: curr.deliveryLanguages || 'English (South African business standard, Plain Language)',
+          purposeStatement: curr.purposeStatement || `[AI Auto-Complete: Equip learners with practical competencies, standard operating procedures, and risk compliance in ${title}]`,
+          workplaceRelevance: curr.workplaceRelevance || `[AI Auto-Complete: Direct daily workplace application in operational decision-making, quality verification, and efficiency]`,
+          performanceImprovement: curr.performanceImprovement || `[AI Auto-Complete: Elimination of procedural delays, error reduction, and audit-ready governance]`,
+          scopeSummary: curr.scopeSummary || `[AI Auto-Complete: Comprehensive coverage of foundational knowledge, applied practice, and South African regulatory standards]`,
+          organisationalBenefits: curr.organisationalBenefits.length > 0 ? curr.organisationalBenefits : [
+            'Enhanced operational throughput and quality standardization',
+            'Strict compliance with POPIA and corporate governance standards',
+            'Measurable productivity improvement across participant departments'
+          ],
+          employeeBenefits: curr.employeeBenefits.length > 0 ? curr.employeeBenefits : [
+            'Recognized workplace competency aligned with CPD requirements',
+            'Practical confidence using modern digital tools safely',
+            'Clear career development and performance appraisal evidence'
+          ],
+          riskReductionOutcomes: (curr.riskReductionOutcomes && curr.riskReductionOutcomes.length > 0) ? curr.riskReductionOutcomes : [
+            'Mitigation of data privacy and POPIA compliance violations',
+            'Prevention of unverified automated output errors',
+            'Standardized incident reporting and supervisor escalation protocols'
+          ],
+          diagnosticQuestions: curr.diagnosticQuestions.length > 0 ? curr.diagnosticQuestions : [
+            {
+              id: 'diag-1',
+              category: 'Problem awareness',
+              question: 'How often does your department encounter procedural bottlenecks or unverified drafts in daily workflows?'
+            },
+            {
+              id: 'diag-2',
+              category: 'Ethics & compliance',
+              question: 'What protocols does your team currently follow to ensure POPIA compliance when processing client records?'
+            },
+            {
+              id: 'diag-3',
+              category: 'AI / digital readiness',
+              question: 'Which digital or AI assistance tools are currently utilized by staff, and what quality controls are enforced?'
+            }
+          ]
+        }
+      };
+    });
+
+    setSkippedNotice(true);
+    setTimeout(() => setSkippedNotice(false), 3500);
+  };
+
   const handleJourneyStepChange = (index: number, field: keyof LearningJourneyStep, value: string) => {
     const updated = [...s.learningJourney];
     if (updated[index]) {
@@ -48,604 +124,429 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
     }
   };
 
-  // Add diagnostic question
-  const [newDiagCategory, setNewDiagCategory] = useState<DiagnosticQuestion['category']>('AI / digital readiness');
-  const [newDiagQuestion, setNewDiagQuestion] = useState('');
-
-  const handleAddDiagnostic = () => {
-    if (!newDiagQuestion.trim()) return;
-    const newQ: DiagnosticQuestion = {
-      id: `diag-${Date.now()}`,
-      category: newDiagCategory,
-      question: newDiagQuestion.trim()
-    };
-    handleStructureChange('diagnosticQuestions', [...s.diagnosticQuestions, newQ]);
-    setNewDiagQuestion('');
-  };
-
-  const handleDeleteDiagnostic = (id: string) => {
-    handleStructureChange(
-      'diagnosticQuestions',
-      s.diagnosticQuestions.filter(q => q.id !== id)
-    );
-  };
-
-  const [newOrgBenefit, setNewOrgBenefit] = useState('');
-  const [newEmpBenefit, setNewEmpBenefit] = useState('');
-  const [newRiskOutcome, setNewRiskOutcome] = useState('');
-
-  const handleAddOrgBenefit = () => {
-    if (!newOrgBenefit.trim()) return;
-    handleStructureChange('organisationalBenefits', [...s.organisationalBenefits, newOrgBenefit.trim()]);
-    setNewOrgBenefit('');
-  };
-
-  const handleDeleteOrgBenefit = (index: number) => {
-    handleStructureChange(
-      'organisationalBenefits',
-      s.organisationalBenefits.filter((_, i) => i !== index)
-    );
-  };
-
-  const handleAddEmpBenefit = () => {
-    if (!newEmpBenefit.trim()) return;
-    handleStructureChange('employeeBenefits', [...s.employeeBenefits, newEmpBenefit.trim()]);
-    setNewEmpBenefit('');
-  };
-
-  const handleDeleteEmpBenefit = (index: number) => {
-    handleStructureChange(
-      'employeeBenefits',
-      s.employeeBenefits.filter((_, i) => i !== index)
-    );
-  };
-
-  const handleAddRiskOutcome = () => {
-    if (!newRiskOutcome.trim()) return;
-    handleStructureChange('riskReductionOutcomes', [...(s.riskReductionOutcomes || []), newRiskOutcome.trim()]);
-    setNewRiskOutcome('');
-  };
-
-  const handleDeleteRiskOutcome = (index: number) => {
-    handleStructureChange(
-      'riskReductionOutcomes',
-      (s.riskReductionOutcomes || []).filter((_, i) => i !== index)
-    );
-  };
-
   return (
-    <div id="section-03-structure-container" className="space-y-6 max-w-6xl">
+    <div id="section-03-structure-container" className="space-y-6 max-w-6xl font-sora">
       {/* Slide Header */}
       <SlideHeader
         sectionNumber="03"
         title="Course Architecture & Learning Structure"
-        subtitle="Establish the pedagogical foundation, scope, benefits, diagnostic questions, and learning journey."
+        subtitle="Establish the pedagogical foundation, scope, duration, diagnostic questions, and learning journey."
         slideNumber="07"
         totalSlides="39"
         badgeText={`${course.modules.length} Modules Planned`}
       />
 
-      {/* Framework Requirement Callout */}
-      <FrameworkCallout
-        title="Framework Requirement"
-        requirement="Course architecture must establish concrete Bloom's taxonomy verbs, workplace relevance, 5-10 pre-assessment questions, and explicit SETA / NQF alignment."
-        variant="requirement"
-      />
+      {/* Skip Unknown Information Banner (Requirement 4 & Requirement 2 UI simplification) */}
+      <div className="p-4 bg-white border border-[#45CC42] rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[#45CC42]">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#45CC42]/15 text-[#052B66] flex items-center justify-center shrink-0 mt-0.5">
+            <Sparkles className="w-5 h-5 text-[#45CC42]" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-[#052B66]">
+              Don't know all the technical instructional design details?
+            </h4>
+            <p className="text-[11.5px] text-slate-500 leading-snug">
+              You can skip fields you aren't sure about. The AI generation engine will formulate optimal pedagogical parameters, diagnostic questions, and Bloom's taxonomies automatically.
+            </p>
+          </div>
+        </div>
 
-      {/* Slide Navigation Tabs */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-200 overflow-x-auto">
-        <div className="flex items-center gap-1.5 min-w-max">
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setActiveSlideTab('meta')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSlideTab === 'meta'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+            type="button"
+            onClick={handleSkipUnknownCourseDetails}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Slide 07: Course Metadata</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSlideTab('purpose')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSlideTab === 'purpose'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Target className="w-3.5 h-3.5" />
-            <span>Slide 08: Purpose & Value</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSlideTab('benefits')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSlideTab === 'benefits'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Award className="w-3.5 h-3.5" />
-            <span>Slide 09: Benefits & Scope</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSlideTab('journey')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSlideTab === 'journey'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <ListOrdered className="w-3.5 h-3.5" />
-            <span>Slide 10: Journey & Diagnostics ({s.diagnosticQuestions.length})</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Skip Unknown Fields (AI Will Formulate)</span>
           </button>
         </div>
       </div>
 
-      {activeSlideTab === 'meta' && (
-        /* Slide 7: Course Architecture & Metadata */
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs">
-          <div className="border-b border-slate-100 pb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              SLIDE 07 · ARCHITECTURE & SPECIFICATION
+      {skippedNotice && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-[#45CC42] text-[#052B66] text-xs font-semibold flex items-center gap-2 animate-fade-in">
+          <Check className="w-4 h-4 text-[#45CC42] stroke-[3]" />
+          <span>All unknown course architecture details have been formulated with eStudy instructional design standards!</span>
+        </div>
+      )}
+
+      {/* View Mode & Tabs Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 border-b border-slate-200 gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          {!simpleClientView ? (
+            <>
+              <button
+                onClick={() => setActiveSlideTab('meta')}
+                className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSlideTab === 'meta'
+                    ? 'bg-[#052B66] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-[#45CC42]" />
+                <span>1. Metadata & Roles</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSlideTab('purpose')}
+                className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSlideTab === 'purpose'
+                    ? 'bg-[#052B66] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                <span>2. Purpose & Value</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSlideTab('benefits')}
+                className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSlideTab === 'benefits'
+                    ? 'bg-[#052B66] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>3. Benefits & Outcomes</span>
+              </button>
+
+              <button
+                onClick={() => setActiveSlideTab('journey')}
+                className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeSlideTab === 'journey'
+                    ? 'bg-[#052B66] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>4. Diagnostics ({s.diagnosticQuestions.length})</span>
+              </button>
+            </>
+          ) : (
+            <span className="text-xs font-bold text-[#052B66] bg-[#45CC42]/20 px-3 py-1.5 rounded-lg border border-[#45CC42]/40">
+              Clean Client View (Essential Fields Only)
             </span>
+          )}
+        </div>
+
+        {/* View Toggle */}
+        <button
+          type="button"
+          onClick={() => setSimpleClientView(!simpleClientView)}
+          className="text-xs font-semibold text-slate-600 hover:text-[#052B66] flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 cursor-pointer shrink-0"
+        >
+          <Sliders className="w-3.5 h-3.5 text-[#45CC42]" />
+          <span>{simpleClientView ? 'Switch to Full Detailed View' : 'Simple / Calm View'}</span>
+        </button>
+      </div>
+
+      {/* Simple Client View (Reduces overstimulation) */}
+      {simpleClientView ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs border-l-4 border-l-[#45CC42]">
+          <div className="border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-[#052B66]">
-              Course Metadata & Delivery Specifications
+              Core Course Information
             </h3>
+            <p className="text-xs text-slate-500">
+              Just enter what you know. Advanced Bloom's taxonomy verbs and NQF alignment are handled automatically.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <EditorialField
               label="[COURSE TITLE]"
               value={s.title}
               onChange={val => handleStructureChange('title', val)}
-              placeholder="e.g. AI Literacy for the Modern Workplace"
+              placeholder="e.g. Responsible AI for Workplace Leaders"
               required
             />
 
             <EditorialField
-              label="[COURSE CODE / ID]"
-              value={s.code}
-              onChange={val => handleStructureChange('code', val)}
-              placeholder="e.g. EST-AI-2026-01"
+              label="[TARGET ROLES / AUDIENCE]"
+              value={s.targetRoles}
+              onChange={val => handleStructureChange('targetRoles', val)}
+              placeholder="e.g. Operations Specialists, Team Leads, Consultants"
+              required
             />
 
             <EditorialField
               label="[INDUSTRY / DOMAIN]"
               value={s.industryDomain}
               onChange={val => handleStructureChange('industryDomain', val)}
-              placeholder="e.g. Financial Services, Operations & Customer Support"
+              placeholder="e.g. Financial Services, Manufacturing, Healthcare"
             />
 
             <EditorialField
               label="[ESTIMATED DURATION]"
               value={s.estimatedDuration}
               onChange={val => handleStructureChange('estimatedDuration', val)}
-              placeholder="e.g. 6 hours / 10 CPD credits"
+              placeholder="e.g. 16 Hours / 2 CPD Credits"
               required
             />
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase block">
-                [DELIVERY FORMAT]
-              </label>
-              <select
-                value={s.deliveryFormat}
-                onChange={e => handleStructureChange('deliveryFormat', e.target.value)}
-                className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:border-[#052B66] outline-none"
-              >
-                <option value="Self-paced online">Self-paced online (LMS)</option>
-                <option value="Blended workshop + digital">Blended workshop + digital</option>
-                <option value="Facilitator-led interactive">Facilitator-led interactive</option>
-                <option value="Micro-learning sprint">Micro-learning sprint</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase block">
-                [DIFFICULTY LEVEL]
-              </label>
-              <select
-                value={s.difficultyLevel}
-                onChange={e => handleStructureChange('difficultyLevel', e.target.value)}
-                className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:border-[#052B66] outline-none"
-              >
-                <option value="Foundational">Foundational (Entry)</option>
-                <option value="Intermediate">Intermediate (Practitioner)</option>
-                <option value="Advanced">Advanced (Specialist / Lead)</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase block">
-                [AI INTEGRATION LEVEL]
-              </label>
-              <select
-                value={s.aiIntegrationLevel}
-                onChange={e => handleStructureChange('aiIntegrationLevel', e.target.value)}
-                className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:border-[#052B66] outline-none"
-              >
-                <option value="Awareness">Awareness (Conceptual)</option>
-                <option value="Applied">Applied (Active Daily Use)</option>
-                <option value="Advanced">Advanced (Workflow Automation & Tuning)</option>
-              </select>
-            </div>
-
-            <EditorialField
-              label="[SETA / NQF ALIGNMENT]"
-              value={s.setaNqfLevel}
-              onChange={val => handleStructureChange('setaNqfLevel', val)}
-              placeholder="e.g. Aligned with NQF Level 5 (FASSET / INSETA)"
-            />
-
-            <EditorialField
-              label="[TARGET ROLES]"
-              value={s.targetRoles}
-              onChange={val => handleStructureChange('targetRoles', val)}
-              placeholder="e.g. Operations Specialists, Analysts, Team Leads"
-            />
           </div>
+
+          <EditorialField
+            label="[COURSE PURPOSE STATEMENT]"
+            value={s.purposeStatement}
+            onChange={val => handleStructureChange('purposeStatement', val)}
+            placeholder="What should learners achieve upon completing this course?"
+            helperText="The high-level objective. You can leave this to the AI by clicking Skip."
+            multiline
+            rows={3}
+          />
         </div>
-      )}
-
-      {activeSlideTab === 'purpose' && (
-        /* Slide 8: Purpose & Business Value */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                SLIDE 08 · RATIONALE
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                Course Purpose & Strategic Relevance
-              </h3>
-            </div>
-
-            <EditorialField
-              label="[COURSE PURPOSE STATEMENT]"
-              value={s.purposeStatement}
-              onChange={val => handleStructureChange('purposeStatement', val)}
-              placeholder="e.g. Equip corporate professionals with foundational AI fluency, verification procedures, and compliance safeguards."
-              helperText="The overarching mission of this learning program."
-              multiline
-              rows={3}
-              required
-            />
-
-            <EditorialField
-              label="[WORKPLACE RELEVANCE & APPLICATION]"
-              value={s.workplaceRelevance}
-              onChange={val => handleStructureChange('workplaceRelevance', val)}
-              placeholder="e.g. Connects daily communication, report drafting, and operational analytics directly to verified tools."
-              helperText="How this learning applies directly to on-the-job responsibilities."
-              multiline
-              rows={3}
-            />
-          </div>
-
-          <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                SLIDE 08 · OUTCOMES & VALUE
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                Performance Improvement & Tech Value
-              </h3>
-            </div>
-
-            <EditorialField
-              label="[PERFORMANCE IMPROVEMENT OUTCOME]"
-              value={s.performanceImprovement}
-              onChange={val => handleStructureChange('performanceImprovement', val)}
-              placeholder="e.g. Increased task efficiency by 40% while reducing unverified factual errors to near zero."
-              helperText="Measurable operational improvement expected."
-              multiline
-              rows={3}
-            />
-
-            <EditorialField
-              label="[AI / TECH VALUE ANGLE]"
-              value={s.aiTechAngle}
-              onChange={val => handleStructureChange('aiTechAngle', val)}
-              placeholder="e.g. Empowers employees to safely leverage generative intelligence without leaking proprietary data."
-              helperText="Specific technological advantage gained."
-              multiline
-              rows={3}
-            />
-          </div>
-        </div>
-      )}
-
-      {activeSlideTab === 'benefits' && (
-        /* Slide 9: Benefits & Scope Description */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 space-y-6">
-            {/* Organisational Benefits */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#052B66]">
-                  [ORGANISATIONAL BENEFITS]
-                </h3>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {s.organisationalBenefits.length} items
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {s.organisationalBenefits.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs border border-slate-200">
-                    <span className="text-slate-700">{item}</span>
-                    <button onClick={() => handleDeleteOrgBenefit(idx)} className="text-rose-500 hover:text-rose-700 p-1">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newOrgBenefit}
-                  onChange={e => setNewOrgBenefit(e.target.value)}
-                  placeholder="e.g. Standardised operational quality and reduced compliance risk"
-                  className="flex-1 text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddOrgBenefit}
-                  className="px-3.5 py-2.5 bg-[#052B66] text-white font-bold rounded-lg text-xs hover:bg-[#042150] cursor-pointer"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-
-            {/* Employee Benefits */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#052B66]">
-                  [EMPLOYEE BENEFITS]
-                </h3>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {s.employeeBenefits.length} items
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {s.employeeBenefits.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs border border-slate-200">
-                    <span className="text-slate-700">{item}</span>
-                    <button onClick={() => handleDeleteEmpBenefit(idx)} className="text-rose-500 hover:text-rose-700 p-1">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newEmpBenefit}
-                  onChange={e => setNewEmpBenefit(e.target.value)}
-                  placeholder="e.g. Enhanced confidence using digital tools with zero risk of penalty"
-                  className="flex-1 text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddEmpBenefit}
-                  className="px-3.5 py-2.5 bg-[#052B66] text-white font-bold rounded-lg text-xs hover:bg-[#042150] cursor-pointer"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6 space-y-6">
-            {/* Risk Reduction Outcomes */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#052B66]">
-                  [RISK REDUCTION & COMPLIANCE]
-                </h3>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {(s.riskReductionOutcomes || []).length} items
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                {(s.riskReductionOutcomes || []).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg text-xs border border-slate-200">
-                    <span className="text-slate-700">{item}</span>
-                    <button onClick={() => handleDeleteRiskOutcome(idx)} className="text-rose-500 hover:text-rose-700 p-1">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newRiskOutcome}
-                  onChange={e => setNewRiskOutcome(e.target.value)}
-                  placeholder="e.g. Strict containment of personally identifiable information (POPIA)"
-                  className="flex-1 text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddRiskOutcome}
-                  className="px-3.5 py-2.5 bg-[#052B66] text-white font-bold rounded-lg text-xs hover:bg-[#042150] cursor-pointer"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-
-            {/* Course Scope Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
+      ) : (
+        /* Detailed Tabs View */
+        <>
+          {activeSlideTab === 'meta' && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  SLIDE 09 · BOUNDARIES
+                  SLIDE 07 · SPECIFICATIONS
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
-                  [COURSE SCOPE & DELINEATION]
+                  Course Metadata & Delivery Specifications
                 </h3>
               </div>
 
-              <EditorialField
-                label="[IN-SCOPE TOPICS & BOUNDARIES]"
-                value={s.scope}
-                onChange={val => handleStructureChange('scope', val)}
-                placeholder="e.g. Focuses on prompt construction, output verification checklists, POPIA compliance, and practical office tasks."
-                multiline
-                rows={3}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <EditorialField
+                  label="[COURSE TITLE]"
+                  value={s.title}
+                  onChange={val => handleStructureChange('title', val)}
+                  placeholder="e.g. AI Literacy for the Modern Workplace"
+                  required
+                />
 
-              <EditorialField
-                label="[KEY COMPETENCIES DEVELOPED]"
-                value={s.keyCompetencies}
-                onChange={val => handleStructureChange('keyCompetencies', val)}
-                placeholder="e.g. Critical output evaluation, structured prompt framing, data anonymisation, compliance sign-off."
-                multiline
-                rows={2}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+                <EditorialField
+                  label="[COURSE CODE / ID]"
+                  value={s.code}
+                  onChange={val => handleStructureChange('code', val)}
+                  placeholder="e.g. EST-AI-2026-01"
+                />
 
-      {activeSlideTab === 'journey' && (
-        /* Slide 10: Learning Journey & Diagnostic Questions */
-        <div className="space-y-6">
-          {/* 5-Step Learning Journey Cards */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                SLIDE 10 · PROGRESSION
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                [5-STEP LEARNING JOURNEY ARCHITECTURE]
-              </h3>
-            </div>
+                <EditorialField
+                  label="[INDUSTRY / DOMAIN]"
+                  value={s.industryDomain}
+                  onChange={val => handleStructureChange('industryDomain', val)}
+                  placeholder="e.g. Financial Services, Operations & Customer Support"
+                />
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              {s.learningJourney.map((step, idx) => (
-                <div
-                  key={step.id}
-                  className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 relative"
-                >
-                  <div className="w-6 h-6 rounded-full bg-[#052B66] text-white text-xs font-bold flex items-center justify-center font-mono">
-                    {step.stepNumber}
-                  </div>
-                  <input
-                    type="text"
-                    value={step.title}
-                    onChange={e => handleJourneyStepChange(idx, 'title', e.target.value)}
-                    className="w-full text-xs font-bold text-[#052B66] bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[#052B66] outline-none pb-0.5"
-                  />
-                  <textarea
-                    rows={3}
-                    value={step.description}
-                    onChange={e => handleJourneyStepChange(idx, 'description', e.target.value)}
-                    className="w-full text-[11px] text-slate-600 bg-transparent border border-transparent hover:border-slate-300 focus:border-[#052B66] rounded p-1 outline-none resize-none leading-tight"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+                <EditorialField
+                  label="[ESTIMATED DURATION]"
+                  value={s.estimatedDuration}
+                  onChange={val => handleStructureChange('estimatedDuration', val)}
+                  placeholder="e.g. 16 hours / 2 CPD credits"
+                  required
+                />
 
-          {/* Diagnostic Pre-Assessment Questions (5-10 Required) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  SLIDE 10 · DIAGNOSTICS
-                </span>
-                <h3 className="text-sm font-bold text-[#052B66]">
-                  [PRE-ASSESSMENT DIAGNOSTIC QUESTIONS]
-                </h3>
-              </div>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                s.diagnosticQuestions.length >= 5
-                  ? 'bg-[#45CC42]/20 text-[#052B66] border-[#45CC42]/40'
-                  : 'bg-amber-50 text-amber-800 border-amber-200'
-              }`}>
-                {s.diagnosticQuestions.length} Questions (Min 5 Required)
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {s.diagnosticQuestions.map((q, idx) => (
-                <div
-                  key={q.id}
-                  className="flex items-start justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl gap-3"
-                >
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10.5px] font-bold text-[#052B66] bg-slate-200 px-2 py-0.5 rounded">
-                        Q0{idx + 1}
-                      </span>
-                      <span className="text-[10px] font-semibold uppercase text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded">
-                        {q.category}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-800 font-medium pt-1">
-                      {q.question}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteDiagnostic(q.id)}
-                    className="text-slate-400 hover:text-rose-600 p-1.5 cursor-pointer"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add diagnostic form */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-[#052B66] uppercase tracking-wide">
-                + Add Diagnostic Question
-              </span>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="md:col-span-1">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase block">
+                    [DELIVERY FORMAT]
+                  </label>
                   <select
-                    value={newDiagCategory}
-                    onChange={e => setNewDiagCategory(e.target.value as DiagnosticQuestion['category'])}
-                    className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+                    value={s.deliveryFormat}
+                    onChange={e => handleStructureChange('deliveryFormat', e.target.value)}
+                    className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:border-[#052B66] outline-none"
                   >
-                    <option value="AI / digital readiness">AI / Digital Readiness</option>
-                    <option value="Problem awareness">Problem Awareness</option>
-                    <option value="Current practices">Current Practices</option>
-                    <option value="Ethics & compliance">Ethics & Compliance</option>
-                    <option value="General domain">General Domain</option>
+                    <option value="Self-paced online">Self-paced online (LMS)</option>
+                    <option value="Blended workshop + digital">Blended workshop + digital</option>
+                    <option value="Facilitator-led interactive">Facilitator-led interactive</option>
+                    <option value="Micro-learning sprint">Micro-learning sprint</option>
                   </select>
                 </div>
-                <div className="md:col-span-3 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newDiagQuestion}
-                    onChange={e => setNewDiagQuestion(e.target.value)}
-                    placeholder="e.g. How often do you verify AI-generated answers against primary policy documents?"
-                    className="flex-1 text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddDiagnostic}
-                    className="px-4 py-2.5 bg-[#052B66] text-white text-xs font-bold rounded-lg hover:bg-[#042150] cursor-pointer"
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold tracking-wider text-[#052B66] uppercase block">
+                    [DIFFICULTY LEVEL]
+                  </label>
+                  <select
+                    value={s.difficultyLevel}
+                    onChange={e => handleStructureChange('difficultyLevel', e.target.value)}
+                    className="w-full text-xs font-normal text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:border-[#052B66] outline-none"
                   >
-                    Add Question
-                  </button>
+                    <option value="Foundational">Foundational (Entry)</option>
+                    <option value="Intermediate">Intermediate (Practitioner)</option>
+                    <option value="Advanced">Advanced (Specialist / Lead)</option>
+                  </select>
+                </div>
+
+                <EditorialField
+                  label="[SETA / NQF ALIGNMENT]"
+                  value={s.setaNqfLevel}
+                  onChange={val => handleStructureChange('setaNqfLevel', val)}
+                  placeholder="e.g. Aligned with NQF Level 5"
+                />
+
+                <EditorialField
+                  label="[TARGET ROLES]"
+                  value={s.targetRoles}
+                  onChange={val => handleStructureChange('targetRoles', val)}
+                  placeholder="e.g. Operations Specialists, Analysts, Team Leads"
+                />
+
+                <EditorialField
+                  label="[DELIVERY LANGUAGES]"
+                  value={s.deliveryLanguages}
+                  onChange={val => handleStructureChange('deliveryLanguages', val)}
+                  placeholder="e.g. English (Plain Business Language)"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeSlideTab === 'purpose' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
+                <div className="border-b border-slate-100 pb-3">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                    SLIDE 08 · RATIONALE
+                  </span>
+                  <h3 className="text-sm font-bold text-[#052B66]">
+                    Course Purpose & Strategic Relevance
+                  </h3>
+                </div>
+
+                <EditorialField
+                  label="[COURSE PURPOSE STATEMENT]"
+                  value={s.purposeStatement}
+                  onChange={val => handleStructureChange('purposeStatement', val)}
+                  placeholder="e.g. Equip corporate professionals with foundational AI fluency, verification procedures, and compliance safeguards."
+                  helperText="The overarching mission of this learning program."
+                  multiline
+                  rows={3}
+                  required
+                />
+
+                <EditorialField
+                  label="[WORKPLACE RELEVANCE & APPLICATION]"
+                  value={s.workplaceRelevance}
+                  onChange={val => handleStructureChange('workplaceRelevance', val)}
+                  placeholder="e.g. Direct integration with routine document drafting, data verification, and cross-functional reporting."
+                  multiline
+                  rows={3}
+                />
+              </div>
+
+              <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
+                <div className="border-b border-slate-100 pb-3">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                    SLIDE 08 · OUTCOMES
+                  </span>
+                  <h3 className="text-sm font-bold text-[#052B66]">
+                    Performance Improvement & Tech Scope
+                  </h3>
+                </div>
+
+                <EditorialField
+                  label="[PERFORMANCE IMPROVEMENT OUTCOME]"
+                  value={s.performanceImprovement}
+                  onChange={val => handleStructureChange('performanceImprovement', val)}
+                  placeholder="e.g. Elimination of hallucination risk in shared outputs and 40% reduction in document drafting turnaround."
+                  multiline
+                  rows={3}
+                />
+
+                <EditorialField
+                  label="[SCOPE & BOUNDARIES]"
+                  value={s.scopeSummary}
+                  onChange={val => handleStructureChange('scopeSummary', val)}
+                  placeholder="e.g. Covers text generative tools, web-based summarizers, and enterprise chat systems. Excludes programming code authoring."
+                  multiline
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeSlideTab === 'benefits' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs border-l-4 border-l-[#45CC42]">
+                <h3 className="text-xs font-bold text-[#052B66] uppercase tracking-wider">
+                  Organisational Benefits
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Value returned to the enterprise upon course completion.
+                </p>
+                <div className="space-y-2">
+                  {s.organisationalBenefits.map((b, idx) => (
+                    <div key={idx} className="p-2.5 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2">
+                      <span className="text-[#45CC42] font-bold">✓</span>
+                      <span>{b}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs border-l-4 border-l-[#45CC42]">
+                <h3 className="text-xs font-bold text-[#052B66] uppercase tracking-wider">
+                  Employee Benefits
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Personal and professional gains for the participating learner.
+                </p>
+                <div className="space-y-2">
+                  {s.employeeBenefits.map((b, idx) => (
+                    <div key={idx} className="p-2.5 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2">
+                      <span className="text-[#45CC42] font-bold">✓</span>
+                      <span>{b}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs border-l-4 border-l-[#45CC42]">
+                <h3 className="text-xs font-bold text-[#052B66] uppercase tracking-wider">
+                  Risk Reduction Outcomes
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Compliance and operational hazards neutralized by this training.
+                </p>
+                <div className="space-y-2">
+                  {(s.riskReductionOutcomes || []).map((b, idx) => (
+                    <div key={idx} className="p-2.5 bg-slate-50 rounded-lg text-xs text-slate-700 flex items-start gap-2">
+                      <span className="text-[#45CC42] font-bold">✓</span>
+                      <span>{b}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          )}
+
+          {activeSlideTab === 'journey' && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs">
+              <div className="border-b border-slate-100 pb-3">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  SLIDE 10 · DIAGNOSTICS & JOURNEY
+                </span>
+                <h3 className="text-sm font-bold text-[#052B66]">
+                  Pre-Assessment Diagnostic Questions ({s.diagnosticQuestions.length})
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {s.diagnosticQuestions.map((q, idx) => (
+                  <div key={q.id || idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                        {q.category}
+                      </span>
+                      <p className="text-xs font-semibold text-slate-800 mt-1.5">
+                        {q.question}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#45CC42] bg-[#45CC42]/10 px-2 py-0.5 rounded">
+                      Ready
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Navigation Buttons */}
@@ -661,13 +562,12 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
         <button
           id="section-03-continue-btn"
           onClick={onContinue}
-          className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+          className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md transition-all flex items-center gap-2 cursor-pointer"
         >
-          <span>Continue to Module Architecture (Section 04) →</span>
+          <span>Continue to Curriculum Modules →</span>
         </button>
       </div>
 
-      {/* Slide Footer */}
       <SlideFooter currentSlide="07" totalSlides="39" />
     </div>
   );

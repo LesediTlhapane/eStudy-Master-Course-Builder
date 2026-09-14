@@ -1142,6 +1142,388 @@ export const blankMasterTemplate: Course = {
   }
 };
 
+export interface CourseTemplateOption {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  course: Course;
+}
+
+export const availableTemplates: CourseTemplateOption[] = [
+  {
+    id: 'master-template-v9',
+    name: 'eStudy Master Course Template v9.0',
+    badge: 'Universal Framework',
+    description: 'Clean standard instructional architecture with the full 9-section structure, baseline learning journey, and guidance standards.',
+    course: blankMasterTemplate
+  },
+  {
+    id: 'financial-literacy-benchmark',
+    name: 'Financial Literacy AI Benchmark Reference',
+    badge: 'Benchmark Course',
+    description: 'Complete pre-populated exemplar course with verified FSCA/POPIA sources, 3 fully articulated modules, and real workplace scenarios.',
+    course: financialLiteracyBenchmarkCourse
+  }
+];
+
+export function createScratchCourse(title: string = 'Untitled Course'): Course {
+  const newId = `course-${Date.now()}`;
+  return {
+    id: newId,
+    name: title,
+    code: `EST-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+    status: 'Draft',
+    lastModified: 'Just now',
+    problem: {
+      targetGroup: '',
+      taskOrSkill: '',
+      operationalImpact: '',
+      rootCauses: [],
+      processFailures: '',
+      skillGaps: '',
+      constraints: '',
+      aiLiteracyGap: '',
+      digitalReadinessLevel: '',
+      aiEthicsComplianceRisk: ''
+    },
+    research: {
+      sources: [],
+      regulatoryFramework: '',
+      aiToolsPlatformName: '',
+      aiEthicsFramework: '',
+      caseStudyUseCases: '',
+      evidenceStandards: [],
+      benchmarkingNotes: '',
+      benchmarkCourseRef: ''
+    },
+    structure: {
+      title: title,
+      code: `EST-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+      industryDomain: '',
+      targetRoles: '',
+      aiIntegrationLevel: 'Applied',
+      setaNqfLevel: '',
+      deliveryLanguages: 'English (South African Business Context)',
+      estimatedDuration: '16 Hours / 2 CPD Credits',
+      deliveryFormat: 'Blended Digital Courseware with Interactive LMS Scenarios',
+      difficultyLevel: 'Intermediate',
+      purposeStatement: '',
+      workplaceRelevance: '',
+      performanceImprovement: '',
+      aiTechAngle: '',
+      scopeSummary: '',
+      aiEraRelevance: '',
+      performanceLink: '',
+      organisationalBenefits: [],
+      employeeBenefits: [],
+      riskReductionOutcomes: [],
+      scope: '',
+      keyCompetencies: '',
+      realWorldApplication: '',
+      aiSkillsDeveloped: '',
+      jobRoles: '',
+      departments: '',
+      experienceLevel: 'Entry to Mid-level',
+      aiFamiliarityBaseline: 'Basic',
+      prerequisiteKnowledge: '',
+      prerequisiteExperience: '',
+      toolsSystems: '',
+      digitalLiteracyLevel: 'NQF Level 4 minimum',
+      diagnosticQuestions: [],
+      learningJourney: [
+        {
+          id: 'step-init-1',
+          stepNumber: 1,
+          title: 'Discover & Demystify',
+          subtitle: 'Foundational Knowledge & AI Literacy',
+          description: 'Understand core domain concepts, terminology, and baseline ethical principles.'
+        },
+        {
+          id: 'step-init-2',
+          stepNumber: 2,
+          title: 'Practise & Apply',
+          subtitle: 'Scenario-Based Workplace Simulation',
+          description: 'Execute practical tasks, workplace procedures, and AI-augmented tools.'
+        },
+        {
+          id: 'step-init-3',
+          stepNumber: 3,
+          title: 'Evaluate & Audit',
+          subtitle: 'Critical Thinking & Quality Control',
+          description: 'Critique outputs, catch hallucinations, and enforce human oversight.'
+        },
+        {
+          id: 'step-init-4',
+          stepNumber: 4,
+          title: 'Embed & Govern',
+          subtitle: 'SOPs, Action Plans & Lifelong Learning',
+          description: 'Deploy 30-day workplace action plan and integrate continuous learning.'
+        }
+      ]
+    },
+    modules: [
+      {
+        id: 'mod-1',
+        moduleNumber: 1,
+        title: 'Module 1: Foundational Understanding',
+        subtitle: 'Core Concepts & Domain Baseline',
+        purpose: '',
+        keySkills: [],
+        learningObjectives: [],
+        status: 'Not started',
+        requirements: {
+          problemDefinition: '',
+          workplaceContext: '',
+          keyTerms: '',
+          causes: '',
+          warningSigns: '',
+          impactStatement: '',
+          aiDemystification: '',
+          aiInThisDomain: '',
+          aiToolsOverview: '',
+          responsibleAiPrinciples: '',
+          toolsAndTechniques: '',
+          procedureSteps: '',
+          roleResponsibilities: '',
+          communicationApproach: '',
+          supportMechanisms: '',
+          scenarios: [],
+          aiScenarios: [],
+          implementationStrategy: '',
+          rolloutMethod: '',
+          meApproach: '',
+          improvementCycle: '',
+          implementationChecklistTitle: '',
+          rolloutFrameworkTitle: '',
+          riskComplianceSectionTitle: '',
+          continuousAiLearningApproach: '',
+          aiGovernanceFramework: '',
+          aiFeedbackReviewMechanism: ''
+        }
+      },
+      {
+        id: 'mod-2',
+        moduleNumber: 2,
+        title: 'Module 2: Practical Application & Workplace Intervention',
+        subtitle: 'Scenario-Driven Tools, Techniques & Procedures',
+        purpose: '',
+        keySkills: [],
+        learningObjectives: [],
+        status: 'Not started',
+        requirements: {
+          problemDefinition: '',
+          workplaceContext: '',
+          keyTerms: '',
+          causes: '',
+          warningSigns: '',
+          impactStatement: '',
+          aiDemystification: '',
+          aiInThisDomain: '',
+          aiToolsOverview: '',
+          responsibleAiPrinciples: '',
+          toolsAndTechniques: '',
+          procedureSteps: '',
+          roleResponsibilities: '',
+          communicationApproach: '',
+          supportMechanisms: '',
+          scenarios: [],
+          aiScenarios: [],
+          implementationStrategy: '',
+          rolloutMethod: '',
+          meApproach: '',
+          improvementCycle: '',
+          implementationChecklistTitle: '',
+          rolloutFrameworkTitle: '',
+          riskComplianceSectionTitle: '',
+          continuousAiLearningApproach: '',
+          aiGovernanceFramework: '',
+          aiFeedbackReviewMechanism: ''
+        }
+      },
+      {
+        id: 'mod-3',
+        moduleNumber: 3,
+        title: 'Module 3: Implementation, Governance & Continuous Skilling',
+        subtitle: 'Rollout Framework, Compliance Matrix & Action Plan',
+        purpose: '',
+        keySkills: [],
+        learningObjectives: [],
+        status: 'Not started',
+        requirements: {
+          problemDefinition: '',
+          workplaceContext: '',
+          keyTerms: '',
+          causes: '',
+          warningSigns: '',
+          impactStatement: '',
+          aiDemystification: '',
+          aiInThisDomain: '',
+          aiToolsOverview: '',
+          responsibleAiPrinciples: '',
+          toolsAndTechniques: '',
+          procedureSteps: '',
+          roleResponsibilities: '',
+          communicationApproach: '',
+          supportMechanisms: '',
+          scenarios: [],
+          aiScenarios: [],
+          implementationStrategy: '',
+          rolloutMethod: '',
+          meApproach: '',
+          improvementCycle: '',
+          implementationChecklistTitle: '',
+          rolloutFrameworkTitle: '',
+          riskComplianceSectionTitle: '',
+          continuousAiLearningApproach: '',
+          aiGovernanceFramework: '',
+          aiFeedbackReviewMechanism: ''
+        }
+      }
+    ],
+    learningDesign: {
+      coreStandardsSummary: 'Structured module flow with clear learning progression; Scenario-based learning; Real workplace application.',
+      aiDemoSimulationDescription: '',
+      promptExerciseDescription: '',
+      aiEvaluationTask: '',
+      collaborationActivity: '',
+      learningObjectivesList: [],
+      instructionalApproach: 'Scenario-based, interactive, and aligned with Bloom\'s Taxonomy.',
+      workplaceActivities: [],
+      examplesAndRelevance: '',
+      knowledgeChecksDescription: '',
+      criticalThinkingDescription: '',
+      reflectionPrompts: '',
+      learnerEngagementTypes: [
+        'Interactive Scenarios',
+        'Knowledge Checks',
+        'Action Plan Authoring'
+      ],
+      assessments: [
+        {
+          id: 'ass-init-1',
+          type: 'Pre-Course Diagnostic',
+          description: 'Baseline assessment before Module 1',
+          timing: 'Before Module 1',
+          weighting: 'Ungraded (Baseline Assessment)',
+          notes: '5–10 diagnostic questions assessing prior knowledge and AI readiness.'
+        },
+        {
+          id: 'ass-init-2',
+          type: 'Module Knowledge Checks',
+          description: 'Formative quizzes at the end of each module',
+          timing: 'End of each module',
+          weighting: 'Formative (Self-check with detailed remedial feedback)',
+          notes: 'Minimum 5 questions per module.'
+        },
+        {
+          id: 'ass-init-3',
+          type: 'Practical Application Task',
+          description: 'Workplace-based exercise and Action Plan',
+          timing: 'After Module 2',
+          weighting: '40% of Final Grade',
+          passMark: '70%',
+          notes: 'Demonstrates practical application in workplace context.'
+        },
+        {
+          id: 'ass-init-4',
+          type: 'Final Assessment',
+          description: 'Summative assessment covering all modules',
+          timing: 'After Module 3',
+          weighting: '60% of Final Grade',
+          passMark: '80%',
+          notes: 'Scenario-based final exam.'
+        }
+      ]
+    },
+    ethics: {
+      confidentialityRequirements: '',
+      dataPrivacyFramework: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
+      ethicsStandards: '',
+      psychologicalSafetyNotes: '',
+      decisionMakingFramework: '',
+      accountabilityMechanism: '',
+      aiBiasRisk: '',
+      aiDisclosureRequirement: '',
+      humanOverrideScenarios: '',
+      dataSovereigntyContext: '',
+      aiWorkforceImpactNarrative: '',
+      aiGovernanceReference: 'SA DCDT AI Policy Framework & UNESCO AI Ethics Recommendations',
+      cards: [
+        {
+          id: 'eth-1',
+          title: 'Privacy & Confidentiality',
+          subtitle: 'POPIA controls',
+          status: 'Needs input',
+          guidingQuestion: 'What measures are in place to ensure confidential business data and personal information are protected from public AI exposure?',
+          response: '',
+          exampleText: '',
+          complianceRef: 'POPIA Act 4 of 2013, Section 19'
+        },
+        {
+          id: 'eth-2',
+          title: 'Bias & Fairness',
+          subtitle: 'Risk examples',
+          status: 'Needs input',
+          guidingQuestion: 'How does the course address potential bias and discrimination in AI-generated predictions and recommendations?',
+          response: '',
+          exampleText: '',
+          complianceRef: 'Constitution of South Africa Section 9'
+        },
+        {
+          id: 'eth-3',
+          title: 'Transparency',
+          subtitle: 'Disclosure guidance',
+          status: 'Needs input',
+          guidingQuestion: 'When and how should employees disclose that AI tools were used in preparing workplace content?',
+          response: '',
+          exampleText: '',
+          complianceRef: 'King IV Corporate Governance Report'
+        },
+        {
+          id: 'eth-4',
+          title: 'Human Oversight',
+          subtitle: 'Escalation decisions',
+          status: 'Needs input',
+          guidingQuestion: 'What decisions must NEVER be fully delegated to AI without human review and sign-off?',
+          response: '',
+          exampleText: '',
+          complianceRef: 'POPIA Section 71 (Automated decision making)'
+        }
+      ]
+    },
+    outputRequirements: {
+      outputFormat: 'LMS-Ready SCORM / xAPI compliant structured digital course with interactive modules and printable action plans.',
+      requiredSectionsNote: 'All nine numbered sections of Master Prompt v9.0 retained with strict instructional hierarchy.',
+      moduleRequirementsRule: 'Minimum 3 modules with foundational, practical, and governance progression.',
+      assessmentRequirementsRule: 'Pre-course diagnostic (ungraded), formative module knowledge checks (min 5 per module), practical task (40%), final summative exam (80% pass mark).',
+      scenarioRequirementsRule: '3–5 realistic workplace scenarios per module; minimum 2 AI-specific scenarios with Situation, Challenge, Decision Point, and Debrief.',
+      mandatoryDeliverablesRule: '30-Day Action Plan, Rollout Framework SOP, and Risk & Compliance Matrix.',
+      referencesRule: 'All references current, reputable, South Africa aligned (POPIA, King IV, NQF).',
+      accessibilityTargetReadingLevel: 'Plain language · NQF Level 4 / Grade 12 equivalent reading comprehension.',
+      plainLanguageApplied: true,
+      culturalInclusivityNotes: '',
+      formattingRequirements: 'Consistent typography hierarchy: H1 (Module), H2 (Core Lesson), H3 (Scenario / Activity).'
+    },
+    qa: {
+      benchmarkReviewed: false,
+      benchmarkReviewNotes: '',
+      qaChecklistConfirmed: false
+    },
+    customisation: {
+      branding: 'eStudy South Africa',
+      tone: 'Professional, supportive, action-oriented, and accessible',
+      audienceContext: '',
+      industryExamples: '',
+      terminology: '',
+      formatting: '',
+      deliveryPreferences: 'LMS SCORM Package + Facilitator Guide + Participant Action Plan',
+      planningNotes: [],
+      historicalCourses: []
+    }
+  };
+}
+
 export const sampleCourses: Course[] = [
   financialLiteracyBenchmarkCourse,
   blankMasterTemplate

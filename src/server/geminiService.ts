@@ -706,62 +706,35 @@ export async function processCopilotChat(payload: CopilotChatPayload): Promise<C
 
     // 5. Course Brief / Creation Flow Elicitation
     // Check if the user mentioned a topic
-    const topicMatch = lastUserMessage.replace(/(i want to create a course about|i want to build a course on|create a course for|build a course about|make a course on)/i, '').trim();
-    const courseTitle = topicMatch.length > 3 ? topicMatch.charAt(0).toUpperCase() + topicMatch.slice(1) : (currentCourse.structure.title || 'Responsible AI for Workplace Leaders');
-    
-    // Check if enough info is provided or if clarification is needed
-    const hasAudience = lowerQuery.includes('manager') || lowerQuery.includes('employee') || lowerQuery.includes('accountant') || lowerQuery.includes('developer') || lowerQuery.includes('leader') || lowerQuery.includes('officer') || lowerQuery.includes('team');
-    const hasDuration = lowerQuery.includes('hour') || lowerQuery.includes('day') || lowerQuery.includes('week') || lowerQuery.includes('cpd');
+    let courseTitle = lastUserMessage
+      .replace(/(i want to create a course about|i want to build a course on|create a course for|build a course about|make a course on|i want to create a course on|can you create a course on|can you build a course on)/i, '')
+      .replace(/^[,\s.:"']+|[,\s.:"']+$/g, '')
+      .trim();
 
-    if (!hasAudience || !hasDuration) {
-      return {
-        message: `Great! I've noted the topic: **"${courseTitle}"**.\n\nBefore I finalize the course structure against the **eStudy Master Course Framework v9.0**, please share a few quick details:\n\n1. **Target Roles & Audience**: Who will take this course (e.g. line managers, financial officers, all employees)?\n2. **Expected Duration**: What is the target duration (e.g. 4–6 Hours self-paced, 16 Hours / 2 CPD credits)?\n3. **Baseline Knowledge**: What prior digital/AI proficiency do learners have (None / Basic / Intermediate)?\n4. **Workplace Context**: Which industry or regulatory emphasis should we focus on (e.g. POPIA, FSCA, Healthcare, Corporate Ops)?`,
-        courseBrief: {
-          ready: false,
-          title: courseTitle,
-          targetAudience: hasAudience ? 'Managers & Team Leads' : 'To be specified',
-          industryContext: 'South African Corporate & Operational Context',
-          duration: hasDuration ? '16 Hours / 2 CPD Credits' : '4–6 Hours (Estimated)',
-          moduleCount: 3
-        },
-        suggestedActions: [
-          {
-            id: 'brief-managers',
-            label: '👥 Set Audience: Managers & Leaders',
-            actionType: 'send_prompt' as const,
-            payload: { prompt: 'Target audience: Operational Managers and Team Leads across corporate departments.' }
-          },
-          {
-            id: 'brief-duration',
-            label: '⏱️ Duration: 16 Hours / 2 CPD Credits',
-            actionType: 'send_prompt' as const,
-            payload: { prompt: 'Duration: 16 Hours / 2 CPD Credits, Intermediate level.' }
-          },
-          {
-            id: 'brief-popia',
-            label: '🇿🇦 South African POPIA Focus',
-            actionType: 'send_prompt' as const,
-            payload: { prompt: 'Emphasize South African POPIA Act 4 of 2013 and King IV compliance.' }
-          }
-        ]
-      };
+    if (!courseTitle || courseTitle.length < 3) {
+      courseTitle = currentCourse.structure.title || currentCourse.name || 'Responsible AI for Workplace Leaders';
+    } else {
+      courseTitle = courseTitle.charAt(0).toUpperCase() + courseTitle.slice(1);
     }
 
-    // If enough info is present, build a ready brief!
+    // Determine target roles from query or default
+    const detectedAudience = lowerQuery.includes('manager') 
+      ? 'Operational Managers & Department Leads'
+      : lowerQuery.includes('developer') || lowerQuery.includes('engineer')
+      ? 'Technical Engineers & Software Developers'
+      : lowerQuery.includes('finance') || lowerQuery.includes('account')
+      ? 'Financial Controllers & Accounting Specialists'
+      : lowerQuery.includes('hr') || lowerQuery.includes('people')
+      ? 'Human Resources & People Operations Leads'
+      : 'Corporate Professionals, Team Leads & Knowledge Workers';
+
+    // Formulate a ready-to-apply course brief and patch immediately!
     return {
-      message: `### Your course brief is ready.
-
-**COURSE**: ${courseTitle}  
-**AUDIENCE**: Operational Managers & Department Leads  
-**CONTEXT**: South African Enterprise & POPIA Regulatory Environment  
-**DURATION**: 16 Hours / 2 CPD Credits (NQF Level 5 Alignment)  
-**MODULES**: 3 Structured Modules (Foundations → Practical Execution → Governance & SOPs)
-
-I have mapped this brief into the **9-section eStudy Master Template**. Click below to generate the complete course or apply the outline to the builder.`,
+      message: `### I've designed your course brief for **"${courseTitle}"**!\n\n**COURSE**: ${courseTitle}  \n**AUDIENCE**: ${detectedAudience}  \n**CONTEXT**: South African Enterprise & POPIA Act 4 of 2013 Compliance  \n**DURATION**: 16 Hours / 2 CPD Credits (NQF Level 5 Alignment)  \n**MODULES**: 3 Core Workplace Modules\n\nI have pre-filled all course details, problem statements, and learning objectives into your Course Builder. Click **"⚡ GENERATE COURSE"** to synthesize the full curriculum, or refine any details in the builder.`,
       courseBrief: {
         ready: true,
         title: courseTitle,
-        targetAudience: 'Operational Managers & Department Leads',
+        targetAudience: detectedAudience,
         industryContext: 'South African Enterprise & POPIA Regulatory Environment',
         duration: '16 Hours / 2 CPD Credits',
         moduleCount: 3
@@ -771,17 +744,17 @@ I have mapped this brief into the **9-section eStudy Master Template**. Click be
         structure: {
           ...currentCourse.structure,
           title: courseTitle,
-          targetRoles: 'Operational Managers & Department Leads',
+          targetRoles: detectedAudience,
           industryDomain: 'Corporate Enterprise & Professional Services',
           estimatedDuration: '16 Hours / 2 CPD Credits',
           difficultyLevel: 'Intermediate',
-          purposeStatement: `Equip managers and team leads with practical skills to deploy AI tools safely and effectively within ${courseTitle}, ensuring strict POPIA compliance and human oversight.`
+          purposeStatement: `Equip ${detectedAudience.toLowerCase()} with practical skills, verified procedures, and compliance safeguards in ${courseTitle}, ensuring strict POPIA compliance and human oversight.`
         },
         problem: {
           ...currentCourse.problem,
-          targetGroup: 'Managers and team leaders leading digital workflows',
-          taskOrSkill: `Effective leadership and governance in ${courseTitle}`,
-          operationalImpact: 'Sub-optimal productivity gains, unvetted AI tool adoption, and regulatory compliance exposure'
+          targetGroup: detectedAudience,
+          taskOrSkill: `Effective operational execution and governance in ${courseTitle}`,
+          operationalImpact: 'Reduction in errors, improved daily productivity, and full audit-ready compliance.'
         }
       },
       suggestedActions: [
@@ -800,13 +773,13 @@ I have mapped this brief into the **9-section eStudy Master Template**. Click be
             structure: {
               ...currentCourse.structure,
               title: courseTitle,
-              targetRoles: 'Operational Managers & Department Leads'
+              targetRoles: detectedAudience
             }
           }
         },
         {
           id: 'view-sec-01',
-          label: '🔍 Review Problem Statement',
+          label: '🔍 Review Problem & Context',
           actionType: 'jump_to_section' as const,
           payload: { section: '01' }
         }

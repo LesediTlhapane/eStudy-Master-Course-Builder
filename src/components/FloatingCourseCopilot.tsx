@@ -208,6 +208,22 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
 
       setMessages(prev => [...prev, assistantMsg]);
 
+      // If response contained a course patch, automatically apply it to course builder fields
+      if (data.coursePatch) {
+        onUpdateCourse(prev => ({
+          ...prev,
+          ...data.coursePatch,
+          structure: {
+            ...prev.structure,
+            ...(data.coursePatch.structure || {})
+          },
+          problem: {
+            ...prev.problem,
+            ...(data.coursePatch.problem || {})
+          }
+        }));
+      }
+
       // If response contained a brief or patch, trigger pulse notification if panel is closed
       if (!isOpen) {
         setHasNewNotification(true);

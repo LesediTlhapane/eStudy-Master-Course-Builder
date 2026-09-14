@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course } from '../types';
-import { Check, HelpCircle, ArrowRight, ArrowLeft, Lightbulb, Info, LayoutGrid, ListChecks } from 'lucide-react';
+import { Check, HelpCircle, ArrowRight, ArrowLeft, Lightbulb, Info, LayoutGrid, ListChecks, Sparkles, FileText } from 'lucide-react';
 import { SlideHeader } from './SlideHeader';
 import { SlideFooter } from './SlideFooter';
 import { FrameworkCallout } from './FrameworkCallout';
@@ -89,12 +89,33 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
   onContinue,
   onBack
 }) => {
-  const [viewMode, setViewMode] = useState<'slide' | 'guided'>('slide');
+  const [viewMode, setViewMode] = useState<'single' | 'slide' | 'guided'>('single');
   const [currentStep, setCurrentStep] = useState(1);
   const [showWhyHelp, setShowWhyHelp] = useState(false);
+  const [skippedNotice, setSkippedNotice] = useState(false);
 
   const q = QUESTIONS[currentStep - 1] || QUESTIONS[0];
   const problem = course.problem;
+
+  const handleSkipUnknownProblem = () => {
+    onUpdate(prev => {
+      const p = prev.problem;
+      const title = prev.name || prev.structure?.title || 'workplace operations';
+      return {
+        ...prev,
+        problem: {
+          ...p,
+          taskOrSkill: p.taskOrSkill || `Employees require practical, verified skills to execute daily tasks and decision-making in ${title} without operational delays or compliance risks.`,
+          targetGroup: p.targetGroup || 'Operational specialists, team leads, consultants, and corporate knowledge workers.',
+          skillGaps: p.skillGaps || '[AI Auto-Complete: Lack of standardized operating procedures, verification checklists, and statutory POPIA privacy awareness.]',
+          aiLiteracyGap: p.aiLiteracyGap || '[AI Auto-Complete: Urgent operational demand for digital efficiency combined with zero-tolerance for unverified errors or data breaches.]',
+          operationalImpact: p.operationalImpact || '[AI Auto-Complete: Elimination of procedural bottlenecks, audit-ready compliance, and measurable productivity improvements.]'
+        }
+      };
+    });
+    setSkippedNotice(true);
+    setTimeout(() => setSkippedNotice(false), 3500);
+  };
 
   const getFieldValue = (key: QuestionConfig['fieldKey']): string => {
     return problem[key] || '';
@@ -135,12 +156,56 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
         variant="requirement"
       />
 
-      {/* View Mode Toggle: Slide Overview vs Guided Step-by-Step */}
+      {/* Skip Unknown Information Banner */}
+      <div className="p-4 bg-white border border-[#45CC42] rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[#45CC42]">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#45CC42]/15 text-[#052B66] flex items-center justify-center shrink-0 mt-0.5">
+            <Sparkles className="w-5 h-5 text-[#45CC42]" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-[#052B66]">
+              Not sure about root causes or operational impact metrics?
+            </h4>
+            <p className="text-[11.5px] text-slate-500 leading-snug">
+              Skip any fields you don't know. The AI generation engine will formulate root causes, skill gaps, and measurable operational outcomes.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSkipUnknownProblem}
+          className="px-4 py-2 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Skip Unknown Problem Specs</span>
+        </button>
+      </div>
+
+      {skippedNotice && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-[#45CC42] text-[#052B66] text-xs font-semibold flex items-center gap-2 animate-fade-in">
+          <Check className="w-4 h-4 text-[#45CC42] stroke-[3]" />
+          <span>Problem statement and performance gaps formulated!</span>
+        </div>
+      )}
+
+      {/* View Mode Toggle: Single Portrait Panel vs 2-Column Grid vs Guided Step-by-Step */}
       <div className="flex items-center justify-between pb-1">
         <div className="text-xs text-slate-500 font-medium">
           Universal Master Prompt Template v9.0 · Context Architecture
         </div>
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
+          <button
+            onClick={() => setViewMode('single')}
+            className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              viewMode === 'single'
+                ? 'bg-white text-[#052B66] shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Single Panel</span>
+          </button>
           <button
             onClick={() => setViewMode('slide')}
             className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -150,7 +215,7 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            <span>Slide Grid View</span>
+            <span>2-Column Grid</span>
           </button>
           <button
             onClick={() => setViewMode('guided')}
@@ -166,7 +231,120 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
         </div>
       </div>
 
-      {viewMode === 'slide' ? (
+      {viewMode === 'single' ? (
+        /* Single Cohesive Panel (Continuous Portrait Document Flow) */
+        <div className="bg-slate-100/80 p-4 sm:p-8 rounded-2xl border border-slate-200/80 flex justify-center w-full min-h-[850px]">
+          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 p-7 sm:p-10 shadow-xs space-y-7 font-sora">
+            {/* Top Large Heading from SLIDE 03 - CORE CHALLENGE */}
+            <div className="border-b border-slate-100 pb-4">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                SLIDE 03 · CORE CHALLENGE
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-[#052B66] tracking-tight">
+                Problem & Impact Definition
+              </h2>
+            </div>
+
+            {/* [PROBLEM STATEMENT] */}
+            <EditorialField
+              label="[PROBLEM STATEMENT]"
+              value={problem.taskOrSkill}
+              onChange={val => handleFieldChange('taskOrSkill', val)}
+              placeholder="e.g. Employees struggle to apply generative AI tools effectively in daily tasks without introducing factual errors or data leaks."
+              helperText="Define the specific workplace task or skill that employees struggle with or are performing unsafely."
+              example="“Employees are unable to effectively apply AI tools in daily workflows with proper verification, resulting in potential errors and compliance risks.”"
+              multiline
+              rows={3}
+              required
+              requiredText="Required"
+            />
+
+            {/* [WHY THIS COURSE IS NEEDED] */}
+            <EditorialField
+              label="[WHY THIS COURSE IS NEEDED]"
+              value={problem.aiLiteracyGap}
+              onChange={val => handleFieldChange('aiLiteracyGap', val)}
+              placeholder="e.g. AI tools are already being used informally, but employees lack a shared standard for safe, verified and accountable use."
+              helperText="Describe the urgency, business context, technological shifts or risks that make this learning important."
+              multiline
+              rows={3}
+              allowSkip
+            />
+
+            {/* [TARGET OUTCOME & OPERATIONAL IMPACT] */}
+            <EditorialField
+              label="[TARGET OUTCOME & OPERATIONAL IMPACT]"
+              value={problem.operationalImpact}
+              onChange={val => handleFieldChange('operationalImpact', val)}
+              placeholder="e.g. 90% reduction in unverified draft errors, zero POPIA data breaches, and faster turnaround on routine documentation."
+              helperText="Describe the tangible operational, financial, compliance or productivity outcomes expected upon course completion."
+              multiline
+              rows={3}
+              allowSkip
+            />
+
+            {/* Seamlessly Integrated Heading from SLIDE 04 - TARGET PROFILE */}
+            <div className="pt-6 border-t border-slate-200">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+                SLIDE 04 · TARGET PROFILE
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-[#052B66] tracking-tight">
+                Audience & Capability Gap
+              </h2>
+            </div>
+
+            {/* [PRIMARY TARGET AUDIENCE] */}
+            <EditorialField
+              label="[PRIMARY TARGET AUDIENCE]"
+              value={problem.targetGroup}
+              onChange={val => handleFieldChange('targetGroup', val)}
+              placeholder="e.g. Corporate employees, operations analysts, customer service consultants, and team leads"
+              helperText="Identify the employees, roles, departments or customer groups who will complete this course."
+              multiline
+              rows={2}
+              required
+              requiredText="Required"
+            />
+
+            {/* [PERFORMANCE GAP & ROOT CAUSES] */}
+            <EditorialField
+              label="[PERFORMANCE GAP & ROOT CAUSES]"
+              value={problem.skillGaps}
+              onChange={val => handleFieldChange('skillGaps', val)}
+              placeholder="e.g. Lack of structured prompt techniques, missing output verification checklists, and unawareness of POPIA data redaction"
+              helperText="Describe the underlying root causes, missing skills, or process failures involved in this challenge."
+              multiline
+              rows={3}
+              allowSkip
+            />
+
+            {/* MASTER PROMPT FORMULA SYNTHESIS */}
+            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 mt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#052B66]">
+                  MASTER PROMPT FORMULA SYNTHESIS
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">v9.0 Standard</span>
+              </div>
+              <p className="text-xs text-slate-700 italic leading-relaxed">
+                "This course addresses the inability of{' '}
+                <span className="font-semibold text-[#052B66] not-italic">
+                  {problem.targetGroup || '[TARGET GROUP]'}
+                </span>{' '}
+                to effectively perform{' '}
+                <span className="font-semibold text-[#052B66] not-italic">
+                  {problem.taskOrSkill || '[TASK / SKILL]'}
+                </span>
+                , resulting in{' '}
+                <span className="font-semibold text-[#052B66] not-italic">
+                  {problem.operationalImpact || '[OPERATIONAL / COMPLIANCE IMPACT]'}
+                </span>
+                ."
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : viewMode === 'slide' ? (
         /* PowerPoint 2-Column Slide Grid (Matching Slides 3 & 4) */
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

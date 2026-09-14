@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { Course } from '../types';
-import { Check, Eye, Settings, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Check, Eye, Settings, LayoutDashboard, Sparkles, Download } from 'lucide-react';
 import { AppView } from '../hooks/useCourseStore';
 
 interface TopBarProps {
@@ -11,6 +11,7 @@ interface TopBarProps {
   onNavigateView: (view: AppView) => void;
   onOpenSettings: () => void;
   onUpdateTitle: (newTitle: string) => void;
+  onOpenExportModal?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -19,7 +20,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   saveStatus,
   onNavigateView,
   onOpenSettings,
-  onUpdateTitle
+  onUpdateTitle,
+  onOpenExportModal
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(course.name || course.structure.title);
@@ -36,7 +38,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   return (
     <header
       id="estudy-app-topbar"
-      className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+      className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)] font-sora"
     >
       {/* Left: Brand logo & Dashboard link */}
       <div className="flex items-center gap-6">
@@ -142,8 +144,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
-      {/* Right: Saved status, Preview button, Settings */}
-      <div className="flex items-center gap-3">
+      {/* Right: Saved status, Preview button, Export button, Settings */}
+      <div className="flex items-center gap-2.5">
         {view !== 'dashboard' && (
           <div
             id="topbar-save-status"
@@ -163,20 +165,33 @@ export const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
+        {/* Word / PDF Export & AI Engine Selection Button */}
+        {onOpenExportModal && (
+          <button
+            id="topbar-export-btn"
+            onClick={onOpenExportModal}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-xs transition-all cursor-pointer"
+            title="Export to Word (.docx), PDF or send to AI engine with ratings"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Export / AI Engine</span>
+          </button>
+        )}
+
         {view !== 'preview' ? (
           <button
             id="topbar-preview-btn"
             onClick={() => onNavigateView('preview')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold text-[#052B66] bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#052B66] bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Preview</span>
+            <span>Prompt Preview</span>
           </button>
         ) : (
           <button
             id="topbar-builder-btn"
             onClick={() => onNavigateView('builder')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold text-white bg-[#052B66] hover:bg-[#042150] shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#052B66] hover:bg-[#042150] shadow-xs transition-colors cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#45CC42]" />
             <span>Return to Builder</span>
@@ -186,7 +201,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           id="topbar-settings-btn"
           onClick={onOpenSettings}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
           title="Course Workspace Settings & Export"
         >
           <Settings className="w-3.5 h-3.5" />

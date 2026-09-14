@@ -8,6 +8,7 @@ import { PromptPreview } from './components/PromptPreview';
 import { AIGenerationProgress } from './components/AIGenerationProgress';
 import { GeneratedCourseView } from './components/GeneratedCourseView';
 import { SettingsModal } from './components/SettingsModal';
+import { AIEngineExportModal } from './components/AIEngineExportModal';
 import { Section01Problem } from './components/Section01Problem';
 import { Section02Sources } from './components/Section02Sources';
 import { Section03Structure } from './components/Section03Structure';
@@ -29,11 +30,14 @@ export function App() {
     saveStatus,
     qaResult,
     targetFocusField,
+    availableTemplates,
     setView,
     setActiveSection,
     updateActiveCourse,
     switchCourse,
     createNewCourse,
+    startFromScratch,
+    continueFromTemplate,
     startFromMasterTemplate,
     deleteCourse,
     jumpToSection,
@@ -44,6 +48,7 @@ export function App() {
   } = useCourseStore();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Helper for sequential section navigation
   const handleContinueSection = (currentSec: SectionId) => {
@@ -81,8 +86,13 @@ export function App() {
   if (view === 'cover') {
     return (
       <CoverPage
+        course={activeCourse}
+        onUpdateCourse={updateActiveCourse}
         onStartBuilding={() => setView('builder')}
         onEnterDashboard={() => setView('dashboard')}
+        onStartFromScratch={startFromScratch}
+        onContinueFromTemplate={continueFromTemplate}
+        availableTemplates={availableTemplates}
       />
     );
   }
@@ -97,6 +107,7 @@ export function App() {
         onNavigateView={setView}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onUpdateTitle={handleUpdateCourseTitle}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
       />
 
       {/* Main View Router */}
@@ -106,6 +117,10 @@ export function App() {
           onSelectCourse={switchCourse}
           onCreateNew={createNewCourse}
           onStartFromMasterTemplate={startFromMasterTemplate}
+          onStartFromScratch={startFromScratch}
+          onContinueFromTemplate={continueFromTemplate}
+          availableTemplates={availableTemplates}
+          onDeleteCourse={deleteCourse}
         />
       )}
 
@@ -250,6 +265,14 @@ export function App() {
         onNavigateView={setView}
       />
 
+      {/* AI Engine & Word / PDF Export Modal */}
+      <AIEngineExportModal
+        isOpen={isExportModalOpen}
+        course={activeCourse}
+        onClose={() => setIsExportModalOpen(false)}
+        onStartAIGeneration={startAIGeneration}
+      />
+
       {/* Settings / Backup Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -265,4 +288,3 @@ export function App() {
 }
 
 export default App;
-

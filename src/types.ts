@@ -10,6 +10,8 @@ export type SourceType =
 
 export type SourceStatus = 'Required' | 'Verified' | 'Review' | 'Not verified' | 'Not started';
 
+export type SourceMedium = 'document' | 'url' | 'text' | 'framework';
+
 export interface ResearchSource {
   id: string;
   name: string;
@@ -18,6 +20,12 @@ export interface ResearchSource {
   relevance: string;
   status: SourceStatus;
   notes?: string;
+  medium?: SourceMedium;
+  url?: string;
+  fileName?: string;
+  fileSize?: string;
+  contentSnippet?: string;
+  dateAdded?: string;
 }
 
 export interface Scenario {
@@ -150,6 +158,10 @@ export interface Course {
   code: string;
   status: 'Draft' | 'In Review' | 'Completed';
   lastModified: string;
+  coverLogoUrl?: string;
+  coverVisualUrl?: string;
+  preferredAiEngine?: string;
+  skippedFields?: string[];
   
   // Section 01 - Problem & Challenge
   problem: {
