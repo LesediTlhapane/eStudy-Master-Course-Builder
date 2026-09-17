@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #052B66;
+  --color-primary-dark: #042150;
+  --color-accent: #45CC42;
+  --color-accent-dark: #3ec23b;
+}
+
 @layer base {
   :root {
     --primary: 215 90% 21%; /* #052B66 */

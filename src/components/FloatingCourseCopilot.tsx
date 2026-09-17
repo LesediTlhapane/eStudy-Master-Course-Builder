@@ -38,7 +38,7 @@ interface ChatMessage {
   suggestedActions?: Array<{
     id: string;
     label: string;
-    actionType: 'generate_course' | 'apply_course_patch' | 'jump_to_section' | 'send_prompt' | 'add_knowledge_check';
+    actionType: 'generate_course' | 'apply_course_patch' | 'jump_to_section' | 'send_prompt' | 'add_knowledge_check' | 'open_builder';
     payload?: any;
   }>;
   courseBrief?: {
@@ -208,11 +208,13 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
 
       setMessages(prev => [...prev, assistantMsg]);
 
-      // If response contained a course patch, automatically apply it to course builder fields
+      // If response contained a course patch, automatically apply all 9 sections to course builder
       if (data.coursePatch) {
         onUpdateCourse(prev => ({
           ...prev,
           ...data.coursePatch,
+          name: data.coursePatch.name || prev.name,
+          code: data.coursePatch.code || prev.code,
           structure: {
             ...prev.structure,
             ...(data.coursePatch.structure || {})
@@ -220,8 +222,38 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
           problem: {
             ...prev.problem,
             ...(data.coursePatch.problem || {})
+          },
+          research: {
+            ...prev.research,
+            ...(data.coursePatch.research || {})
+          },
+          modules: data.coursePatch.modules || prev.modules,
+          learningDesign: {
+            ...prev.learningDesign,
+            ...(data.coursePatch.learningDesign || {})
+          },
+          ethics: {
+            ...prev.ethics,
+            ...(data.coursePatch.ethics || {})
+          },
+          outputRequirements: {
+            ...prev.outputRequirements,
+            ...(data.coursePatch.outputRequirements || {})
+          },
+          qa: {
+            ...prev.qa,
+            ...(data.coursePatch.qa || {})
+          },
+          customisation: {
+            ...prev.customisation,
+            ...(data.coursePatch.customisation || {})
           }
         }));
+
+        // If user is currently on cover or dashboard view, smoothly transition to builder view so they see the populated fields
+        if (view === 'cover' || view === 'dashboard') {
+          onNavigateView('builder');
+        }
       }
 
       // If response contained a brief or patch, trigger pulse notification if panel is closed
@@ -254,8 +286,16 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   const handleActionClick = (action: { actionType: string; payload?: any }) => {
     if (action.actionType === 'generate_course') {
       onStartAIGeneration();
+    } else if (action.actionType === 'open_builder') {
+      onNavigateView('builder');
+      if (action.payload?.section) {
+        onJumpToSection(action.payload.section as SectionId);
+      }
+    } else if (action.actionType === 'open_preview') {
+      onNavigateView('preview');
     } else if (action.actionType === 'jump_to_section') {
-      const targetSec = action.payload?.section as SectionId || '01';
+      const targetSec = (action.payload?.section as SectionId) || '01';
+      onNavigateView('builder');
       onJumpToSection(targetSec);
     } else if (action.actionType === 'apply_course_patch' && action.payload) {
       onUpdateCourse(prev => ({
@@ -268,14 +308,37 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
         problem: {
           ...prev.problem,
           ...(action.payload.problem || {})
+        },
+        research: {
+          ...prev.research,
+          ...(action.payload.research || {})
+        },
+        modules: action.payload.modules || prev.modules,
+        learningDesign: {
+          ...prev.learningDesign,
+          ...(action.payload.learningDesign || {})
+        },
+        ethics: {
+          ...prev.ethics,
+          ...(action.payload.ethics || {})
+        },
+        outputRequirements: {
+          ...prev.outputRequirements,
+          ...(action.payload.outputRequirements || {})
+        },
+        qa: {
+          ...prev.qa,
+          ...(action.payload.qa || {})
         }
       }));
+
+      onNavigateView('builder');
 
       // Confirmation message
       const confirmMsg: ChatMessage = {
         id: `ast-confirm-${Date.now()}`,
         role: 'assistant',
-        content: `✅ **Updates applied to Course Builder!**\n\nThe course outline and required framework parameters have been updated in your active workspace.`,
+        content: `✅ **Updates applied to Course Builder!**\n\nThe course outline and all 9 section parameters have been updated in your active workspace.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: [
           { id: 'view-qa', label: '🔍 Check Framework Readiness', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } },
@@ -509,9 +572,11 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
                           className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                             action.actionType === 'generate_course'
                               ? 'bg-[#45CC42] text-[#052B66] font-bold hover:bg-[#3db83a] shadow-[0_2px_10px_rgba(69,204,66,0.3)]'
-                              : action.actionType === 'apply_course_patch'
-                                ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 border border-blue-500/40'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 hover:text-white'
+                              : action.actionType === 'open_builder'
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-500 hover:to-indigo-500 shadow-md border border-blue-400/40'
+                                : action.actionType === 'apply_course_patch'
+                                  ? 'bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 border border-blue-500/40'
+                                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 hover:text-white'
                           }`}
                         >
                           {action.label}

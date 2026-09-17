@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Course, SectionId, GeneratedCourse } from '../types';
 import { sampleCourses, blankMasterTemplate, createScratchCourse, availableTemplates, CourseTemplateOption } from '../data/initialCourseData';
 import { evaluateCourseQA, QAResult } from '../utils/qaEngine';
+import { sanitizeCourse } from '../utils/courseSanitizer';
 
 const STORAGE_KEY = 'estudy_course_builder_courses_v14';
 const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v14';
@@ -41,7 +42,7 @@ export function useCourseStore(): UseCourseStoreReturn {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return parsed.map((c: any) => sanitizeCourse(c));
         }
       }
     } catch (e) {
@@ -65,8 +66,9 @@ export function useCourseStore(): UseCourseStoreReturn {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Active course reference - fallback to a fresh scratch course
-  const activeCourse = courses.find(c => c.id === activeCourseId) || courses[0] || createScratchCourse('Untitled Course');
+  // Active course reference - fallback to a fresh scratch course, fully sanitized
+  const rawActive = courses.find(c => c.id === activeCourseId) || courses[0] || createScratchCourse('Untitled Course');
+  const activeCourse = sanitizeCourse(rawActive);
 
   // QA calculation
   const qaResult = evaluateCourseQA(activeCourse);

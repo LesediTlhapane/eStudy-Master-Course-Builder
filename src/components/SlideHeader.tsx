@@ -20,17 +20,17 @@ export const SlideHeader: React.FC<SlideHeaderProps> = ({
   return (
     <div className="border-b border-slate-200 pb-5 space-y-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl sm:text-3xl font-black font-mono text-[#052B66] bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-3.5">
+          <div className="flex items-center justify-center bg-[#052B66] text-[#45CC42] px-3.5 py-1.5 rounded-xl border border-[#042150] shadow-sm font-mono text-2xl sm:text-3xl font-black shrink-0">
             {sectionNumber}
-          </span>
+          </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-[#052B66] tracking-tight">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-[#052B66] tracking-tight">
                 {title}
               </h1>
               {badgeText && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#45CC42]/20 text-[#052B66] border border-[#45CC42]/40">
+                <span className="text-[11px] font-bold px-3 py-0.5 rounded-full bg-[#45CC42]/20 text-[#052B66] border border-[#45CC42]/50 shadow-xs">
                   {badgeText}
                 </span>
               )}
@@ -44,14 +44,14 @@ export const SlideHeader: React.FC<SlideHeaderProps> = ({
         </div>
 
         {slideNumber && (
-          <div className="text-xs font-mono text-slate-400 font-medium self-start sm:self-center shrink-0">
+          <div className="text-xs font-mono font-semibold self-start sm:self-center shrink-0 bg-[#052B66]/10 text-[#052B66] px-3 py-1 rounded-full border border-[#052B66]/20">
             Slide <span className="font-bold text-[#052B66]">{slideNumber}</span> / {totalSlides}
           </div>
         )}
       </div>
 
       {/* Iconic Green Accent Bar matching PowerPoint Slide Theme */}
-      <div className="w-24 h-1 bg-[#45CC42] rounded-full mt-2" />
+      <div className="w-28 h-1.5 bg-[#45CC42] rounded-full mt-2.5 shadow-[0_2px_8px_rgba(69,204,66,0.35)]" />
     </div>
   );
 };

@@ -1,6 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Course } from '../types';
-import { generateMasterPrompt } from '../utils/promptGenerator';
+import { generateMasterPrompt, toSafeString, toSafeArray } from '../utils/promptGenerator';
+import { sanitizeCourse } from '../utils/courseSanitizer';
 import {
   Copy,
   Download,
@@ -38,7 +39,7 @@ export type PreviewFontSize = 'sm' | 'base' | 'lg';
 export type PreviewDisplayMode = 'document' | 'raw' | 'markdown';
 
 export const PromptPreview: React.FC<PromptPreviewProps> = ({
-  course,
+  course: rawCourse,
   onReturnToBuilder,
   onStartAIGeneration
 }) => {
@@ -63,6 +64,9 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
       localStorage.setItem('estudy_preview_theme', theme);
     } catch (e) {}
   }, [theme]);
+
+  // Ensure course is 100% sanitized before rendering or generating prompt
+  const course = useMemo(() => sanitizeCourse(rawCourse), [rawCourse]);
 
   // Generate authentic master prompt strictly from the actual course built
   const promptText = useMemo(() => generateMasterPrompt(course), [course]);
@@ -124,7 +128,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
   const fontClass = fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm';
 
   // Explicit theme design tokens (Zero relying on Tailwind dark: media query to prevent black-on-black clashes)
-  const themeStyles = {
+  const allThemeStyles: Record<string, any> = {
     light: {
       wrapper: 'bg-slate-100 text-slate-900',
       header: 'bg-white border-slate-300 text-slate-900 shadow-xs',
@@ -132,19 +136,23 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
       subtitle: 'text-slate-700',
       toolbar: 'bg-white border-slate-300 text-slate-800 shadow-xs',
       container: 'bg-white border-slate-300 text-slate-900 shadow-sm',
-      sectionCard: 'bg-slate-50/90 border-slate-300 text-slate-900',
-      sectionHeader: 'text-[#052B66]',
-      fieldBox: 'bg-white border-slate-300 text-slate-900',
-      fieldLabel: 'text-slate-800 font-bold uppercase text-[11px] tracking-wider',
-      fieldValue: 'text-slate-900 font-medium',
-      fieldEmpty: 'bg-amber-50/90 border-amber-300 text-amber-900 italic',
-      badge: 'bg-blue-50 text-[#052B66] border-blue-200',
-      badgeSuccess: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+      sectionCard: 'bg-slate-50 border-slate-300 text-slate-900 shadow-xs',
+      sectionHeader: 'text-[#052B66] font-extrabold',
+      fieldBox: 'bg-white border-slate-300 text-slate-950 shadow-2xs',
+      fieldLabel: 'text-[#052B66] font-extrabold uppercase text-[11px] tracking-wider',
+      fieldValue: 'text-slate-950 font-semibold whitespace-pre-wrap break-words leading-relaxed text-xs',
+      fieldEmpty: 'bg-amber-50/90 border-amber-300 text-amber-950 italic font-medium',
+      innerCard: 'bg-white border-slate-300 text-slate-950 shadow-2xs',
+      innerCardText: 'text-slate-950 font-medium',
+      badge: 'bg-blue-50 text-[#052B66] border-blue-200 font-bold',
+      badgeSuccess: 'bg-emerald-50 text-emerald-900 border-emerald-300 font-bold',
       accentText: 'text-[#052B66]',
       codePre: 'bg-white text-slate-950 border-slate-300 shadow-sm',
-      codePreHeader: 'bg-slate-100 border-slate-300 text-slate-800',
-      input: 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66]',
-      buttonMuted: 'text-slate-700 bg-white hover:bg-slate-100 hover:text-slate-900 border-slate-300',
+      codePreHeader: 'bg-slate-100 border-slate-300 text-slate-900',
+      rawText: 'text-slate-950',
+      rawHeader: 'text-[#052B66]',
+      input: 'bg-white border-slate-300 text-slate-950 placeholder-slate-400 focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66]',
+      buttonMuted: 'text-slate-800 bg-white hover:bg-slate-100 hover:text-slate-950 border-slate-300 font-bold',
       buttonActive: 'bg-white text-[#052B66] border-slate-300 shadow-xs font-bold',
       pillActive: 'bg-[#052B66] text-white border-[#052B66] font-bold shadow-xs',
       pillInactive: 'bg-white text-slate-700 hover:text-[#052B66] hover:bg-slate-50 border-slate-300',
@@ -159,16 +167,20 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
       toolbar: 'bg-[#111c38] border-slate-800 text-slate-200 shadow-md',
       container: 'bg-[#111c38] border-slate-800 text-slate-100 shadow-xl',
       sectionCard: 'bg-[#0d162d] border-slate-800 text-slate-100',
-      sectionHeader: 'text-[#45CC42]',
+      sectionHeader: 'text-[#45CC42] font-extrabold',
       fieldBox: 'bg-[#080d1c] border-slate-800 text-slate-100',
       fieldLabel: 'text-slate-300 font-bold uppercase text-[11px] tracking-wider',
-      fieldValue: 'text-slate-100 font-medium',
-      fieldEmpty: 'bg-amber-950/40 border-amber-800/60 text-amber-200 italic',
-      badge: 'bg-[#45CC42]/20 text-[#45CC42] border-[#45CC42]/40',
-      badgeSuccess: 'bg-emerald-950/60 text-emerald-300 border-emerald-800',
+      fieldValue: 'text-slate-100 font-medium whitespace-pre-wrap break-words leading-relaxed text-xs',
+      fieldEmpty: 'bg-amber-950/40 border-amber-800/60 text-amber-200 italic font-medium',
+      innerCard: 'bg-[#080d1c] border-slate-800 text-slate-100',
+      innerCardText: 'text-slate-200 font-medium',
+      badge: 'bg-[#45CC42]/20 text-[#45CC42] border-[#45CC42]/40 font-bold',
+      badgeSuccess: 'bg-emerald-950/60 text-emerald-300 border-emerald-800 font-bold',
       accentText: 'text-[#45CC42]',
       codePre: 'bg-[#080d1c] text-slate-100 border-slate-800 shadow-md',
       codePreHeader: 'bg-[#111c38] border-slate-800 text-slate-300',
+      rawText: 'text-slate-100',
+      rawHeader: 'text-[#45CC42]',
       input: 'bg-[#080d1c] border-slate-700 text-slate-100 placeholder-slate-500 focus:border-[#45CC42]',
       buttonMuted: 'text-slate-300 bg-[#162344] hover:bg-[#1f305c] hover:text-white border-slate-700',
       buttonActive: 'bg-[#1e2f5c] text-white border-slate-600 shadow-xs font-bold',
@@ -185,16 +197,20 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
       toolbar: 'bg-[#faf6ee] border-[#dfd2be] text-[#4c3c31] shadow-xs',
       container: 'bg-[#fffef9] border-[#dfd2be] text-[#2c2017] shadow-sm',
       sectionCard: 'bg-[#f8f2e6] border-[#dfd2be] text-[#2c2017]',
-      sectionHeader: 'text-[#7c4d28]',
+      sectionHeader: 'text-[#7c4d28] font-extrabold',
       fieldBox: 'bg-[#fffefb] border-[#dfd2be] text-[#2c2017]',
       fieldLabel: 'text-[#5c4636] font-bold uppercase text-[11px] tracking-wider',
-      fieldValue: 'text-[#2c2017] font-medium',
-      fieldEmpty: 'bg-[#f2e6d0] border-[#d8c29e] text-[#6b4c1b] italic',
-      badge: 'bg-[#eee3ce] text-[#55381a] border-[#dbcab1]',
-      badgeSuccess: 'bg-[#e3edd8] text-[#2f5c1d] border-[#c0d6ac]',
+      fieldValue: 'text-[#2c2017] font-medium whitespace-pre-wrap break-words leading-relaxed text-xs',
+      fieldEmpty: 'bg-[#f2e6d0] border-[#d8c29e] text-[#6b4c1b] italic font-medium',
+      innerCard: 'bg-[#fffefb] border-[#dfd2be] text-[#2c2017]',
+      innerCardText: 'text-[#3d2b20] font-medium',
+      badge: 'bg-[#eee3ce] text-[#55381a] border-[#dbcab1] font-bold',
+      badgeSuccess: 'bg-[#e3edd8] text-[#2f5c1d] border-[#c0d6ac] font-bold',
       accentText: 'text-[#7c4d28]',
       codePre: 'bg-[#faf6ee] text-[#2e2118] border-[#dfd2be] shadow-sm',
       codePreHeader: 'bg-[#ede5d6] border-[#dfd2be] text-[#4c3c31]',
+      rawText: 'text-[#2e2118]',
+      rawHeader: 'text-[#7c4d28]',
       input: 'bg-[#faf6ee] border-[#d7c8b3] text-[#2c2017] placeholder-[#8a7664] focus:border-[#7c4d28]',
       buttonMuted: 'text-[#524134] bg-[#f2e9dc] hover:bg-[#eae0cf] hover:text-[#2a1e16] border-[#d8cbb7]',
       buttonActive: 'bg-[#fffefb] text-[#2a1e16] border-[#dfd2be] shadow-xs font-bold',
@@ -203,13 +219,17 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
       divider: 'border-[#dfd2be]',
       highlight: 'bg-[#fed7aa] text-[#7c2d12] font-bold px-0.5 rounded'
     }
-  }[theme];
+  };
 
-  // Text highlighter helper for search
-  const renderHighlighted = (text: string) => {
-    if (!searchQuery.trim()) return text;
+  const themeStyles = allThemeStyles[theme] || allThemeStyles.light;
+
+  // Text highlighter helper for search (100% type-safe against non-string inputs)
+  const renderHighlighted = (text: any) => {
+    const str = toSafeString(text);
+    if (!searchQuery.trim() || str.length === 0) return str;
     try {
-      const parts = text.split(new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+      const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const parts = str.split(new RegExp(`(${escaped})`, 'gi'));
       return parts.map((part, i) =>
         part.toLowerCase() === searchQuery.toLowerCase() ? (
           <mark key={i} className={themeStyles.highlight}>
@@ -220,11 +240,11 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
         )
       );
     } catch (e) {
-      return text;
+      return str;
     }
   };
 
-  // Dedicated high-contrast review field card
+  // Dedicated high-contrast review field card (Safe against undefined, objects, or numbers)
   const ReviewField = ({
     label,
     value,
@@ -234,13 +254,14 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
     tag
   }: {
     label: string;
-    value?: string | null;
+    value?: any;
     emptyMessage?: string;
     isMono?: boolean;
     isItalic?: boolean;
     tag?: string;
   }) => {
-    const hasValue = value && value.trim().length > 0;
+    const strVal = toSafeString(value);
+    const hasValue = strVal.length > 0;
     return (
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
@@ -257,13 +278,13 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
           } ${isMono ? 'font-mono text-xs' : ''} ${isItalic ? 'italic' : ''}`}
         >
           {hasValue ? (
-            <div className={themeStyles.fieldValue}>{renderHighlighted(value)}</div>
+            <div className={themeStyles.fieldValue}>{renderHighlighted(strVal)}</div>
           ) : (
             <div className="flex items-center justify-between gap-2 text-xs">
-              <span>{emptyMessage || 'Not specified yet in workspace'}</span>
+              <span className="font-semibold text-amber-900">{emptyMessage || 'Not specified yet in workspace'}</span>
               <button
                 onClick={onReturnToBuilder}
-                className="text-[11px] font-bold underline hover:opacity-80 cursor-pointer"
+                className="text-[11px] font-bold underline text-[#052B66] hover:opacity-80 cursor-pointer"
               >
                 Edit in Builder
               </button>
@@ -288,7 +309,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                 <span className={`text-[11px] font-bold font-mono uppercase px-2.5 py-0.5 rounded border ${themeStyles.badge}`}>
                   CURRICULUM SPECIFICATION · MASTER PROMPT
                 </span>
-                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded border ${themeStyles.badge}`}>
                   {course.code || 'EST-COURSE-01'} · Universal v9.0
                 </span>
                 <span className={`text-xs font-bold font-mono px-2.5 py-0.5 rounded border ${themeStyles.badgeSuccess}`}>
@@ -807,15 +828,15 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                                 Correct: Option {(q.correctAnswerIndex ?? 0) + 1}
                               </span>
                             </div>
-                            <p className="text-xs font-bold text-slate-900">{renderHighlighted(q.question)}</p>
+                            <p className={`text-xs font-bold ${themeStyles.innerCardText}`}>{renderHighlighted(q.question)}</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              {q.options.map((opt, oIdx) => (
+                              {toSafeArray(q.options).map((opt, oIdx) => (
                                 <div
                                   key={oIdx}
                                   className={`p-2 rounded-lg text-xs font-medium border ${
                                     oIdx === q.correctAnswerIndex
-                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-bold'
-                                      : 'bg-slate-50 text-slate-800 border-slate-200'
+                                      ? 'bg-emerald-50 text-emerald-950 border-emerald-400 font-bold'
+                                      : `${themeStyles.innerCard}`
                                   }`}
                                 >
                                   <span className="font-bold mr-1.5">{String.fromCharCode(65 + oIdx)}.</span>
@@ -899,11 +920,11 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
 
                         {/* Module Purpose */}
                         {m.purpose && (
-                          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 block mb-0.5">
+                          <div className={`p-3 rounded-xl border ${themeStyles.innerCard}`}>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] block mb-0.5">
                               MODULE PURPOSE
                             </span>
-                            <p className="text-xs font-medium text-slate-900 leading-relaxed">
+                            <p className={`text-xs ${themeStyles.innerCardText} leading-relaxed`}>
                               {renderHighlighted(m.purpose)}
                             </p>
                           </div>
@@ -912,11 +933,11 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                         {/* Learning Objectives */}
                         {m.learningObjectives && m.learningObjectives.length > 0 && (
                           <div className="space-y-1.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 block">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] block">
                               LEARNING OBJECTIVES ({m.learningObjectives.length})
                             </span>
-                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-                              <ul className="list-disc list-inside space-y-1 text-xs font-medium text-slate-900">
+                            <div className={`p-3 rounded-xl border ${themeStyles.innerCard}`}>
+                              <ul className={`list-disc list-inside space-y-1 text-xs ${themeStyles.innerCardText}`}>
                                 {m.learningObjectives.map((obj, oIdx) => (
                                   <li key={oIdx}>{renderHighlighted(obj)}</li>
                                 ))}
@@ -938,23 +959,23 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                               {m.requirements.scenarios.map((sc, sIdx) => (
                                 <div
                                   key={sIdx}
-                                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-300 space-y-1.5"
+                                  className={`p-3.5 rounded-xl border space-y-1.5 ${themeStyles.innerCard}`}
                                 >
                                   <div className="flex items-center justify-between gap-2">
-                                    <strong className="text-xs font-extrabold text-slate-900">
+                                    <strong className="text-xs font-extrabold text-[#052B66]">
                                       Scenario {sIdx + 1}: {sc.title || `Practical Case ${sIdx + 1}`}
                                     </strong>
                                     {sc.stakeholders && (
-                                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                                      <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${themeStyles.badge}`}>
                                         {sc.stakeholders}
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-xs font-medium text-slate-800 leading-relaxed">
-                                    <strong>Situation:</strong> {renderHighlighted(sc.situation)}
+                                  <p className={`text-xs ${themeStyles.innerCardText} leading-relaxed`}>
+                                    <strong className="text-[#052B66]">Situation:</strong> {renderHighlighted(sc.situation)}
                                   </p>
                                   {sc.decisionPoint && (
-                                    <p className="text-xs font-medium text-[#052B66] leading-relaxed">
+                                    <p className="text-xs font-semibold text-[#052B66] leading-relaxed">
                                       <strong>Decision Point:</strong> {renderHighlighted(sc.decisionPoint)}
                                     </p>
                                   )}
@@ -1086,8 +1107,8 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                             <p className="text-xs font-medium text-slate-600 italic leading-snug">
                               {card.guidingQuestion}
                             </p>
-                            <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
-                              <p className="text-xs font-bold text-slate-900 leading-relaxed">
+                            <div className={`p-2.5 rounded-lg border ${themeStyles.innerCard}`}>
+                              <p className={`text-xs font-bold ${themeStyles.innerCardText} leading-relaxed`}>
                                 {renderHighlighted(card.response || 'Response pending in workspace')}
                               </p>
                             </div>
@@ -1228,7 +1249,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
           <div className={`rounded-2xl border p-6 overflow-x-auto shadow-md relative transition-all ${themeStyles.codePre}`}>
             <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-4 border-b ${themeStyles.divider}`}>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#052B66] dark:text-[#45CC42]">
+                <span className={`font-mono text-xs font-bold uppercase tracking-wider ${themeStyles.rawHeader}`}>
                   RAW LLM MASTER PROMPT SPECIFICATION
                 </span>
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">
@@ -1265,7 +1286,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
 
             <pre
               id="master-prompt-code-output"
-              className={`font-mono leading-relaxed whitespace-pre-wrap selection:bg-[#45CC42] selection:text-[#052B66] text-slate-950 dark:text-slate-100 ${fontClass}`}
+              className={`font-mono leading-relaxed whitespace-pre-wrap selection:bg-[#45CC42] selection:text-[#052B66] ${themeStyles.rawText} ${fontClass}`}
             >
               {renderHighlighted(promptText)}
             </pre>
@@ -1280,3 +1301,68 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
     </div>
   );
 };
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  onReturnToBuilder: () => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class PromptPreviewErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  override state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('PromptPreview Error Boundary caught an error:', error, errorInfo);
+  }
+
+  override render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-[70vh] flex items-center justify-center p-6 font-sora">
+          <div className="max-w-lg w-full bg-white rounded-2xl border border-red-200 shadow-xl p-8 space-y-5 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#052B66]">Prompt Preview Recovered</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              We encountered incomplete course fields while compiling the preview, but your course data is completely safe.
+            </p>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  this.setState({ hasError: false, error: null });
+                  this.props.onReturnToBuilder();
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#052B66] text-white hover:bg-[#073884] transition-all cursor-pointer"
+              >
+                Return to Course Builder
+              </button>
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all cursor-pointer"
+              >
+                Retry Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export const SafePromptPreview: React.FC<PromptPreviewProps> = (props) => (
+  <PromptPreviewErrorBoundary onReturnToBuilder={props.onReturnToBuilder}>
+    <PromptPreview {...props} />
+  </PromptPreviewErrorBoundary>
+);
+

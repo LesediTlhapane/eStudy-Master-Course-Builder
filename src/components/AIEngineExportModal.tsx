@@ -57,16 +57,16 @@ export const AI_ENGINES: AIEngineOption[] = [
     color: '#D97706'
   },
   {
-    id: 'gemini-2-5-flash',
-    name: 'Gemini 2.5 Flash',
+    id: 'gemini-3-8-flash',
+    name: 'Gemini 3.8 Flash',
     provider: 'Google DeepMind',
     rating: 4.9,
-    reviewCount: 4210,
-    badge: 'Fastest & Deepest Context',
-    description: 'Ultra-fast structured generation with 1M+ token context window. Ingests full textbooks and statutory frameworks effortlessly.',
-    strengths: ['Massive Research Ingestion', 'Lightning Generation Speed', 'Structured Tabular Blueprints'],
+    reviewCount: 4320,
+    badge: 'Recommended for Copilot Chatbot',
+    description: 'Ultra-fast sub-2-second generation with 1M+ token context window. Powers the in-app Course Copilot and instantly populates all 9 framework sections.',
+    strengths: ['Sub-2s Interactive Speed', '100% JSON Schema Fidelity', '1M Context for POPIA & Statutes'],
     webUrl: 'https://gemini.google.com',
-    recommendedFor: 'Best for data-heavy courses, statutory compliance, and fast generation',
+    recommendedFor: 'Best for real-time Copilot chat, fast course scaffolding, and statutory compliance',
     color: '#2563EB'
   },
   {
@@ -246,7 +246,7 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                     </span>
                   </div>
                   <h3 className="text-sm font-bold">
-                    {course.name || course.structure.title || 'Course Blueprint'}
+                    {course.name || course.structure?.title || 'Course Blueprint'}
                   </h3>
                 </div>
 

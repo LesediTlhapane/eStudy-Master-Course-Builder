@@ -84,7 +84,7 @@ export const Section07Output: React.FC<Section07OutputProps> = ({
         /* Slide 33: Output Format Settings */
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="border-b border-slate-100 pb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
               SLIDE 33 · GENERATION DIRECTIVES
             </span>
             <h3 className="text-sm font-bold text-[#052B66]">
@@ -145,7 +145,7 @@ export const Section07Output: React.FC<Section07OutputProps> = ({
         /* Slide 34: 9 Master Sections Sequence */
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="border-b border-slate-100 pb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
               SLIDE 34 · MASTER FRAMEWORK SEQUENCE
             </span>
             <h3 className="text-sm font-bold text-[#052B66]">

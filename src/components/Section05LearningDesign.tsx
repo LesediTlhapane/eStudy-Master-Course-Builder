@@ -109,7 +109,7 @@ export const Section05LearningDesign: React.FC<Section05LearningDesignProps> = (
           {/* 3-Tier Instructional Progression Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 25 · 3-TIER PROGRESSION
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">
@@ -207,7 +207,7 @@ export const Section05LearningDesign: React.FC<Section05LearningDesignProps> = (
             {/* Formative Assessments */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 26 · FORMATIVE CHECKS
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -237,7 +237,7 @@ export const Section05LearningDesign: React.FC<Section05LearningDesignProps> = (
             {/* Summative Capstone */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 26 · SUMMATIVE CAPSTONE
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -272,7 +272,7 @@ export const Section05LearningDesign: React.FC<Section05LearningDesignProps> = (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 27 · RETENTION
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">

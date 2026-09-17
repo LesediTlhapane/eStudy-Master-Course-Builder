@@ -98,7 +98,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
           {/* Pillar 1: POPIA & Data Privacy */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 PILLAR 01 · DATA PRIVACY
               </span>
               <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
@@ -124,7 +124,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
           {/* Pillar 2: Human Oversight & Accountability */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 PILLAR 02 · ACCOUNTABILITY
               </span>
               <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
@@ -150,7 +150,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
           {/* Pillar 3: Bias & Fairness Mitigation */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 PILLAR 03 · FAIRNESS
               </span>
               <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
@@ -173,7 +173,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
           {/* Pillar 4: Transparency & Disclosure */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 PILLAR 04 · TRANSPARENCY
               </span>
               <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
@@ -199,7 +199,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
         /* Slide 30: 8 Ethical Dimensions Grid */
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="border-b border-slate-100 pb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
               SLIDE 30 · 8 ETHICAL DIMENSIONS
             </span>
             <h3 className="text-sm font-bold text-[#052B66]">
@@ -264,7 +264,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 31 · DECISION GATES
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">
@@ -293,7 +293,7 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
 
           <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
             <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 32 · SOVEREIGNTY & WORKFORCE
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">

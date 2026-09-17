@@ -4,7 +4,7 @@ import { TopBar } from './components/TopBar';
 import { CoverPage } from './components/CoverPage';
 import { CourseBuilderSidebar, SECTIONS } from './components/CourseBuilderSidebar';
 import { Dashboard } from './components/Dashboard';
-import { PromptPreview } from './components/PromptPreview';
+import { SafePromptPreview as PromptPreview } from './components/PromptPreview';
 import { AIGenerationProgress } from './components/AIGenerationProgress';
 import { GeneratedCourseView } from './components/GeneratedCourseView';
 import { SettingsModal } from './components/SettingsModal';
@@ -140,16 +140,24 @@ export function App() {
         />
       )}
 
-      {view === 'generated' && activeCourse.generatedCourse && (
-        <GeneratedCourseView
-          course={activeCourse}
-          generatedCourse={activeCourse.generatedCourse}
-          onUpdateGeneratedCourse={updated => {
-            updateActiveCourse({ generatedCourse: updated });
-          }}
-          onBackToBuilder={() => setView('builder')}
-          onBackToDashboard={() => setView('dashboard')}
-        />
+      {view === 'generated' && (
+        activeCourse.generatedCourse ? (
+          <GeneratedCourseView
+            course={activeCourse}
+            generatedCourse={activeCourse.generatedCourse}
+            onUpdateGeneratedCourse={updated => {
+              updateActiveCourse({ generatedCourse: updated });
+            }}
+            onBackToBuilder={() => setView('builder')}
+            onBackToDashboard={() => setView('dashboard')}
+          />
+        ) : (
+          <PromptPreview
+            course={activeCourse}
+            onReturnToBuilder={() => setView('builder')}
+            onStartAIGeneration={startAIGeneration}
+          />
+        )
       )}
 
       {view === 'builder' && (

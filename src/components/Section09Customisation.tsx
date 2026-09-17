@@ -138,7 +138,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 37 · TONE & BRANDING
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -167,7 +167,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
 
             <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 37 · DELIVERY ENVIRONMENT
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -202,7 +202,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 38 · ADAPTATION LEDGER
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">
@@ -290,7 +290,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                 SLIDE 39 · VERSION CONTROL
               </span>
               <h3 className="text-sm font-bold text-[#052B66]">

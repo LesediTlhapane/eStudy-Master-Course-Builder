@@ -153,7 +153,7 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
           </h2>
 
           <p className="text-xs text-slate-500 max-w-lg mx-auto">
-            Generating <strong>{course.structure.title || course.name}</strong> according to Master Prompt v9.0 specifications.
+            Generating <strong>{course.structure?.title || course.name || 'Course'}</strong> according to Master Prompt v9.0 specifications.
           </p>
         </div>
 

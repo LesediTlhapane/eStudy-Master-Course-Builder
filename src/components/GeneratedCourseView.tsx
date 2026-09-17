@@ -40,7 +40,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'curriculum' | 'assessments' | 'qa' | 'sources' | 'export'>('curriculum');
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({
-    [generatedCourse.modules[0]?.id || 'module-1']: true
+    [generatedCourse.modules?.[0]?.id || 'module-1']: true
   });
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);

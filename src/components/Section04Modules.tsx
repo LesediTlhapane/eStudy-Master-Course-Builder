@@ -334,7 +334,9 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="font-mono text-xs font-black text-[#052B66] bg-slate-100 px-2 py-0.5 rounded">
+                    <span className={`font-mono text-xs font-black px-2 py-0.5 rounded ${
+                      isSelected ? 'bg-[#052B66] text-[#45CC42]' : 'bg-slate-100 text-[#052B66]'
+                    }`}>
                       M0{idx + 1}
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-[#45CC42]/20 text-[#052B66] border-[#45CC42]/40">
@@ -362,7 +364,7 @@ export const Section04Modules: React.FC<Section04ModulesProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
-              <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-wider">
+              <span className="text-[10.5px] font-extrabold text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 uppercase tracking-wider inline-block mb-1">
                 SLIDE {11 + safeActiveIndex * 2} · MODULE {safeActiveIndex + 1} SPECIFICATION
               </span>
               <h3 className="text-lg font-extrabold text-[#052B66] tracking-tight mt-0.5">

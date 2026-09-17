@@ -10,7 +10,7 @@ export type SourceType =
 
 export type SourceStatus = 'Required' | 'Verified' | 'Review' | 'Not verified' | 'Not started';
 
-export type SourceMedium = 'document' | 'url' | 'text' | 'framework';
+export type SourceMedium = 'document' | 'url' | 'text' | 'framework' | 'upload';
 
 export interface ResearchSource {
   id: string;
@@ -36,6 +36,8 @@ export interface Scenario {
   challenge: string;
   decisionPoint: string;
   debrief: string;
+  reflection?: string;
+  stakeholders?: string;
   moduleRef?: string;
   status?: 'Complete' | 'In progress' | 'Not started';
 }
@@ -45,6 +47,9 @@ export interface DiagnosticQuestion {
   category: 'General domain' | 'Problem awareness' | 'Current practices' | 'AI / digital readiness' | 'Ethics & compliance';
   question: string;
   purpose?: string;
+  options?: string[];
+  correctAnswerIndex?: number;
+  explanation?: string;
 }
 
 export interface LearningJourneyStep {
@@ -104,6 +109,7 @@ export interface CourseModule {
   title: string;
   subtitle: string;
   purpose: string;
+  duration?: string;
   keySkills: string[];
   learningObjectives: string[];
   requirements: ModuleRequirements;
@@ -187,6 +193,7 @@ export interface Course {
     evidenceStandards: string[];
     benchmarkingNotes: string;
     benchmarkCourseRef: string;
+    auditEvidence?: string;
   };
 
   // Section 03 - Course Structure
@@ -195,6 +202,9 @@ export interface Course {
     code: string;
     industryDomain: string;
     targetRoles: string;
+    targetAudience?: string;
+    deliveryModality?: string;
+    assessmentRigour?: string;
     aiIntegrationLevel: '' | 'Awareness' | 'Applied' | 'Advanced';
     setaNqfLevel: string;
     deliveryLanguages: string;
@@ -262,6 +272,8 @@ export interface Course {
     reflectionPrompts: string;
     learnerEngagementTypes: string[];
     assessments: AssessmentItem[];
+    guidedPracticeDescription?: string;
+    summativeAssessmentDescription?: string;
   };
 
   // Section 06 - Ethics, Compliance & AI Responsibility
@@ -279,6 +291,7 @@ export interface Course {
     aiWorkforceImpactNarrative: string;
     aiGovernanceReference: string;
     cards: EthicsCardData[];
+    humanOversightNotes?: string;
   };
 
   // Section 07 - Output Format Rules
@@ -294,6 +307,9 @@ export interface Course {
     plainLanguageApplied: boolean;
     culturalInclusivityNotes: string;
     formattingRequirements: string;
+    languageTone?: string;
+    nonTruncationRule?: string;
+    formattingRules?: string;
   };
 
   // Section 08 - Quality Assurance

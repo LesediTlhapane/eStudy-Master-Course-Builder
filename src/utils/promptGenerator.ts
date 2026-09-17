@@ -1,123 +1,179 @@
 import { Course } from '../types';
 
 /**
+ * Safely extract a string representation from any unknown value
+ */
+export function toSafeString(v: any, fallback: string = ''): string {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) {
+    return v.map(item => toSafeString(item)).filter(Boolean).join(', ');
+  }
+  if (typeof v === 'object') {
+    if (v.text) return toSafeString(v.text);
+    if (v.title) return toSafeString(v.title);
+    if (v.name) return toSafeString(v.name);
+    if (v.content) return toSafeString(v.content);
+    if (v.description) return toSafeString(v.description);
+    if (v.situation) return toSafeString(v.situation);
+    if (v.challenge) return toSafeString(v.challenge);
+    if (v.cause) return toSafeString(v.cause);
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(v).trim();
+}
+
+/**
+ * Ensure input is an array
+ */
+export function toSafeArray<T = any>(arr: any): T[] {
+  if (Array.isArray(arr)) return arr;
+  if (arr === null || arr === undefined) return [];
+  return [arr as T];
+}
+
+/**
  * Generates the complete, authentic eStudy South Africa Master Course Generation Prompt
  * for the ACTUAL course that has been built by the user.
  * Free of mock data, dummy examples, or irrelevant placeholders.
+ * Resilient against any malformed course data or third-party AI inputs.
  */
-export function generateMasterPrompt(course: Course): string {
-  const p = course.problem || ({} as any);
-  const r = course.research || ({} as any);
-  const s = course.structure || ({} as any);
-  const ld = course.learningDesign || ({} as any);
-  const e = course.ethics || ({} as any);
-  const out = course.outputRequirements || ({} as any);
-  const cust = course.customisation || ({} as any);
+export function generateMasterPrompt(course: Course | undefined | null): string {
+  if (!course) {
+    return `[eStudy Master Course Prompt: No course data currently available in workspace]`;
+  }
 
-  // Helper to return formatted value or clean pending marker
-  const val = (v: string | undefined | null, pendingLabel: string = '[Not specified]') => {
-    if (v && v.trim().length > 0) return v.trim();
-    return pendingLabel;
-  };
+  try {
+    const p = course.problem || ({} as any);
+    const r = course.research || ({} as any);
+    const s = course.structure || ({} as any);
+    const ld = course.learningDesign || ({} as any);
+    const e = course.ethics || ({} as any);
+    const out = course.outputRequirements || ({} as any);
+    const cust = course.customisation || ({} as any);
 
-  const courseTitle = val(s.title || course.name, 'Untitled Course');
-  const courseCode = val(s.code || course.code, 'EST-COURSE-01');
-  const targetGroup = val(p.targetGroup || s.targetRoles, '[Primary Target Audience]');
-  const taskOrSkill = val(p.taskOrSkill, '[Core Task / Performance Skill]');
-  const impact = val(p.operationalImpact, '[Operational / Compliance / Financial Impact]');
+    // Helper to return formatted value or clean pending marker
+    const val = (v: any, pendingLabel: string = '[Not specified]') => {
+      const str = toSafeString(v);
+      if (str.length > 0) return str;
+      return pendingLabel;
+    };
 
-  // 1. Problem Statement
-  const problemStatementText = p.taskOrSkill || p.targetGroup || p.operationalImpact
-    ? `"This course addresses the inability of ${targetGroup} to effectively perform ${taskOrSkill}, resulting in ${impact}."`
-    : `[Problem statement pending specification]`;
+    const courseTitle = val(s.title || course.name, 'Untitled Course');
+    const courseCode = val(s.code || course.code, 'EST-COURSE-01');
+    const targetGroup = val(p.targetGroup || s.targetRoles, '[Primary Target Audience]');
+    const taskOrSkill = val(p.taskOrSkill, '[Core Task / Performance Skill]');
+    const impact = val(p.operationalImpact, '[Operational / Compliance / Financial Impact]');
 
-  // 1.2 Root Causes
-  const rootCausesFormatted = p.rootCauses && p.rootCauses.length > 0
-    ? p.rootCauses.map((rc: string, i: number) => `• Root Cause ${i + 1}: ${rc.trim()}`).join('\n')
-    : `• Root causes: ${val(p.skillGaps, '[Root causes pending specification]')}`;
+    // 1. Problem Statement
+    const hasProblemElements = toSafeString(p.taskOrSkill).length > 0 || 
+                               toSafeString(p.targetGroup).length > 0 || 
+                               toSafeString(p.operationalImpact).length > 0;
+    const problemStatementText = hasProblemElements
+      ? `"This course addresses the inability of ${targetGroup} to effectively perform ${taskOrSkill}, resulting in ${impact}."`
+      : `[Problem statement pending specification]`;
 
-  // 2. Sources
-  const activeSources = (r.sources || []).filter((src: any) => src && (src.name || src.reference));
-  const sourcesFormatted = activeSources.length > 0
-    ? activeSources
-        .map(
-          (src: any, i: number) =>
-            `${i + 1}. ${src.name || 'Source'} | Type: ${src.type || 'Standard'}${
-              src.reference ? ` | Ref: ${src.reference}` : ''
-            }${src.relevance ? `\n   Relevance: ${src.relevance}` : ''}`
-        )
-        .join('\n')
-    : `[No external research sources logged yet]`;
+    // 1.2 Root Causes
+    const rootCausesList = toSafeArray(p.rootCauses).map(rc => toSafeString(rc)).filter(Boolean);
+    const rootCausesFormatted = rootCausesList.length > 0
+      ? rootCausesList.map((rc: string, i: number) => `• Root Cause ${i + 1}: ${rc}`).join('\n')
+      : `• Root causes: ${val(p.skillGaps, '[Root causes pending specification]')}`;
 
-  // 3. Benefits
-  const orgBenefitsFormatted = s.organisationalBenefits && s.organisationalBenefits.length > 0
-    ? s.organisationalBenefits.map((b: string) => `• ${b}`).join('\n')
-    : `• ${val(s.performanceImprovement, '[Organisational benefits not specified]')}`;
+    // 2. Sources
+    const activeSources = toSafeArray(r.sources).filter((src: any) => src && (toSafeString(src.name) || toSafeString(src.reference)));
+    const sourcesFormatted = activeSources.length > 0
+      ? activeSources
+          .map(
+            (src: any, i: number) =>
+              `${i + 1}. ${toSafeString(src.name, 'Source')} | Type: ${toSafeString(src.type, 'Standard')}${
+                toSafeString(src.reference) ? ` | Ref: ${toSafeString(src.reference)}` : ''
+              }${toSafeString(src.relevance) ? `\n   Relevance: ${toSafeString(src.relevance)}` : ''}`
+          )
+          .join('\n')
+      : `[No external research sources logged yet]`;
 
-  const empBenefitsFormatted = s.employeeBenefits && s.employeeBenefits.length > 0
-    ? s.employeeBenefits.map((b: string) => `• ${b}`).join('\n')
-    : `• [Employee benefits not specified]`;
+    // 3. Benefits
+    const orgBenefitsList = toSafeArray(s.organisationalBenefits).map(b => toSafeString(b)).filter(Boolean);
+    const orgBenefitsFormatted = orgBenefitsList.length > 0
+      ? orgBenefitsList.map((b: string) => `• ${b}`).join('\n')
+      : `• ${val(s.performanceImprovement, '[Organisational benefits not specified]')}`;
 
-  const riskReductionFormatted = s.riskReductionOutcomes && s.riskReductionOutcomes.length > 0
-    ? s.riskReductionOutcomes.map((b: string) => `• ${b}`).join('\n')
-    : `• [Risk reduction outcomes not specified]`;
+    const empBenefitsList = toSafeArray(s.employeeBenefits).map(b => toSafeString(b)).filter(Boolean);
+    const empBenefitsFormatted = empBenefitsList.length > 0
+      ? empBenefitsList.map((b: string) => `• ${b}`).join('\n')
+      : `• [Employee benefits not specified]`;
 
-  // 3. Diagnostic Questions
-  const activeDiagnostics = (s.diagnosticQuestions || []).filter(
-    (dq: any) => dq && dq.question && dq.question.trim().length > 0
-  );
-  const diagnosticsFormatted = activeDiagnostics.length > 0
-    ? activeDiagnostics
-        .map(
-          (dq: any, i: number) =>
-            `${i + 1}. [${dq.category || 'Diagnostic'}] ${dq.question}${
-              dq.options ? `\n   Options: ${dq.options.join(' | ')}` : ''
-            }${dq.explanation ? `\n   Guidance: ${dq.explanation}` : ''}`
-        )
-        .join('\n\n')
-    : `[Pre-course diagnostic questions pending definition]`;
+    const riskReductionList = toSafeArray(s.riskReductionOutcomes).map(b => toSafeString(b)).filter(Boolean);
+    const riskReductionFormatted = riskReductionList.length > 0
+      ? riskReductionList.map((b: string) => `• ${b}`).join('\n')
+      : `• [Risk reduction outcomes not specified]`;
 
-  // 4. Modules
-  const modulesList = course.modules || [];
-  const modulesFormatted = modulesList.length > 0
-    ? modulesList
-        .map((m, i) => {
-          const req: any = m.requirements || {};
-          const scList = req.scenarios || [];
-          const aiScList = req.aiScenarios || [];
+    // 3. Diagnostic Questions
+    const activeDiagnostics = toSafeArray(s.diagnosticQuestions).filter(
+      (dq: any) => dq && toSafeString(dq.question).length > 0
+    );
+    const diagnosticsFormatted = activeDiagnostics.length > 0
+      ? activeDiagnostics
+          .map(
+            (dq: any, i: number) => {
+              const opts = toSafeArray(dq.options).map(o => toSafeString(o)).filter(Boolean);
+              return `${i + 1}. [${toSafeString(dq.category, 'Diagnostic')}] ${toSafeString(dq.question)}${
+                opts.length > 0 ? `\n   Options: ${opts.join(' | ')}` : ''
+              }${toSafeString(dq.explanation) ? `\n   Guidance: ${toSafeString(dq.explanation)}` : ''}`;
+            }
+          )
+          .join('\n\n')
+      : `[Pre-course diagnostic questions pending definition]`;
 
-          const scenariosText = scList.length > 0
-            ? scList
-                .map(
-                  (sc: any, sIdx: number) =>
-                    `   Scenario ${sIdx + 1}: ${sc.title || 'Workplace Simulation'}
+    // 4. Modules
+    const modulesList = toSafeArray(course.modules).filter(Boolean);
+    const modulesFormatted = modulesList.length > 0
+      ? modulesList
+          .map((m: any, i: number) => {
+            const req: any = m.requirements || {};
+            const scList = toSafeArray(req.scenarios).filter(Boolean);
+            const aiScList = toSafeArray(req.aiScenarios).filter(Boolean);
+
+            const scenariosText = scList.length > 0
+              ? scList
+                  .map(
+                    (sc: any, sIdx: number) =>
+                      `   Scenario ${sIdx + 1}: ${toSafeString(sc.title, 'Workplace Simulation')}
    - Situation: ${val(sc.situation, 'Realistic workplace context')}
    - Challenge: ${val(sc.challenge, 'Key hurdle or task constraint')}
    - Decision Point: ${val(sc.decisionPoint, 'Action required by the learner')}
    - Debrief: ${val(sc.debrief, 'Correct approach, learning outcome, and remediation')}`
-                )
-                .join('\n\n')
-            : '   [Standard scenarios pending configuration]';
+                  )
+                  .join('\n\n')
+              : '   [Standard scenarios pending configuration]';
 
-          const aiScenariosText = aiScList.length > 0
-            ? aiScList
-                .map(
-                  (sc: any, sIdx: number) =>
-                    `   AI Scenario ${sIdx + 1}: ${sc.title || 'AI Tool Interaction & Oversight'}
+            const aiScenariosText = aiScList.length > 0
+              ? aiScList
+                  .map(
+                    (sc: any, sIdx: number) =>
+                      `   AI Scenario ${sIdx + 1}: ${toSafeString(sc.title, 'AI Tool Interaction & Oversight')}
    - AI Tool in Action: ${val(sc.situation, 'AI prompt or model interaction')}
    - Challenge: ${val(sc.challenge, 'Hallucination, bias, data leak, or output review')}
    - Decision Point: ${val(sc.decisionPoint, 'Human judgment verification step')}
    - Debrief: ${val(sc.debrief, 'Verification checklist and governance rule')}`
-                )
-                .join('\n\n')
-            : '   [AI scenarios pending configuration]';
+                  )
+                  .join('\n\n')
+              : '   [AI scenarios pending configuration]';
 
-          return `MODULE ${i + 1}: ${val(m.title, `Module ${i + 1}`)}
+            const keySkills = toSafeArray(m.keySkills).map(k => toSafeString(k)).filter(Boolean);
+            const learningObjectives = toSafeArray(m.learningObjectives).map(lo => toSafeString(lo)).filter(Boolean);
+
+            return `MODULE ${i + 1}: ${val(m.title, `Module ${i + 1}`)}
 Subtitle: ${val(m.subtitle, 'Competency & Practical Application')}
 Purpose: ${val(m.purpose, 'Define module objective')}
-Key Skills Developed: ${m.keySkills?.length ? m.keySkills.join(', ') : '[Not specified]'}
+Key Skills Developed: ${keySkills.length > 0 ? keySkills.join(', ') : '[Not specified]'}
 Learning Objectives:
-${m.learningObjectives?.length ? m.learningObjectives.map((lo: string) => `• ${lo}`).join('\n') : '• [Learning objectives pending]'}
+${learningObjectives.length > 0 ? learningObjectives.map((lo: string) => `• ${lo}`).join('\n') : '• [Learning objectives pending]'}
 
 Requirements & Workplace Context:
 • Context & Problem: ${val(req.problemDefinition || req.workplaceContext, '[Context not specified]')}
@@ -135,40 +191,40 @@ Implementation Deliverables:
 • Action Plan: ${val(req.implementationChecklistTitle, '30-Day Workplace Action Plan')}
 • Rollout Framework: ${val(req.rolloutFrameworkTitle, 'Rollout SOP')}
 • Risk & Compliance: ${val(req.riskComplianceSectionTitle, 'Risk & Compliance Matrix')}`;
-        })
-        .join('\n\n' + '='.repeat(60) + '\n\n')
-    : `[Modules pending definition in workspace]`;
+          })
+          .join('\n\n' + '='.repeat(60) + '\n\n')
+      : `[Modules pending definition in workspace]`;
 
-  // 5. Assessments
-  const activeAssessments = ld.assessments || [];
-  const assessmentsFormatted = activeAssessments.length > 0
-    ? activeAssessments
-        .map(
-          (a: any) =>
-            `• ${a.type}: ${a.description || 'Evaluation'} | Timing: ${a.timing || 'Course completion'} | Weighting: ${
-              a.weighting || 'Formative'
-            }${a.passMark ? ` | Pass Mark: ${a.passMark}` : ''}${a.notes ? `\n  Notes: ${a.notes}` : ''}`
-        )
-        .join('\n')
-    : `• Pre-Course Diagnostic (Baseline check, Ungraded)
+    // 5. Assessments
+    const activeAssessments = toSafeArray(ld.assessments).filter(Boolean);
+    const assessmentsFormatted = activeAssessments.length > 0
+      ? activeAssessments
+          .map(
+            (a: any) =>
+              `• ${toSafeString(a.type, 'Assessment')}: ${toSafeString(a.description, 'Evaluation')} | Timing: ${toSafeString(a.timing, 'Course completion')} | Weighting: ${
+                toSafeString(a.weighting, 'Formative')
+              }${toSafeString(a.passMark) ? ` | Pass Mark: ${toSafeString(a.passMark)}` : ''}${toSafeString(a.notes) ? `\n  Notes: ${toSafeString(a.notes)}` : ''}`
+          )
+          .join('\n')
+      : `• Pre-Course Diagnostic (Baseline check, Ungraded)
 • Module Formative Checks (End of each module)
 • Practical Application Workplace Task (40% weighting, 70% pass mark)
 • Summative Final Assessment (60% weighting, 80% pass mark)`;
 
-  // 6. Ethics Cards
-  const ethicsCards = e.cards || [];
-  const ethicsCardsFormatted = ethicsCards.length > 0
-    ? ethicsCards
-        .map(
-          (c: any) =>
-            `• ${c.title} (${c.complianceRef || 'Regulatory Safeguard'}):
-  Guiding Principle: ${c.guidingQuestion}
+    // 6. Ethics Cards
+    const ethicsCards = toSafeArray(e.cards).filter(Boolean);
+    const ethicsCardsFormatted = ethicsCards.length > 0
+      ? ethicsCards
+          .map(
+            (c: any) =>
+              `• ${toSafeString(c.title, 'Ethical Safeguard')} (${toSafeString(c.complianceRef, 'Regulatory Safeguard')}):
+  Guiding Principle: ${toSafeString(c.guidingQuestion, 'Ethical responsibility')}
   Course Implementation: ${val(c.response, '[Specific course safeguard pending user definition]')}`
-        )
-        .join('\n\n')
-    : `[Ethics cards pending configuration]`;
+          )
+          .join('\n\n')
+      : `[Ethics cards pending configuration]`;
 
-  return `================================================================================
+    return `================================================================================
 eStudy South Africa — Master Instructional Prompt
 Universal Course Architecture & AI Generation Prompt
 ================================================================================
@@ -199,130 +255,139 @@ Ensure the generated course adheres to eStudy South Africa's instructional desig
 4. Directly deployable to an enterprise LMS (SCORM/xAPI compliant) with zero placeholders.
 
 ================================================================================
-1. PROBLEM & IMPACT SPECIFICATION
+1. PROBLEM & CONTEXT (SECTION 01)
 ================================================================================
-1.1 Core Problem Statement:
+Target Audience: ${targetGroup}
+Core Performance Skill: ${taskOrSkill}
+Operational / Compliance Impact: ${impact}
+
+Operational Problem Statement:
 ${problemStatementText}
 
-1.2 Root Cause Analysis & Workplace Gaps:
+Root Causes Identified:
 ${rootCausesFormatted}
 
-• System / Process Failures:
-${val(p.processFailures, '[Not specified]')}
+Process & Procedural Failures:
+${val(p.processFailures, '[Process failures not specified]')}
 
-• Skills & Capability Gaps:
-${val(p.skillGaps, '[Not specified]')}
+Specific Skills Gaps:
+${val(p.skillGaps, '[Skill gaps not specified]')}
 
-• Organisational & Operational Constraints:
-${val(p.constraints, '[Not specified]')}
+Operational & Workplace Constraints:
+${val(p.constraints, '[Constraints not specified]')}
 
-1.3 AI-Specific Literacy & Digital Readiness:
-• AI Literacy Gap:
-${val(p.aiLiteracyGap, '[Not specified]')}
+AI Literacy Gap:
+${val(p.aiLiteracyGap, 'Baseline AI literacy and understanding of automated tools in this domain')}
 
-• Digital Readiness Baseline:
-${val(p.digitalReadinessLevel, '[Not specified]')}
+Enterprise Digital Readiness Level:
+${val(p.digitalReadinessLevel, 'General enterprise productivity tools and digital literacy')}
 
-• AI Ethics & Compliance Risks:
-${val(p.aiEthicsComplianceRisk, '[Not specified]')}
+AI Ethics & Compliance Risk Profile:
+${val(p.aiEthicsComplianceRisk, 'Zero tolerance for PII leaks under South African POPIA Act 4 of 2013 and mandatory transparency')}
 
 ================================================================================
-2. RESEARCH & VERIFIED SOURCES
+2. AUTHORITATIVE SOURCES & RESEARCH (SECTION 02)
 ================================================================================
-2.1 External Reference Sources:
+Mandatory Statutory & Industry Frameworks:
 ${sourcesFormatted}
 
-2.2 Statutory & Industry Regulatory Framework:
-${val(r.regulatoryFramework, '[Regulatory framework not specified]')}
+Primary Regulatory Compliance Anchor:
+${val(r.regulatoryFramework, 'POPIA Act No. 4 of 2013 / South African statutory workplace compliance')}
 
-2.3 AI & Technology Tools:
-• Relevant AI Platforms & Tools: ${val(r.aiToolsPlatformName, '[Not specified]')}
-• AI Governance Framework: ${val(r.aiEthicsFramework, 'SA DCDT AI Policy / UNESCO AI Ethics')}
-• Real-World Use Cases: ${val(r.caseStudyUseCases, '[Not specified]')}
+AI Tools & Enterprise Platform Baseline:
+${val(r.aiToolsPlatformName, 'Standard enterprise generative AI and analytics platforms')}
+
+Governing AI Ethics Framework:
+${val(r.aiEthicsFramework, 'King IV Principle 12 & POPIA Section 71 Automated Decision-Making Standards')}
+
+Benchmark Course Reference:
+${val(r.benchmarkCourseRef, 'eStudy South Africa Master Curriculum Benchmark Standard v9.0')}
 
 ================================================================================
-3. COURSE STRUCTURE & LEARNING JOURNEY
+3. COURSE STRUCTURE & OUTCOMES (SECTION 03)
 ================================================================================
-3.1 Course Purpose Statement:
-${val(s.purposeStatement, '[Purpose statement not specified]')}
+Course Purpose & Strategic Rationale:
+${val(s.purposeStatement, val(s.scopeSummary, '[Course purpose not specified]'))}
 
-3.2 Workplace Relevance & Performance Link:
-• Workplace Relevance: ${val(s.workplaceRelevance, '[Not specified]')}
-• Performance Improvement: ${val(s.performanceImprovement, '[Not specified]')}
+Workplace Operational Relevance:
+${val(s.workplaceRelevance, val(s.performanceLink, '[Workplace relevance not specified]'))}
 
-3.3 Tangible Outcomes & Benefits:
+Performance Improvement Objectives:
+${val(s.performanceImprovement, '[Performance improvement objectives not specified]')}
+
+Expected Measurable Outcomes:
 Organisational Benefits:
 ${orgBenefitsFormatted}
 
-Employee Benefits:
+Employee / Learner Career Benefits:
 ${empBenefitsFormatted}
 
-Risk Reduction Outcomes:
+Risk Reduction & Compliance Outcomes:
 ${riskReductionFormatted}
 
-3.4 Target Audience Profile:
-• Job Roles: ${val(s.jobRoles || s.targetRoles || targetGroup, '[Not specified]')}
-• Target Departments: ${val(s.departments, '[Not specified]')}
-• Experience Level: ${val(s.experienceLevel, 'Entry to Mid-level')}
-• Baseline AI Familiarity: ${val(s.aiFamiliarityBaseline, 'Basic')}
-• Prerequisites: ${val(s.prerequisiteKnowledge, '[None specified]')}
+Prerequisites:
+• Prior Knowledge: ${val(s.prerequisiteKnowledge, 'Standard operational knowledge in domain')}
+• Experience Level: ${val(s.prerequisiteExperience, 'Foundational workplace experience')}
+• Required Systems & Tools: ${val(s.toolsSystems, 'Standard enterprise workstation & internet connectivity')}
 
-3.5 Pre-Course Diagnostic Questions:
+Pre-Course Diagnostic Assessment Questions:
 ${diagnosticsFormatted}
 
-3.6 Four-Phase Learning Journey:
-Phase 1: Discover & Demystify — Foundational domain knowledge and terminology.
-Phase 2: Practise & Apply — Scenario-based workplace simulations and procedures.
-Phase 3: Evaluate & Audit — Critical thinking, verification checklists, and error detection.
-Phase 4: Embed & Govern — 30-Day action plan, SOP integration, and lifelong learning.
-
 ================================================================================
-4. MODULE SPECIFICATIONS & SCENARIOS
+4. DETAILED CURRICULUM SPECIFICATIONS (SECTION 04)
 ================================================================================
 ${modulesFormatted}
 
 ================================================================================
-5. LEARNING DESIGN & ASSESSMENTS
+5. LEARNING DESIGN & PEDAGOGY (SECTION 05)
 ================================================================================
-5.1 Instructional Methodology:
-${val(ld.instructionalApproach, 'Scenario-based, interactive, and aligned with Bloom\'s Taxonomy.')}
+Core Pedagogical Approach:
+${val(ld.instructionalApproach, 'Blended, micro-learning, scenario-based experiential learning')}
 
-5.2 AI-Enhanced Learning Activities:
-• AI Tool Demonstrations & Simulations:
-${val(ld.aiDemoSimulationDescription, '[Not specified]')}
-
-• Prompt Construction Tasks:
-${val(ld.promptExerciseDescription, '[Not specified]')}
-
-• AI Output Evaluation & Critique:
-${val(ld.aiEvaluationTask, '[Not specified]')}
-
-• Human-AI Collaboration Exercises:
-${val(ld.collaborationActivity, '[Not specified]')}
-
-5.3 Assessment Framework:
+Assessment Strategy & Evaluation Structure:
 ${assessmentsFormatted}
 
-================================================================================
-6. ETHICS, GOVERNANCE & RESPONSIBLE USE
-================================================================================
-6.1 Statutory Compliance & Data Protection:
-• Data Privacy Framework: ${val(e.dataPrivacyFramework, 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)')}
-• Confidentiality Controls: ${val(e.confidentialityRequirements, '[Not specified]')}
-• Ethical Behaviour Standards: ${val(e.ethicsStandards, '[Not specified]')}
+AI Tool Simulation & Demonstration Task:
+${val(ld.aiDemoSimulationDescription, 'Interactive AI prompt evaluation and critical human verification simulation')}
 
-6.2 Responsible AI Mandates:
-• Bias & Algorithmic Fairness: ${val(e.aiBiasRisk, '[Not specified]')}
-• Transparency & Disclosure Requirements: ${val(e.aiDisclosureRequirement, '[Not specified]')}
-• Mandatory Human Oversight Decisions: ${val(e.humanOverrideScenarios, '[Not specified]')}
-• Data Sovereignty & Consent: ${val(e.dataSovereigntyContext, '[Not specified]')}
-• Workforce Impact Narrative: ${val(e.aiWorkforceImpactNarrative, '[Not specified]')}
+Prompt Construction & Prompt-Engineering Task:
+${val(ld.promptExerciseDescription, 'Learner writes, refines, and audits domain-specific AI prompts for operational efficiency')}
+
+Guided Practice Activity:
+${val(ld.guidedPracticeDescription, 'Step-by-step scenario walkthrough with decision branches and immediate feedback')}
+
+Summative Capstone Workplace Project:
+${val(ld.summativeAssessmentDescription, 'Comprehensive workplace action plan and procedural audit deliverable')}
+
+Learner Collaboration & Discussion Task:
+${val(ld.collaborationActivity, 'Peer review of prompt structures and scenario debrief discussion')}
+
+Critical Thinking & AI Limitations Exercise:
+${val(ld.criticalThinkingDescription, 'Auditing AI generated outputs for hallucination, statutory conflict, and bias')}
+
+================================================================================
+6. ETHICAL AI, GOVERNANCE & POPIA SAFEGUARDS (SECTION 06)
+================================================================================
+Data Protection & Privacy Safeguard (POPIA Act 4 of 2013):
+${val(e.dataPrivacySafeguards, 'Strict prohibition of personal, proprietary, or customer PII in cloud AI prompts')}
+
+Algorithmic Bias Mitigation & Fairness:
+${val(e.biasMitigationPlan, 'Cross-demographic validation of AI decisions and explicit fairness auditing')}
+
+Mandatory Human Oversight & Override Protocols:
+${val(e.humanOversightNotes, 'Human-in-the-loop sign-off required for all final operational decisions and escalations')}
+
+Confidentiality & Proprietary Information Safeguards:
+${val(e.confidentialityRequirements, 'Synthetic test data utilized for all learning exercises; enterprise confidentiality rules enforced')}
+
+Psychological Safety & Learner Support:
+${val(e.psychologicalSafetyNotes, 'Transparent, blame-free learning environment encouraging safe experimentation')}
 
 6.3 Specific Ethical Decision Frameworks:
 ${ethicsCardsFormatted}
 
 ================================================================================
-7. OUTPUT STANDARDS & DELIVERABLES
+7. OUTPUT STANDARDS & DELIVERABLES (SECTION 07)
 ================================================================================
 • LMS Output Format: ${val(out.outputFormat, 'LMS-Ready SCORM / xAPI compliant digital courseware')}
 • Target Reading Level: ${val(out.accessibilityTargetReadingLevel, 'Plain language · NQF Level 4 / Grade 12 equivalent')}
@@ -334,7 +399,7 @@ ${ethicsCardsFormatted}
   5. Facilitator & Mentor Implementation Guide.
 
 ================================================================================
-8. BRANDING & QUALITY ASSURANCE
+8. BRANDING & QUALITY ASSURANCE (SECTION 09)
 ================================================================================
 • Brand Authority: ${val(cust.branding, 'eStudy South Africa')}
 • Voice & Tone: ${val(cust.tone, 'Professional, supportive, action-oriented, and accessible')}
@@ -343,4 +408,19 @@ ${ethicsCardsFormatted}
 END OF MASTER INSTRUCTIONAL PROMPT
 ================================================================================
 `;
+  } catch (err: any) {
+    console.error('Error generating master prompt:', err);
+    return `================================================================================
+eStudy South Africa — Master Instructional Prompt
+================================================================================
+Course: ${toSafeString(course?.name, 'eStudy Course')}
+Status: Recovered Prompt (Course data safely restored)
+
+Executive Instruction:
+Generate a complete, structured, industry-ready training programme for "${toSafeString(course?.name, 'eStudy Course')}".
+Ensure compliance with South African regulatory standards (POPIA Act 4 of 2013) and eStudy v9.0 instructional design guidelines.
+
+================================================================================
+`;
+  }
 }

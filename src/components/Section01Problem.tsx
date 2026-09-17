@@ -197,35 +197,35 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs">
           <button
             onClick={() => setViewMode('single')}
-            className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'single'
-                ? 'bg-white text-[#052B66] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#052B66] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className={`w-3.5 h-3.5 ${viewMode === 'single' ? 'text-[#45CC42]' : ''}`} />
             <span>Single Panel</span>
           </button>
           <button
             onClick={() => setViewMode('slide')}
-            className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'slide'
-                ? 'bg-white text-[#052B66] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#052B66] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
             }`}
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
+            <LayoutGrid className={`w-3.5 h-3.5 ${viewMode === 'slide' ? 'text-[#45CC42]' : ''}`} />
             <span>2-Column Grid</span>
           </button>
           <button
             onClick={() => setViewMode('guided')}
-            className={`px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
               viewMode === 'guided'
-                ? 'bg-white text-[#052B66] shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-[#052B66] text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
             }`}
           >
-            <ListChecks className="w-3.5 h-3.5" />
+            <ListChecks className={`w-3.5 h-3.5 ${viewMode === 'guided' ? 'text-[#45CC42]' : ''}`} />
             <span>Step-by-Step Guide</span>
           </button>
         </div>
@@ -237,7 +237,7 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
           <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 p-7 sm:p-10 shadow-xs space-y-7 font-sora">
             {/* Top Large Heading from SLIDE 03 - CORE CHALLENGE */}
             <div className="border-b border-slate-100 pb-4">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1.5">
                 SLIDE 03 · CORE CHALLENGE
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-[#052B66] tracking-tight">
@@ -319,24 +319,24 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
             />
 
             {/* MASTER PROMPT FORMULA SYNTHESIS */}
-            <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 mt-4">
+            <div className="p-5 bg-gradient-to-br from-[#052B66]/5 via-white to-[#45CC42]/10 border-2 border-[#45CC42]/50 rounded-2xl space-y-2.5 mt-4 shadow-xs relative overflow-hidden">
               <div className="flex items-center justify-between">
-                <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#052B66]">
+                <span className="text-[10.5px] font-black uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-1 rounded-md border border-[#052B66]/20">
                   MASTER PROMPT FORMULA SYNTHESIS
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">v9.0 Standard</span>
+                <span className="text-[10px] bg-[#45CC42] text-[#052B66] font-bold px-2 py-0.5 rounded-full font-mono">v9.0 Standard</span>
               </div>
-              <p className="text-xs text-slate-700 italic leading-relaxed">
+              <p className="text-xs text-slate-800 italic leading-relaxed pt-1">
                 "This course addresses the inability of{' '}
-                <span className="font-semibold text-[#052B66] not-italic">
+                <span className="font-bold text-[#052B66] not-italic bg-[#052B66]/10 px-1.5 py-0.5 rounded">
                   {problem.targetGroup || '[TARGET GROUP]'}
                 </span>{' '}
                 to effectively perform{' '}
-                <span className="font-semibold text-[#052B66] not-italic">
+                <span className="font-bold text-[#052B66] not-italic bg-[#052B66]/10 px-1.5 py-0.5 rounded">
                   {problem.taskOrSkill || '[TASK / SKILL]'}
                 </span>
                 , resulting in{' '}
-                <span className="font-semibold text-[#052B66] not-italic">
+                <span className="font-bold text-[#052B66] not-italic bg-[#45CC42]/25 px-1.5 py-0.5 rounded">
                   {problem.operationalImpact || '[OPERATIONAL / COMPLIANCE IMPACT]'}
                 </span>
                 ."
@@ -351,7 +351,7 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
             {/* Left Column (Slide 3 Left): Problem, Why Needed, Target Outcome */}
             <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 03 · CORE CHALLENGE
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -396,7 +396,7 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
             <div className="lg:col-span-6 space-y-6">
               <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
                 <div className="border-b border-slate-100 pb-3">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                     SLIDE 04 · TARGET PROFILE
                   </span>
                   <h3 className="text-sm font-bold text-[#052B66]">
@@ -427,24 +427,24 @@ export const Section01Problem: React.FC<Section01ProblemProps> = ({
               </div>
 
               {/* Master Prompt Formula Sentence Card */}
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+              <div className="p-5 bg-gradient-to-br from-[#052B66]/5 via-white to-[#45CC42]/10 border-2 border-[#45CC42]/50 rounded-2xl space-y-2.5 shadow-xs relative overflow-hidden">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#052B66]">
+                  <span className="text-[10.5px] font-black uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-1 rounded-md border border-[#052B66]/20">
                     MASTER PROMPT FORMULA SYNTHESIS
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">v9.0 Standard</span>
+                  <span className="text-[10px] bg-[#45CC42] text-[#052B66] font-bold px-2 py-0.5 rounded-full font-mono">v9.0 Standard</span>
                 </div>
-                <p className="text-xs text-slate-700 italic leading-relaxed">
+                <p className="text-xs text-slate-800 italic leading-relaxed pt-1">
                   "This course addresses the inability of{' '}
-                  <span className="font-semibold text-[#052B66] not-italic">
+                  <span className="font-bold text-[#052B66] not-italic bg-[#052B66]/10 px-1.5 py-0.5 rounded">
                     {problem.targetGroup || '[TARGET GROUP]'}
                   </span>{' '}
                   to effectively perform{' '}
-                  <span className="font-semibold text-[#052B66] not-italic">
+                  <span className="font-bold text-[#052B66] not-italic bg-[#052B66]/10 px-1.5 py-0.5 rounded">
                     {problem.taskOrSkill || '[TASK / SKILL]'}
                   </span>
                   , resulting in{' '}
-                  <span className="font-semibold text-[#052B66] not-italic">
+                  <span className="font-bold text-[#052B66] not-italic bg-[#45CC42]/25 px-1.5 py-0.5 rounded">
                     {problem.operationalImpact || '[OPERATIONAL / COMPLIANCE IMPACT]'}
                   </span>
                   ."

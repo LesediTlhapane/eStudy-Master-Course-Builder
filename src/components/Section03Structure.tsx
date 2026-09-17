@@ -303,7 +303,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
           {activeSlideTab === 'meta' && (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 07 · SPECIFICATIONS
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
@@ -401,7 +401,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
                 <div className="border-b border-slate-100 pb-3">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                     SLIDE 08 · RATIONALE
                   </span>
                   <h3 className="text-sm font-bold text-[#052B66]">
@@ -432,7 +432,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
 
               <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
                 <div className="border-b border-slate-100 pb-3">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                     SLIDE 08 · OUTCOMES
                   </span>
                   <h3 className="text-sm font-bold text-[#052B66]">
@@ -519,7 +519,7 @@ export const Section03Structure: React.FC<Section03StructureProps> = ({
           {activeSlideTab === 'journey' && (
             <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 shadow-xs">
               <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
                   SLIDE 10 · DIAGNOSTICS & JOURNEY
                 </span>
                 <h3 className="text-sm font-bold text-[#052B66]">
