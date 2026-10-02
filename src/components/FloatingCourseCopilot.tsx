@@ -13,18 +13,24 @@ import {
   RefreshCw,
   Sliders,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Cpu
 } from 'lucide-react';
-import { Course, SectionId } from '../types';
+import { Course, SectionId, AIProvider } from '../types';
 import { QAResult } from '../utils/qaEngine';
 import { AppView } from '../hooks/useCourseStore';
 import { processLocalCopilotChat } from '../utils/localCourseEngine';
+import { getClientModels, getDefaultModel } from '../utils/aiModels';
 
 interface FloatingCourseCopilotProps {
   course: Course;
   activeSection: SectionId;
   view: AppView;
   qaResult: QAResult;
+  selectedProvider?: AIProvider;
+  selectedModel?: string;
+  onSelectProvider?: (provider: AIProvider) => void;
+  onSelectModel?: (model: string) => void;
   onUpdateCourse: (updater: Partial<Course> | ((prev: Course) => Course)) => void;
   onJumpToSection: (section: SectionId, fieldId?: string) => void;
   onStartAIGeneration: () => void;
@@ -115,6 +121,10 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   activeSection,
   view,
   qaResult,
+  selectedProvider = 'gemini',
+  selectedModel = 'gemini-3.8-flash',
+  onSelectProvider,
+  onSelectModel,
   onUpdateCourse,
   onJumpToSection,
   onStartAIGeneration,
@@ -191,7 +201,9 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
             messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
             currentCourse: course,
             activeSection: activeSection,
-            qaResult: qaResult
+            qaResult: qaResult,
+            provider: selectedProvider,
+            model: selectedModel
           })
         });
 
@@ -523,6 +535,42 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
               <div className="flex items-center gap-1 flex-shrink-0 pl-2 text-[11px] text-slate-400">
                 <span>Sec {activeSection}</span>
                 <span className="text-[#45CC42] font-semibold">({qaResult.scorePercent}%)</span>
+              </div>
+            </div>
+
+            {/* AI Engine Indicator & Model Selector */}
+            <div className="bg-slate-800/80 border-b border-slate-700/60 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-[#45CC42]" />
+                <span className="text-slate-400">Engine:</span>
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => {
+                    const p = e.target.value as AIProvider;
+                    if (onSelectProvider) onSelectProvider(p);
+                    if (onSelectModel) onSelectModel(getDefaultModel(p, 'copilot'));
+                  }}
+                  className="bg-transparent text-white font-bold cursor-pointer border-0 p-0 text-[11px] focus:ring-0"
+                >
+                  <option value="gemini" className="bg-slate-900 text-white">Google Gemini</option>
+                  <option value="groq" className="bg-slate-900 text-white">Groq Cloud</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <select
+                  value={selectedModel}
+                  onChange={(e) => {
+                    if (onSelectModel) onSelectModel(e.target.value);
+                  }}
+                  className="bg-transparent text-[#45CC42] font-semibold cursor-pointer border-0 p-0 text-[10.5px] focus:ring-0 max-w-[170px] truncate"
+                >
+                  {getClientModels(selectedProvider, 'copilot').map(m => (
+                    <option key={m.id} value={m.id} className="bg-slate-900 text-white">
+                      {m.displayName}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

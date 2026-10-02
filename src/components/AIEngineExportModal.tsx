@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Course } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Course, AIProvider, AIModelMeta } from '../types';
 import { generateMasterPrompt } from '../utils/promptGenerator';
 import { generateCourseDocx } from '../utils/docxExport';
 import { printCoursePdf } from '../utils/pdfExport';
+import { getClientModels, getDefaultModel } from '../utils/aiModels';
 import {
   X,
   Sparkles,
@@ -18,17 +19,24 @@ import {
   ShieldCheck,
   Zap,
   Layers,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  Info,
+  Sliders
 } from 'lucide-react';
 
 interface AIEngineExportModalProps {
   isOpen: boolean;
   course: Course;
+  selectedProvider: AIProvider;
+  selectedModel: string;
+  onSelectProvider: (provider: AIProvider) => void;
+  onSelectModel: (model: string) => void;
   onClose: () => void;
-  onStartAIGeneration: () => void;
+  onStartAIGeneration: (provider?: AIProvider, model?: string) => void;
 }
 
-export interface AIEngineOption {
+export interface ExternalAIToolOption {
   id: string;
   name: string;
   provider: string;
@@ -39,35 +47,20 @@ export interface AIEngineOption {
   strengths: string[];
   webUrl: string;
   recommendedFor: string;
-  color: string;
 }
 
-export const AI_ENGINES: AIEngineOption[] = [
+export const EXTERNAL_AI_TOOLS: ExternalAIToolOption[] = [
   {
     id: 'claude-3-5-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
     rating: 4.9,
     reviewCount: 3840,
-    badge: 'Instructional Design Top Choice',
-    description: 'Gold standard for pedagogical nuance, South African workplace scenarios, and authentic workplace dialogues.',
+    badge: 'Pedagogical Nuance',
+    description: 'Premier model for instructional design, authentic South African workplace scenarios, and empathetic learner journeys.',
     strengths: ['Bloom’s Taxonomy Precision', 'Empathetic Workplace Scenarios', 'Zero-fluff Content Body'],
     webUrl: 'https://claude.ai',
-    recommendedFor: 'Best for corporate training, ethics, and interactive learner journeys',
-    color: '#D97706'
-  },
-  {
-    id: 'gemini-3-8-flash',
-    name: 'Gemini 3.8 Flash',
-    provider: 'Google DeepMind',
-    rating: 4.9,
-    reviewCount: 4320,
-    badge: 'Recommended for Copilot Chatbot',
-    description: 'Ultra-fast sub-2-second generation with 1M+ token context window. Powers the in-app Course Copilot and instantly populates all 9 framework sections.',
-    strengths: ['Sub-2s Interactive Speed', '100% JSON Schema Fidelity', '1M Context for POPIA & Statutes'],
-    webUrl: 'https://gemini.google.com',
-    recommendedFor: 'Best for real-time Copilot chat, fast course scaffolding, and statutory compliance',
-    color: '#2563EB'
+    recommendedFor: 'Best for corporate training, ethics, and interactive learner journeys'
   },
   {
     id: 'gpt-4o',
@@ -79,21 +72,19 @@ export const AI_ENGINES: AIEngineOption[] = [
     description: 'Strong generalist engine with high adherence to strict prompt guidelines and corporate diagnostic quizzes.',
     strengths: ['Strict Guideline Compliance', 'Diverse Quiz Formats', 'Executive Summaries'],
     webUrl: 'https://chatgpt.com',
-    recommendedFor: 'Best for standard corporate SOPs and multi-choice assessments',
-    color: '#059669'
+    recommendedFor: 'Best for standard corporate SOPs and multi-choice assessments'
   },
   {
     id: 'deepseek-r1',
-    name: 'DeepSeek R1 / V3',
+    name: 'DeepSeek R1',
     provider: 'DeepSeek',
     rating: 4.7,
     reviewCount: 2950,
-    badge: 'Technical & Systems Rigor',
+    badge: 'Reasoning & Logic',
     description: 'Open-weight reasoning model excelling in procedural logic, systems troubleshooting, and analytical checklists.',
     strengths: ['Step-by-Step Logic', 'Process Failure Analysis', 'Technical Procedures'],
     webUrl: 'https://chat.deepseek.com',
-    recommendedFor: 'Best for IT, engineering, software workflows, and complex operational procedures',
-    color: '#4F46E5'
+    recommendedFor: 'Best for IT, engineering, software workflows, and complex operational procedures'
   },
   {
     id: 'mistral-large-2',
@@ -105,31 +96,49 @@ export const AI_ENGINES: AIEngineOption[] = [
     description: 'Compact high-power model tuned for governance, concise plain language, and international regulatory standards.',
     strengths: ['Plain Language Clarity', 'Governance Frameworks', 'Concise SOP Outlines'],
     webUrl: 'https://chat.mistral.ai',
-    recommendedFor: 'Best for compliance officers and concise micro-learning sprints',
-    color: '#EA580C'
+    recommendedFor: 'Best for compliance officers and concise micro-learning sprints'
   }
 ];
 
 export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
   isOpen,
   course,
+  selectedProvider,
+  selectedModel,
+  onSelectProvider,
+  onSelectModel,
   onClose,
   onStartAIGeneration
 }) => {
-  const [activeTab, setActiveTab] = useState<'ai' | 'documents'>('ai');
-  const [selectedEngineId, setSelectedEngineId] = useState<string>('claude-3-5-sonnet');
+  const [activeTab, setActiveTab] = useState<'direct_ai' | 'external_ai' | 'documents'>('direct_ai');
+  const [selectedExternalToolId, setSelectedExternalToolId] = useState<string>('claude-3-5-sonnet');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
+  const [generationTask, setGenerationTask] = useState<'complete_course'>('complete_course');
 
   if (!isOpen) return null;
 
-  const selectedEngine = AI_ENGINES.find(e => e.id === selectedEngineId) || AI_ENGINES[0];
   const promptText = generateMasterPrompt(course);
-  const wordCount = promptText.trim().split(/\s+/).length;
+  const wordCount = promptText.trim().split(/\s+/).filter(Boolean).length;
 
-  const handleCopyPrompt = async () => {
+  const availableModelsForProvider = getClientModels(selectedProvider, 'course_generation');
+  const currentModelMeta = availableModelsForProvider.find(m => m.id === selectedModel) || availableModelsForProvider[0];
+  const selectedExternalTool = EXTERNAL_AI_TOOLS.find(t => t.id === selectedExternalToolId) || EXTERNAL_AI_TOOLS[0];
+
+  const handleProviderChange = (newProvider: AIProvider) => {
+    onSelectProvider(newProvider);
+    const defModel = getDefaultModel(newProvider, 'course_generation');
+    onSelectModel(defModel);
+  };
+
+  const handleLaunchGeneration = () => {
+    onClose();
+    onStartAIGeneration(selectedProvider, selectedModel);
+  };
+
+  const handleCopyPrompt = async (targetToolName: string) => {
     try {
-      const specializedPrompt = `### [SYSTEM DIRECTIVE FOR ${selectedEngine.name.toUpperCase()}]\nYou are acting as eStudy South Africa's Senior Instructional Designer.\nAdhere strictly to the eStudy Master Course Prompt Framework v9.0 below.\n\n${promptText}`;
+      const specializedPrompt = `### [SYSTEM DIRECTIVE FOR ${targetToolName.toUpperCase()}]\nYou are acting as eStudy South Africa's Senior Instructional Designer.\nAdhere strictly to the eStudy Master Course Prompt Framework v9.0 below.\n\n${promptText}`;
       await navigator.clipboard.writeText(specializedPrompt);
       setCopiedPrompt(true);
       setTimeout(() => setCopiedPrompt(false), 2500);
@@ -178,7 +187,8 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in font-sora">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+        
         {/* Modal Top Header */}
         <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
@@ -187,10 +197,10 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-extrabold text-[#052B66]">
-                Generate Course & Export Template
+                AI Course Generation & Export Hub
               </h2>
               <p className="text-xs text-slate-500">
-                Pick your preferred AI generation tool or export to Word / PDF documents.
+                Choose an AI provider and model to generate directly, or export specification to Word/PDF.
               </p>
             </div>
           </div>
@@ -204,42 +214,56 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
         </div>
 
         {/* Modal Tabs */}
-        <div className="flex border-b border-slate-200 px-6 bg-white gap-4">
+        <div className="flex border-b border-slate-200 px-6 bg-white gap-3 sm:gap-6 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('ai')}
-            className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'ai'
-                ? 'border-[#45CC42] text-[#052B66] text-xs'
+            onClick={() => setActiveTab('direct_ai')}
+            className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+              activeTab === 'direct_ai'
+                ? 'border-[#45CC42] text-[#052B66]'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Cpu className="w-4 h-4 text-[#45CC42]" />
-            <span>1. Pick AI Generation Tool (with Ratings)</span>
+            <Zap className="w-4 h-4 text-[#45CC42]" />
+            <span>1. Direct AI Generation (Gemini & Groq)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('external_ai')}
+            className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+              activeTab === 'external_ai'
+                ? 'border-[#45CC42] text-[#052B66]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Cpu className="w-4 h-4 text-[#052B66]" />
+            <span>2. Copy Prompt for External Tools (Claude, GPT-4o)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('documents')}
-            className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
               activeTab === 'documents'
                 ? 'border-[#45CC42] text-[#052B66]'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
             <Download className="w-4 h-4 text-[#45CC42]" />
-            <span>2. Download Document (Word .docx / PDF)</span>
+            <span>3. Download Word / PDF Documents</span>
           </button>
         </div>
 
         {/* Tab Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {activeTab === 'ai' ? (
+          
+          {/* TAB 1: DIRECT AI GENERATION (Requirements 4 & 5) */}
+          {activeTab === 'direct_ai' && (
             <div className="space-y-6">
-              {/* Highlight Banner */}
+              {/* Highlight Status Banner */}
               <div className="p-4 rounded-xl bg-gradient-to-r from-[#052B66] to-[#0d3f8f] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-l-[#45CC42] shadow-sm">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-[10.5px] font-bold uppercase bg-[#45CC42] text-[#052B66] px-2 py-0.5 rounded">
-                      eStudy Universal Template Ready
+                      Universal Specification Ready
                     </span>
                     <span className="text-xs text-slate-300 font-mono">
                       {wordCount.toLocaleString()} words compiled
@@ -250,96 +274,280 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                   </h3>
                 </div>
 
-                <button
-                  onClick={() => {
-                    onClose();
-                    onStartAIGeneration();
-                  }}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] transition-all shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Generate Course Now</span>
-                </button>
+                <div className="text-right">
+                  <span className="text-[11px] text-slate-300 block">Selected Engine:</span>
+                  <span className="text-xs font-bold text-[#45CC42]">
+                    {selectedProvider === 'groq' ? 'Groq Cloud' : 'Google Gemini'} · {currentModelMeta?.displayName || selectedModel}
+                  </span>
+                </div>
               </div>
 
-              {/* AI Engine Selection Cards */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#052B66]">
-                  Select AI Tool for Course Generation:
-                </label>
+              {/* GENERATION CONFIGURATION AREA (Required by Prompt) */}
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-5">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#052B66]">
+                  <Sliders className="w-4 h-4 text-[#45CC42]" />
+                  <span>AI Engine & Model Configuration</span>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {AI_ENGINES.map(engine => {
-                    const isSelected = selectedEngineId === engine.id;
-                    return (
-                      <div
-                        key={engine.id}
-                        onClick={() => setSelectedEngineId(engine.id)}
-                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
-                          isSelected
-                            ? 'border-[#45CC42] bg-[#45CC42]/5 shadow-xs'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 1. AI Provider Selection */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      AI Provider:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleProviderChange('gemini')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                          selectedProvider === 'gemini'
+                            ? 'border-[#052B66] bg-blue-50/80 ring-2 ring-[#052B66]/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-100/60'
                         }`}
                       >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-extrabold text-sm text-[#052B66]">
-                              {engine.name}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-[#052B66]">Google Gemini</span>
+                          {selectedProvider === 'gemini' && <Check className="w-3.5 h-3.5 text-[#052B66] stroke-[3]" />}
+                        </div>
+                        <span className="text-[10px] text-slate-500">1M Token Context, Fast</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleProviderChange('groq')}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
+                          selectedProvider === 'groq'
+                            ? 'border-[#052B66] bg-orange-50/80 ring-2 ring-[#052B66]/20'
+                            : 'border-slate-200 bg-white hover:bg-slate-100/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-[#EA580C]">Groq Cloud</span>
+                          {selectedProvider === 'groq' && <Check className="w-3.5 h-3.5 text-[#EA580C] stroke-[3]" />}
+                        </div>
+                        <span className="text-[10px] text-slate-500">LPU Ultra-Low Latency</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. AI Model Selection */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      AI Model ({selectedProvider === 'groq' ? 'Groq Models' : 'Gemini Models'}):
+                    </label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => onSelectModel(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66] cursor-pointer"
+                    >
+                      {availableModelsForProvider.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.displayName} {m.isDefault ? '★ (Recommended)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[10.5px] text-slate-500 block truncate">
+                      {currentModelMeta?.description}
+                    </span>
+                  </div>
+
+                  {/* 3. Generation Task Selection */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      Generation Task:
+                    </label>
+                    <select
+                      value={generationTask}
+                      onChange={(e: any) => setGenerationTask(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-800 focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66] cursor-pointer"
+                    >
+                      <option value="complete_course">Complete Course (Master Prompt v9.0)</option>
+                    </select>
+                    <span className="text-[10.5px] text-slate-500 block">
+                      Curriculum, lessons, scenarios, diagnostic & capstone
+                    </span>
+                  </div>
+                </div>
+
+                {/* Selected Model Capabilities Badges */}
+                {currentModelMeta && (
+                  <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-[#052B66]">{currentModelMeta.displayName}</span>
+                      <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                        ID: {currentModelMeta.id}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      {currentModelMeta.capabilities.structuredOutput && (
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200">
+                          Structured JSON
+                        </span>
+                      )}
+                      {currentModelMeta.capabilities.longContext && (
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-semibold border border-blue-200">
+                          Long Context Window
+                        </span>
+                      )}
+                      {currentModelMeta.capabilities.fastInference && (
+                        <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-semibold border border-amber-200">
+                          Fast Inference
+                        </span>
+                      )}
+                      {currentModelMeta.capabilities.reasoning && (
+                        <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-800 font-semibold border border-purple-200">
+                          Reasoning
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Primary Action Button */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-[11px] text-slate-500">
+                    The generated course will conform strictly to the <strong>GeneratedCourse</strong> schema with POPIA validation.
+                  </div>
+
+                  <button
+                    onClick={handleLaunchGeneration}
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-extrabold bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#052B66]" />
+                    <span>Generate Course with {currentModelMeta?.displayName || selectedModel}</span>
+                    <ArrowRight className="w-4 h-4 text-[#052B66]" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Supported Models Cards Comparison */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#052B66]">
+                    Available {selectedProvider === 'groq' ? 'Groq' : 'Google Gemini'} Models:
+                  </label>
+                  <span className="text-[11px] text-slate-500">
+                    Task-specific capability filtered
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {availableModelsForProvider.map(m => {
+                    const isSelected = selectedModel === m.id;
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => onSelectModel(m.id)}
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-2 relative ${
+                          isSelected
+                            ? 'border-[#45CC42] bg-[#45CC42]/5 shadow-xs'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-xs text-[#052B66]">
+                              {m.displayName}
                             </span>
-                            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                              <span className="text-xs font-bold text-amber-900">
-                                {engine.rating.toFixed(1)}
+                            {m.recommendedBadge && (
+                              <span className="text-[10px] font-bold bg-[#45CC42]/20 text-[#052B66] px-2 py-0.5 rounded-full">
+                                Recommended
                               </span>
-                              <span className="text-[10px] text-amber-700">
-                                ({engine.reviewCount.toLocaleString()})
-                              </span>
-                            </div>
+                            )}
                           </div>
-
-                          <div className="text-[11px] font-semibold text-slate-500">
-                            by {engine.provider} • <span className="text-[#052B66] font-bold">{engine.badge}</span>
-                          </div>
-
-                          <p className="text-xs text-slate-600 leading-relaxed">
-                            {engine.description}
+                          <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                            {m.description}
                           </p>
                         </div>
 
-                        <div className="space-y-2 pt-2 border-t border-slate-100">
-                          <div className="flex flex-wrap gap-1.5">
-                            {engine.strengths.map((str, idx) => (
-                              <span
-                                key={idx}
-                                className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md"
-                              >
-                                {str}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="text-[11px] text-[#052B66] font-medium italic">
-                            💡 {engine.recommendedFor}
-                          </div>
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                          <span>Context: {(m.contextWindow / 1024).toFixed(0)}k tokens</span>
+                          <span className="font-mono text-slate-600">{m.id}</span>
                         </div>
-
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#45CC42]" />
-                        )}
                       </div>
                     );
                   })}
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Selected Engine Action Strip */}
+          {/* TAB 2: EXTERNAL AI TOOLS (Preserved optional prompt-copy workflow) */}
+          {activeTab === 'external_ai' && (
+            <div className="space-y-6">
+              <div className="text-xs text-slate-600">
+                You can copy the compiled Master Prompt tailored for external web tools like Claude 3.5 Sonnet, ChatGPT GPT-4o, DeepSeek, or Mistral.
+              </div>
+
+              {/* External Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {EXTERNAL_AI_TOOLS.map(tool => {
+                  const isSelected = selectedExternalToolId === tool.id;
+                  return (
+                    <div
+                      key={tool.id}
+                      onClick={() => setSelectedExternalToolId(tool.id)}
+                      className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between space-y-3 relative ${
+                        isSelected
+                          ? 'border-[#45CC42] bg-[#45CC42]/5 shadow-xs'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold text-sm text-[#052B66]">
+                            {tool.name}
+                          </span>
+                          <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            <span className="text-xs font-bold text-amber-900">
+                              {tool.rating.toFixed(1)}
+                            </span>
+                            <span className="text-[10px] text-amber-700">
+                              ({tool.reviewCount.toLocaleString()})
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-[11px] font-semibold text-slate-500">
+                          by {tool.provider} • <span className="text-[#052B66] font-bold">{tool.badge}</span>
+                        </div>
+
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {tool.description}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                        <div className="flex flex-wrap gap-1.5">
+                          {tool.strengths.map((str, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md"
+                            >
+                              {str}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="text-[11px] text-[#052B66] font-medium italic">
+                          💡 {tool.recommendedFor}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Selected External Tool Action Strip */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="text-xs text-slate-700">
-                  Selected: <strong className="text-[#052B66]">{selectedEngine.name}</strong> ({selectedEngine.rating} ★)
+                  Selected: <strong className="text-[#052B66]">{selectedExternalTool.name}</strong> ({selectedExternalTool.rating} ★)
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={handleCopyPrompt}
+                    onClick={() => handleCopyPrompt(selectedExternalTool.name)}
                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
                       copiedPrompt
                         ? 'bg-[#45CC42] text-[#052B66]'
@@ -349,31 +557,33 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                     {copiedPrompt ? (
                       <>
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Prompt Copied for {selectedEngine.name}!</span>
+                        <span>Prompt Copied for {selectedExternalTool.name}!</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Prompt for {selectedEngine.name}</span>
+                        <span>Copy Prompt for {selectedExternalTool.name}</span>
                       </>
                     )}
                   </button>
 
                   <a
-                    href={selectedEngine.webUrl}
+                    href={selectedExternalTool.webUrl}
                     target="_blank"
                     rel="noreferrer"
-                    onClick={handleCopyPrompt}
+                    onClick={() => handleCopyPrompt(selectedExternalTool.name)}
                     className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <span>Open in {selectedEngine.name}</span>
+                    <span>Open in {selectedExternalTool.name}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>
             </div>
-          ) : (
-            /* Document Download Tab */
+          )}
+
+          {/* TAB 3: DOCUMENT DOWNLOADS (.docx / .pdf / .md) */}
+          {activeTab === 'documents' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Word Document (.docx) */}
@@ -447,6 +657,7 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
               </div>
             </div>
           )}
+
         </div>
 
         {/* Modal Bottom Footer */}

@@ -25,13 +25,20 @@ import {
   HelpCircle,
   Hash,
   Compass,
-  AlignLeft
+  AlignLeft,
+  Cpu
 } from 'lucide-react';
+import { AIProvider } from '../types';
+import { getClientModels, getDefaultModel } from '../utils/aiModels';
 
 interface PromptPreviewProps {
   course: Course;
+  selectedProvider?: AIProvider;
+  selectedModel?: string;
+  onSelectProvider?: (provider: AIProvider) => void;
+  onSelectModel?: (model: string) => void;
   onReturnToBuilder: () => void;
-  onStartAIGeneration?: () => void;
+  onStartAIGeneration?: (provider?: AIProvider, model?: string) => void;
 }
 
 export type PreviewTheme = 'light' | 'dark' | 'sepia';
@@ -40,6 +47,10 @@ export type PreviewDisplayMode = 'document' | 'raw' | 'markdown';
 
 export const PromptPreview: React.FC<PromptPreviewProps> = ({
   course: rawCourse,
+  selectedProvider = 'gemini',
+  selectedModel = 'gemini-3.8-flash',
+  onSelectProvider,
+  onSelectModel,
   onReturnToBuilder,
   onStartAIGeneration
 }) => {
@@ -324,6 +335,43 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
               <p className={`text-xs sm:text-sm font-medium ${themeStyles.subtitle}`}>
                 Fully assembled master instructional prompt compiled directly from your validated course parameters. 100% visible, high-contrast review of all fields and generation directives.
               </p>
+
+              {/* AI Provider & Model Quick Selector */}
+              <div className="pt-2 flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+                  <Cpu className="w-3.5 h-3.5 text-[#052B66]" />
+                  <span className="font-bold text-slate-700">AI Provider:</span>
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) => {
+                      const newP = e.target.value as AIProvider;
+                      if (onSelectProvider) onSelectProvider(newP);
+                      if (onSelectModel) onSelectModel(getDefaultModel(newP, 'course_generation'));
+                    }}
+                    className="font-bold text-[#052B66] bg-transparent border-0 cursor-pointer focus:ring-0 text-xs"
+                  >
+                    <option value="gemini">Google Gemini</option>
+                    <option value="groq">Groq Cloud</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-300 px-2.5 py-1.5 rounded-xl">
+                  <span className="font-bold text-slate-700">Model:</span>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      if (onSelectModel) onSelectModel(e.target.value);
+                    }}
+                    className="font-bold text-[#052B66] bg-transparent border-0 cursor-pointer focus:ring-0 text-xs max-w-[210px] truncate"
+                  >
+                    {getClientModels(selectedProvider, 'course_generation').map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Primary Actions */}
@@ -340,11 +388,11 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
               {onStartAIGeneration && (
                 <button
                   id="preview-generate-ai-course-btn"
-                  onClick={onStartAIGeneration}
+                  onClick={() => onStartAIGeneration(selectedProvider, selectedModel)}
                   className="px-4 py-2.5 rounded-xl text-xs font-extrabold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-[#052B66]" />
-                  <span>Generate Course with AI</span>
+                  <span>Generate with {selectedProvider === 'groq' ? 'Groq' : 'Gemini'}</span>
                 </button>
               )}
 

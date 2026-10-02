@@ -31,6 +31,10 @@ export function App() {
     qaResult,
     targetFocusField,
     availableTemplates,
+    selectedAIProvider,
+    selectedAIModel,
+    setAIProvider,
+    setAIModel,
     setView,
     setActiveSection,
     updateActiveCourse,
@@ -137,6 +141,10 @@ export function App() {
       {view === 'preview' && (
         <PromptPreview
           course={activeCourse}
+          selectedProvider={selectedAIProvider}
+          selectedModel={selectedAIModel}
+          onSelectProvider={setAIProvider}
+          onSelectModel={setAIModel}
           onReturnToBuilder={() => setView('builder')}
           onStartAIGeneration={startAIGeneration}
         />
@@ -145,6 +153,8 @@ export function App() {
       {view === 'generating' && (
         <AIGenerationProgress
           course={activeCourse}
+          provider={selectedAIProvider}
+          model={selectedAIModel}
           onComplete={generated => setGeneratedCourseForActive(generated)}
           onCancel={() => setView('preview')}
         />
@@ -155,6 +165,8 @@ export function App() {
           <GeneratedCourseView
             course={activeCourse}
             generatedCourse={activeCourse.generatedCourse}
+            selectedProvider={selectedAIProvider}
+            selectedModel={selectedAIModel}
             onUpdateGeneratedCourse={updated => {
               updateActiveCourse({ generatedCourse: updated });
             }}
@@ -164,6 +176,10 @@ export function App() {
         ) : (
           <PromptPreview
             course={activeCourse}
+            selectedProvider={selectedAIProvider}
+            selectedModel={selectedAIModel}
+            onSelectProvider={setAIProvider}
+            onSelectModel={setAIModel}
             onReturnToBuilder={() => setView('builder')}
             onStartAIGeneration={startAIGeneration}
           />
@@ -282,6 +298,10 @@ export function App() {
         activeSection={activeSection}
         view={view}
         qaResult={qaResult}
+        selectedProvider={selectedAIProvider}
+        selectedModel={selectedAIModel}
+        onSelectProvider={setAIProvider}
+        onSelectModel={setAIModel}
         onUpdateCourse={updateActiveCourse}
         onJumpToSection={(sec, field) => jumpToSection(sec, field)}
         onStartAIGeneration={startAIGeneration}
@@ -292,6 +312,10 @@ export function App() {
       <AIEngineExportModal
         isOpen={isExportModalOpen}
         course={activeCourse}
+        selectedProvider={selectedAIProvider}
+        selectedModel={selectedAIModel}
+        onSelectProvider={setAIProvider}
+        onSelectModel={setAIModel}
         onClose={() => setIsExportModalOpen(false)}
         onStartAIGeneration={startAIGeneration}
       />

@@ -1,4 +1,4 @@
-import { regenerateCoursePart } from '../../src/server/geminiService';
+import { executeGranularRegeneration } from '../../src/server/ai';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -23,20 +23,26 @@ export default async function handler(req: any, res: any) {
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
-    const { course, partType, targetId, currentGeneratedCourse } = body || {};
+    const { course, partType, targetId, currentGeneratedCourse, provider, model } = body || {};
     if (!course || !partType) {
       return res.status(400).json({ error: 'Missing course or partType in request body.' });
     }
 
-    const result = await regenerateCoursePart(course, partType, targetId, currentGeneratedCourse);
+    const result = await executeGranularRegeneration(
+      course,
+      partType,
+      targetId,
+      currentGeneratedCourse,
+      provider,
+      model
+    );
+
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error regenerating part in Vercel function:', error);
+    console.error('Error regenerating part in serverless function:', error);
     return res.status(500).json({ error: error?.message || 'Failed to regenerate course component.' });
   }
 }

@@ -1,4 +1,4 @@
-import { processCopilotChat } from '../../src/server/geminiService';
+import { processAIAssistedCopilotChat } from '../../src/server/ai';
 import { processLocalCopilotChat } from '../../src/utils/localCourseEngine';
 
 export default async function handler(req: any, res: any) {
@@ -24,28 +24,27 @@ export default async function handler(req: any, res: any) {
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
-      } catch (e) {
-        // use raw or empty
-      }
+      } catch (e) {}
     }
 
-    const { messages, currentCourse, activeSection, qaResult } = body || {};
+    const { messages, currentCourse, activeSection, qaResult, provider, model } = body || {};
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Missing messages array in request body.' });
     }
 
-    const response = await processCopilotChat({
+    const response = await processAIAssistedCopilotChat({
       messages,
       currentCourse: currentCourse || {},
       activeSection: activeSection || '01',
-      qaResult: qaResult || null
+      qaResult: qaResult || null,
+      provider,
+      model
     });
 
     return res.status(200).json({ success: true, ...response });
   } catch (error: any) {
-    console.error('Error in Vercel api/copilot/chat:', error);
-    // Graceful fallback so Vercel users never see broken responses
+    console.error('Error in serverless api/copilot/chat:', error);
     try {
       let body = req.body;
       if (typeof body === 'string') {
@@ -57,7 +56,7 @@ export default async function handler(req: any, res: any) {
         activeSection: body?.activeSection || '01',
         qaResult: body?.qaResult || null
       });
-      return res.status(200).json({ success: true, ...fallbackResponse, note: 'Processed via resilient fallback engine' });
+      return res.status(200).json({ success: true, ...fallbackResponse, fallbackUsed: true });
     } catch (fallbackErr) {
       return res.status(500).json({ error: error?.message || 'Failed to process chat message.' });
     }

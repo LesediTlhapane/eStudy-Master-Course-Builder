@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion } from '../types';
+import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, AIProvider } from '../types';
 import { generateCourseDocx } from '../utils/docxExport';
 import { printCoursePdf } from '../utils/pdfExport';
 import {
@@ -25,12 +25,18 @@ import {
   ExternalLink,
   Printer,
   FileCode,
-  Loader2
+  Loader2,
+  Cpu,
+  Clock,
+  Zap,
+  Info
 } from 'lucide-react';
 
 interface GeneratedCourseViewProps {
   course: Course;
   generatedCourse: GeneratedCourse;
+  selectedProvider?: AIProvider;
+  selectedModel?: string;
   onUpdateGeneratedCourse: (updated: GeneratedCourse) => void;
   onBackToBuilder: () => void;
   onBackToDashboard: () => void;
@@ -39,6 +45,8 @@ interface GeneratedCourseViewProps {
 export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   course,
   generatedCourse,
+  selectedProvider,
+  selectedModel,
   onUpdateGeneratedCourse,
   onBackToBuilder,
   onBackToDashboard
@@ -88,11 +96,21 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   const handleRegeneratePart = async (partType: string, targetId: string, moduleId?: string) => {
     setIsRegenerating(targetId);
     try {
+      const activeProvider = selectedProvider || (generatedCourse.generationMetadata?.provider === 'groq' ? 'groq' : 'gemini');
+      const activeModel = selectedModel || generatedCourse.generationMetadata?.model || (activeProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.8-flash');
+
       // Send granular regeneration request to server or run local refinement
       const res = await fetch('/api/courses/regenerate-part', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ course, partType, targetId, currentGeneratedCourse: generatedCourse })
+        body: JSON.stringify({
+          course,
+          partType,
+          targetId,
+          currentGeneratedCourse: generatedCourse,
+          provider: activeProvider,
+          model: activeModel
+        })
       });
 
       if (res.ok) {
@@ -360,6 +378,60 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Generation Metadata & Audit Card (Requirement 12) */}
+        <div className="mb-6 p-4.5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-[#052B66]" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">AI Provider & Model</span>
+                <span className="font-extrabold text-[#052B66]">
+                  {generatedCourse.generationMetadata?.providerDisplayName || (generatedCourse.generationMetadata?.provider === 'groq' ? 'Groq Cloud' : 'Google Gemini')} · <span className="font-mono">{generatedCourse.generationMetadata?.modelDisplayName || generatedCourse.generationMetadata?.model || 'gemini-3.8-flash'}</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="h-7 w-px bg-slate-200 hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Generated At & Latency</span>
+                <span className="font-semibold text-slate-700">
+                  {new Date(generatedCourse.generationMetadata?.generatedAt || generatedCourse.generatedAt).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {generatedCourse.generationMetadata?.generationDurationMs ? ` (${(generatedCourse.generationMetadata.generationDurationMs / 1000).toFixed(1)}s)` : ''}
+                </span>
+              </div>
+            </div>
+
+            {generatedCourse.generationMetadata?.tokensUsed && (
+              <>
+                <div className="h-7 w-px bg-slate-200 hidden sm:block" />
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Tokens Processed</span>
+                  <span className="font-mono text-slate-600">
+                    {generatedCourse.generationMetadata.tokensUsed.input?.toLocaleString()} in / {generatedCourse.generationMetadata.tokensUsed.output?.toLocaleString()} out
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div>
+            {generatedCourse.generationMetadata?.fallbackUsed ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                <span>Source: Local Fallback Engine {generatedCourse.generationMetadata.fallbackReason ? `— ${generatedCourse.generationMetadata.fallbackReason}` : ''}</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Verified Direct AI Synthesis</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Tab 1: Curriculum & Modules */}
         {activeTab === 'curriculum' && (
           <div className="space-y-8">
@@ -493,13 +565,25 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                                   <span className="text-[11px] text-slate-500">Duration: {lesson.durationMinutes} minutes</span>
                                 </div>
 
-                                <button
-                                  onClick={() => setEditingItem({ type: 'lesson', moduleId: mod.id, item: lesson })}
-                                  className="text-xs font-semibold text-slate-600 hover:text-[#052B66] flex items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-slate-100"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>Edit Copy</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRegeneratePart('lesson', lesson.id, mod.id)}
+                                    disabled={isRegenerating === lesson.id}
+                                    className="text-xs font-semibold text-slate-600 hover:text-[#052B66] flex items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                                    title="Regenerate this specific lesson with AI"
+                                  >
+                                    <RotateCcw className={`w-3.5 h-3.5 text-[#052B66] ${isRegenerating === lesson.id ? 'animate-spin' : ''}`} />
+                                    <span>Regenerate Lesson</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingItem({ type: 'lesson', moduleId: mod.id, item: lesson })}
+                                    className="text-xs font-semibold text-slate-600 hover:text-[#052B66] flex items-center gap-1 cursor-pointer p-1.5 rounded hover:bg-slate-100"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>Edit Copy</span>
+                                  </button>
+                                </div>
                               </div>
 
                               <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
@@ -561,13 +645,25 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                                     {sc.type} Scenario
                                   </span>
 
-                                  <button
-                                    onClick={() => setEditingItem({ type: 'scenario', moduleId: mod.id, item: sc })}
-                                    className="text-xs font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                    <span>Edit</span>
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRegeneratePart('scenario', sc.id, mod.id)}
+                                      disabled={isRegenerating === sc.id}
+                                      className="text-xs font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
+                                      title="Regenerate this specific scenario with AI"
+                                    >
+                                      <RotateCcw className={`w-3 h-3 text-[#052B66] ${isRegenerating === sc.id ? 'animate-spin' : ''}`} />
+                                      <span>Regenerate</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingItem({ type: 'scenario', moduleId: mod.id, item: sc })}
+                                      className="text-xs font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <h6 className="text-xs font-bold text-[#052B66]">{sc.title}</h6>
@@ -601,13 +697,25 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                               <div key={kc.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3 text-xs">
                                 <div className="flex items-center justify-between">
                                   <span className="font-bold text-[#052B66]">Question: {kc.question}</span>
-                                  <button
-                                    onClick={() => setEditingItem({ type: 'question', moduleId: mod.id, item: kc })}
-                                    className="text-[11px] font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Edit3 className="w-3 h-3" />
-                                    <span>Edit</span>
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRegeneratePart('knowledge_check', kc.id, mod.id)}
+                                      disabled={isRegenerating === kc.id}
+                                      className="text-[11px] font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
+                                      title="Regenerate this specific question with AI"
+                                    >
+                                      <RotateCcw className={`w-3 h-3 text-[#052B66] ${isRegenerating === kc.id ? 'animate-spin' : ''}`} />
+                                      <span>Regenerate</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingItem({ type: 'question', moduleId: mod.id, item: kc })}
+                                      className="text-[11px] font-semibold text-slate-500 hover:text-[#052B66] flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -639,9 +747,21 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                         {/* Practical Task */}
                         {mod.practicalTask && (
                           <div className="p-5 rounded-xl border border-[#052B66]/20 bg-blue-50/40 space-y-3 text-xs">
-                            <div className="flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-[#052B66]" />
-                              <h6 className="font-bold text-[#052B66]">{mod.practicalTask.title}</h6>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-[#052B66]" />
+                                <h6 className="font-bold text-[#052B66]">{mod.practicalTask.title}</h6>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRegeneratePart('practical_task', mod.practicalTask!.id, mod.id)}
+                                disabled={isRegenerating === mod.practicalTask.id}
+                                className="text-[11px] font-semibold text-slate-600 hover:text-[#052B66] flex items-center gap-1 cursor-pointer p-1 rounded hover:bg-slate-200/60"
+                                title="Regenerate practical task with AI"
+                              >
+                                <RotateCcw className={`w-3 h-3 text-[#052B66] ${isRegenerating === mod.practicalTask.id ? 'animate-spin' : ''}`} />
+                                <span>Regenerate Task</span>
+                              </button>
                             </div>
                             <p className="text-slate-700">{mod.practicalTask.instructions}</p>
                             <div className="bg-white p-3 rounded-lg border border-slate-200">
@@ -664,13 +784,25 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
           <div className="space-y-8">
             {/* Pre-Course Diagnostic */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-              <div className="border-b border-slate-100 pb-3">
-                <h3 className="text-base font-bold text-[#052B66]">
-                  {generatedCourse.assessments.preCourseDiagnostic.title}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  {generatedCourse.assessments.preCourseDiagnostic.instructions}
-                </p>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-[#052B66]">
+                    {generatedCourse.assessments.preCourseDiagnostic.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {generatedCourse.assessments.preCourseDiagnostic.instructions}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRegeneratePart('diagnostic', 'preCourseDiagnostic')}
+                  disabled={isRegenerating === 'preCourseDiagnostic'}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Regenerate pre-course diagnostic questions with AI"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-[#052B66] ${isRegenerating === 'preCourseDiagnostic' ? 'animate-spin' : ''}`} />
+                  <span>Regenerate Diagnostics</span>
+                </button>
               </div>
 
               <div className="space-y-4">
@@ -702,10 +834,22 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                     {generatedCourse.assessments.finalAssessment.instructions}
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-[#052B66] bg-[#45CC42]/20 px-3 py-1 rounded-full border border-[#45CC42]/40">
-                    Pass Mark: {generatedCourse.assessments.finalAssessment.passMark}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleRegeneratePart('capstone', 'finalAssessment')}
+                    disabled={isRegenerating === 'finalAssessment'}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Regenerate final assessment questions and capstone case study with AI"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 text-[#052B66] ${isRegenerating === 'finalAssessment' ? 'animate-spin' : ''}`} />
+                    <span>Regenerate Capstone & Exam</span>
+                  </button>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#052B66] bg-[#45CC42]/20 px-3 py-1 rounded-full border border-[#45CC42]/40">
+                      Pass Mark: {generatedCourse.assessments.finalAssessment.passMark}
+                    </span>
+                  </div>
                 </div>
               </div>
 

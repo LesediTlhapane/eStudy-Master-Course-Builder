@@ -465,6 +465,45 @@ export interface GeneratedCourseQA {
   popiaCompliant: boolean;
 }
 
+export type AIProvider = 'gemini' | 'groq';
+
+export interface AIModelCapability {
+  structuredOutput: boolean;
+  jsonMode: boolean;
+  longContext: boolean;
+  reasoning: boolean;
+  fastInference: boolean;
+}
+
+export interface AIModelMeta {
+  id: string;
+  provider: AIProvider;
+  displayName: string;
+  description: string;
+  contextWindow: number;
+  capabilities: AIModelCapability;
+  enabledForCourseGeneration: boolean;
+  enabledForCopilot: boolean;
+  enabledForRegeneration: boolean;
+  isDefault?: boolean;
+  recommendedBadge?: string;
+}
+
+export interface GenerationMetadata {
+  provider: AIProvider | 'local_fallback';
+  providerDisplayName: string;
+  model: string;
+  modelDisplayName?: string;
+  generatedAt: string;
+  generationDurationMs?: number;
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+  tokensUsed?: {
+    input?: number;
+    output?: number;
+  };
+}
+
 export interface GeneratedCourse {
   id: string;
   courseId: string;
@@ -483,6 +522,7 @@ export interface GeneratedCourse {
   generatedAt: string;
   approvedAt?: string;
   approvedBy?: string;
+  generationMetadata?: GenerationMetadata;
 }
 
 export type SectionId =

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Course, SectionId, GeneratedCourse } from '../types';
+import { Course, SectionId, GeneratedCourse, AIProvider } from '../types';
 import { 
   sampleCourses, 
   blankMasterTemplate, 
@@ -15,6 +15,8 @@ import { sanitizeCourse } from '../utils/courseSanitizer';
 const STORAGE_KEY = 'estudy_course_builder_courses_v14';
 const ACTIVE_COURSE_KEY = 'estudy_course_builder_active_id_v14';
 const CUSTOM_TEMPLATES_KEY = 'estudy_custom_templates_v1';
+const AI_PROVIDER_KEY = 'estudy_ai_provider_v1';
+const AI_MODEL_KEY = 'estudy_ai_model_v1';
 
 export type AppView = 'cover' | 'dashboard' | 'builder' | 'preview' | 'generating' | 'generated';
 
@@ -27,6 +29,10 @@ export interface UseCourseStoreReturn {
   qaResult: QAResult;
   targetFocusField: string | null;
   availableTemplates: CourseTemplateOption[];
+  selectedAIProvider: AIProvider;
+  selectedAIModel: string;
+  setAIProvider: (provider: AIProvider) => void;
+  setAIModel: (model: string) => void;
   setView: (view: AppView) => void;
   setActiveSection: (section: SectionId) => void;
   updateActiveCourse: (updater: Partial<Course> | ((prev: Course) => Course)) => void;
@@ -43,7 +49,7 @@ export interface UseCourseStoreReturn {
   jumpToSection: (section: SectionId, fieldId?: string) => void;
   clearTargetFocusField: () => void;
   resetToSampleData: () => void;
-  startAIGeneration: () => void;
+  startAIGeneration: (provider?: AIProvider, model?: string) => void;
   setGeneratedCourseForActive: (generated: GeneratedCourse) => void;
 }
 
@@ -132,6 +138,40 @@ export function useCourseStore(): UseCourseStoreReturn {
   const [view, setView] = useState<AppView>('cover');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
+
+  // Provider-agnostic AI engine selection state
+  const [selectedAIProvider, setSelectedAIProviderState] = useState<AIProvider>(() => {
+    try {
+      const saved = localStorage.getItem(AI_PROVIDER_KEY);
+      if (saved === 'groq' || saved === 'gemini') return saved;
+    } catch (e) {}
+    return 'gemini';
+  });
+
+  const [selectedAIModel, setSelectedAIModelState] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(AI_MODEL_KEY);
+      if (saved && saved.trim()) return saved;
+    } catch (e) {}
+    return 'gemini-3.8-flash';
+  });
+
+  const setAIProvider = useCallback((provider: AIProvider) => {
+    setSelectedAIProviderState(provider);
+    const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-3.8-flash';
+    setSelectedAIModelState(defaultModel);
+    try {
+      localStorage.setItem(AI_PROVIDER_KEY, provider);
+      localStorage.setItem(AI_MODEL_KEY, defaultModel);
+    } catch (e) {}
+  }, []);
+
+  const setAIModel = useCallback((model: string) => {
+    setSelectedAIModelState(model);
+    try {
+      localStorage.setItem(AI_MODEL_KEY, model);
+    } catch (e) {}
+  }, []);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -316,7 +356,25 @@ export function useCourseStore(): UseCourseStoreReturn {
     }
   }, []);
 
-  const startAIGeneration = useCallback(() => {
+  const startAIGeneration = useCallback((provider?: AIProvider, model?: string) => {
+    if (provider) {
+      setSelectedAIProviderState(provider);
+      try {
+        localStorage.setItem(AI_PROVIDER_KEY, provider);
+      } catch (e) {}
+    }
+    if (model) {
+      setSelectedAIModelState(model);
+      try {
+        localStorage.setItem(AI_MODEL_KEY, model);
+      } catch (e) {}
+    } else if (provider) {
+      const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-3.8-flash';
+      setSelectedAIModelState(defaultModel);
+      try {
+        localStorage.setItem(AI_MODEL_KEY, defaultModel);
+      } catch (e) {}
+    }
     setView('generating');
   }, []);
 
@@ -376,6 +434,10 @@ export function useCourseStore(): UseCourseStoreReturn {
     qaResult,
     targetFocusField,
     availableTemplates: allTemplates,
+    selectedAIProvider,
+    selectedAIModel,
+    setAIProvider,
+    setAIModel,
     setView,
     setActiveSection,
     updateActiveCourse,

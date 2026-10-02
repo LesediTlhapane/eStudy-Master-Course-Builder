@@ -1,4 +1,5 @@
-import { generateCourseWithGemini, generateLocalFallbackCourse } from '../../src/server/geminiService';
+import { generateCourseWithAIEngine } from '../../src/server/ai';
+import { generateLocalFallbackCourse } from '../../src/utils/localCourseEngine';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -23,20 +24,18 @@ export default async function handler(req: any, res: any) {
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
-    const { course } = body || {};
+    const { course, provider, model } = body || {};
     if (!course) {
       return res.status(400).json({ error: 'Missing course data in request body.' });
     }
 
-    const generatedCourse = await generateCourseWithGemini(course);
-    return res.status(200).json({ success: true, course: generatedCourse });
+    const result = await generateCourseWithAIEngine(course, provider, model);
+    return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error generating course in Vercel function:', error);
+    console.error('Error generating course in serverless function:', error);
     try {
       let body = req.body;
       if (typeof body === 'string') {
@@ -44,6 +43,14 @@ export default async function handler(req: any, res: any) {
       }
       if (body?.course) {
         const fallback = generateLocalFallbackCourse(body.course);
+        fallback.generationMetadata = {
+          provider: 'local_fallback',
+          providerDisplayName: 'Local Fallback Engine',
+          model: 'local-framework-v9',
+          generatedAt: new Date().toISOString(),
+          fallbackUsed: true,
+          fallbackReason: error?.message || 'Server error generating course'
+        };
         return res.status(200).json({ success: true, course: fallback, fallbackUsed: true });
       }
     } catch {}
