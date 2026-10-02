@@ -33,6 +33,9 @@ interface Section02SourcesProps {
   onUpdate: (updater: (prev: Course) => Course) => void;
   onContinue: () => void;
   onBack: () => void;
+  onStartAIGeneration?: () => void;
+  onOpenPreview?: () => void;
+  onOpenExportModal?: () => void;
 }
 
 const PRESET_FRAMEWORKS = [
@@ -70,7 +73,10 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
   course,
   onUpdate,
   onContinue,
-  onBack
+  onBack,
+  onStartAIGeneration,
+  onOpenPreview,
+  onOpenExportModal
 }) => {
   const [activeTab, setActiveTab] = useState<'sources' | 'profile'>('sources');
   const [searchQuery, setSearchQuery] = useState('');
@@ -317,6 +323,56 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
       {activeTab === 'sources' ? (
         /* Google NotebookLM Style Sources View */
         <div className="space-y-6">
+          {/* AI Generation Guidance & Instant Trigger Card */}
+          <div className="bg-gradient-to-r from-[#052B66] to-[#0d3f8a] text-white p-5 rounded-2xl shadow-md border border-[#45CC42]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1.5 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#45CC42]/20 border border-[#45CC42]/40 text-[#45CC42] text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Course Generation Engine</span>
+              </div>
+              <h4 className="text-base font-extrabold text-white">
+                Upload Information & Generate Your Course with AI
+              </h4>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                Yes! Any documents, text excerpts, company SOPs, or South African regulatory frameworks you upload here are passed directly to the AI engine. The engine analyzes your information to generate complete modules, workplace scenarios, diagnostic checks, and capstone assessments.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {onStartAIGeneration && (
+                <button
+                  type="button"
+                  id="section02-generate-ai-btn"
+                  onClick={onStartAIGeneration}
+                  className="px-4 py-2.5 rounded-xl text-xs font-black text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-[#052B66]" />
+                  <span>Generate Course with AI Now</span>
+                </button>
+              )}
+              {onOpenPreview && (
+                <button
+                  type="button"
+                  onClick={onOpenPreview}
+                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Review Master Prompt →</span>
+                </button>
+              )}
+              {onOpenExportModal && (
+                <button
+                  type="button"
+                  onClick={onOpenExportModal}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-white/5 hover:bg-white/15 border border-white/15 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Export to Claude, ChatGPT, or DeepSeek"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-[#45CC42]" />
+                  <span>External AI Engines</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Top Quick-Add Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
@@ -469,6 +525,15 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                         <FileCode className="w-3.5 h-3.5 text-[#052B66]" />
                         <span className="truncate">{src.fileName}</span>
                         {src.fileSize && <span className="text-slate-400">({src.fileSize})</span>}
+                      </div>
+                    )}
+
+                    {src.contentSnippet && (
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-[11px] text-slate-600 font-mono line-clamp-3">
+                        <span className="text-[9.5px] uppercase font-bold text-slate-400 block mb-0.5 font-sans">
+                          Grounding Text Excerpt (Included in AI Prompt):
+                        </span>
+                        "{src.contentSnippet}"
                       </div>
                     )}
                   </div>
@@ -740,24 +805,66 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
             ) : (
               <form onSubmit={handleSaveSource} className="space-y-4">
                 {modalTab === 'upload' && (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#45CC42] bg-slate-50/70 hover:bg-white text-center cursor-pointer transition-all space-y-2"
-                  >
-                    <Upload className="w-8 h-8 text-[#052B66] mx-auto" />
-                    <div className="text-xs font-bold text-slate-800">
-                      {formFileName ? `Selected: ${formFileName} (${formFileSize})` : 'Click to browse or drop document here'}
+                  <div className="space-y-3">
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-6 rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#45CC42] bg-slate-50/70 hover:bg-white text-center cursor-pointer transition-all space-y-2"
+                    >
+                      <Upload className="w-8 h-8 text-[#052B66] mx-auto" />
+                      <div className="text-xs font-bold text-slate-800">
+                        {formFileName ? `Selected: ${formFileName} (${formFileSize})` : 'Click to browse or drop document here'}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Supported: PDF, DOCX, TXT, CSV, Markdown
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept=".pdf,.docx,.txt,.csv,.md"
+                      />
                     </div>
-                    <div className="text-[11px] text-slate-400">
-                      Supported: PDF, DOCX, TXT, CSV, Markdown
+
+                    {formSnippet && (
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1">
+                          <span>Extracted Content / Notes for AI Grounding</span>
+                          <span className="text-[10px] text-slate-400 font-mono font-normal">Passed to AI engine prompt</span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={formSnippet}
+                          onChange={e => setFormSnippet(e.target.value)}
+                          placeholder="Key excerpts, summary points, or chapters to feed into the AI engine..."
+                          className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {modalTab === 'text' && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <label>
+                        Paste Excerpt, Policy Text, SOP or Knowledge Notes *
+                      </label>
+                      <span className="text-[10px] text-[#45CC42] font-mono font-bold bg-[#052B66] px-1.5 py-0.5 rounded">
+                        Direct AI Input
+                      </span>
                     </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      accept=".pdf,.docx,.txt,.csv,.md"
+                    <textarea
+                      rows={5}
+                      required
+                      placeholder="Paste training material, standard operating procedures, legislation excerpts, company policy, or curriculum notes here..."
+                      value={formSnippet}
+                      onChange={e => setFormSnippet(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none font-mono"
                     />
+                    <div className="text-[11px] text-slate-400">
+                      This text will be directly supplied to the AI engine to ground your modules, scenarios, and assessments.
+                    </div>
                   </div>
                 )}
 

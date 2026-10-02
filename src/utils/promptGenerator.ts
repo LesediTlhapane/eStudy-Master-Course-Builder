@@ -84,17 +84,26 @@ export function generateMasterPrompt(course: Course | undefined | null): string 
       ? rootCausesList.map((rc: string, i: number) => `• Root Cause ${i + 1}: ${rc}`).join('\n')
       : `• Root causes: ${val(p.skillGaps, '[Root causes pending specification]')}`;
 
-    // 2. Sources
-    const activeSources = toSafeArray(r.sources).filter((src: any) => src && (toSafeString(src.name) || toSafeString(src.reference)));
+    // 2. Sources & Uploaded Evidence
+    const activeSources = toSafeArray(r.sources).filter(
+      (src: any) => src && (toSafeString(src.name) || toSafeString(src.reference) || toSafeString(src.contentSnippet))
+    );
     const sourcesFormatted = activeSources.length > 0
       ? activeSources
           .map(
-            (src: any, i: number) =>
-              `${i + 1}. ${toSafeString(src.name, 'Source')} | Type: ${toSafeString(src.type, 'Standard')}${
+            (src: any, i: number) => {
+              let line = `${i + 1}. ${toSafeString(src.name, 'Source')} | Type: ${toSafeString(src.type, 'Standard')}${
                 toSafeString(src.reference) ? ` | Ref: ${toSafeString(src.reference)}` : ''
-              }${toSafeString(src.relevance) ? `\n   Relevance: ${toSafeString(src.relevance)}` : ''}`
+              }${toSafeString(src.fileName) ? ` | File: ${toSafeString(src.fileName)}` : ''}${
+                toSafeString(src.relevance) ? `\n   Relevance / Application: ${toSafeString(src.relevance)}` : ''
+              }`;
+              if (toSafeString(src.contentSnippet).length > 0) {
+                line += `\n   Uploaded Document / Source Excerpt Grounding:\n   """\n   ${toSafeString(src.contentSnippet)}\n   """`;
+              }
+              return line;
+            }
           )
-          .join('\n')
+          .join('\n\n')
       : `[No external research sources logged yet]`;
 
     // 3. Benefits

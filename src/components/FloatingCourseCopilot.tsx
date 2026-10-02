@@ -18,6 +18,7 @@ import {
 import { Course, SectionId } from '../types';
 import { QAResult } from '../utils/qaEngine';
 import { AppView } from '../hooks/useCourseStore';
+import { processLocalCopilotChat } from '../utils/localCourseEngine';
 
 interface FloatingCourseCopilotProps {
   course: Course;
@@ -179,22 +180,48 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/copilot/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+      let data: any = null;
+      let usedFallback = false;
+
+      try {
+        const response = await fetch('/api/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+            currentCourse: course,
+            activeSection: activeSection,
+            qaResult: qaResult
+          })
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          console.warn(`Copilot API response was not JSON or not OK (${response.status}). Engaging resilient local framework engine.`);
+          usedFallback = true;
+          data = processLocalCopilotChat({
+            messages: [...messages, userMsg],
+            currentCourse: course,
+            activeSection: activeSection,
+            qaResult: qaResult
+          });
+        }
+      } catch (fetchErr: any) {
+        console.warn('Backend copilot fetch failed, executing via client framework engine:', fetchErr);
+        usedFallback = true;
+        data = processLocalCopilotChat({
+          messages: [...messages, userMsg],
           currentCourse: course,
           activeSection: activeSection,
           qaResult: qaResult
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        });
       }
 
-      const data = await response.json();
+      if (!data) {
+        throw new Error('No response returned from copilot engine');
+      }
 
       const assistantMsg: ChatMessage = {
         id: `ast-${Date.now()}`,

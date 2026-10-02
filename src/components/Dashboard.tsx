@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Course } from '../types';
 import { BrandLogo } from './BrandLogo';
 import { CourseTemplateOption, availableTemplates as defaultTemplates } from '../data/initialCourseData';
-import { Plus, ArrowRight, BookOpen, Clock, Sparkles, Trash2, CheckCircle2, Layers } from 'lucide-react';
+import { Plus, ArrowRight, BookOpen, Clock, Sparkles, Trash2, CheckCircle2, Layers, Download, Upload, Copy, BookmarkPlus } from 'lucide-react';
 
 interface DashboardProps {
   courses: Course[];
@@ -13,6 +13,10 @@ interface DashboardProps {
   onContinueFromTemplate?: (templateId: string) => void;
   availableTemplates?: CourseTemplateOption[];
   onDeleteCourse?: (courseId: string) => void;
+  onDuplicateCourse?: (courseId: string) => void;
+  onSaveAsTemplate?: (courseId: string) => void;
+  onExportWorkspace?: () => void;
+  onImportWorkspace?: (content: string) => { success: boolean; message: string };
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -23,12 +27,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onStartFromScratch,
   onContinueFromTemplate,
   availableTemplates = defaultTemplates,
-  onDeleteCourse
+  onDeleteCourse,
+  onDuplicateCourse,
+  onSaveAsTemplate,
+  onExportWorkspace,
+  onImportWorkspace
 }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [createMode, setCreateMode] = useState<'scratch' | 'template'>('scratch');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(availableTemplates[0]?.id || 'master_v9');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(availableTemplates[0]?.id || 'emotional-intelligence-template');
+  const [notification, setNotification] = useState<{ text: string; isError?: boolean } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (text: string, isError = false) => {
+    setNotification({ text, isError });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImportWorkspace) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const res = onImportWorkspace(content);
+      showToast(res.message, !res.success);
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,16 +122,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Two-Column Workspace Layout */}
+        {notification && (
+          <div className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between border ${
+            notification.isError
+              ? 'bg-red-50 text-red-700 border-red-200'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          }`}>
+            <span>{notification.text}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="text-xs opacity-60 hover:opacity-100 cursor-pointer font-bold"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept=".json,application/json"
+          className="hidden"
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Recent Courses in Workspace */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#052B66]">
-                Workspace Courses
-              </h2>
-              <span className="text-xs text-slate-500 font-medium">
-                {courses.length} active course{courses.length !== 1 ? 's' : ''}
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#052B66]">
+                  Workspace Courses
+                </h2>
+                <span className="text-xs text-slate-500 font-medium">
+                  {courses.length} active course{courses.length !== 1 ? 's' : ''} in workspace (persisted locally)
+                </span>
+              </div>
+
+              {/* Workspace Backup & Restore Actions */}
+              <div className="flex items-center gap-2">
+                {onExportWorkspace && (
+                  <button
+                    onClick={onExportWorkspace}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                    title="Export all workspace courses to a downloadable JSON backup file"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#052B66]" />
+                    <span>Backup (.json)</span>
+                  </button>
+                )}
+
+                {onImportWorkspace && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                    title="Restore courses from a JSON backup file"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-[#052B66]" />
+                    <span>Import Backup</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -156,14 +235,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-start sm:self-center">
+                    <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
                       <button
                         id={`open-course-btn-${course.id}`}
                         onClick={() => onSelectCourse(course.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] hover:bg-blue-50 transition-colors cursor-pointer border border-transparent hover:border-blue-200"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200"
                       >
                         <span>Open Workspace →</span>
                       </button>
+
+                      {onDuplicateCourse && (
+                        <button
+                          onClick={() => onDuplicateCourse(course.id)}
+                          className="p-1.5 text-slate-400 hover:text-[#052B66] rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Duplicate course into workspace"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {onSaveAsTemplate && (
+                        <button
+                          onClick={() => {
+                            onSaveAsTemplate(course.id);
+                            showToast(`Saved "${course.name}" to your Course Templates!`);
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-[#45CC42] rounded hover:bg-emerald-50 transition-colors cursor-pointer"
+                          title="Save as reusable workspace template"
+                        >
+                          <BookmarkPlus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       {courses.length > 1 && onDeleteCourse && (
                         <button

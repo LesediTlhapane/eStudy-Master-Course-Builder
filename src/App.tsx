@@ -40,6 +40,10 @@ export function App() {
     continueFromTemplate,
     startFromMasterTemplate,
     deleteCourse,
+    duplicateCourse,
+    saveAsCustomTemplate,
+    exportWorkspace,
+    importWorkspace,
     jumpToSection,
     clearTargetFocusField,
     resetToSampleData,
@@ -102,6 +106,8 @@ export function App() {
       {/* Global Top Bar */}
       <TopBar
         course={activeCourse}
+        courses={courses}
+        onSelectCourse={switchCourse}
         view={view}
         saveStatus={saveStatus}
         onNavigateView={setView}
@@ -121,6 +127,10 @@ export function App() {
           onContinueFromTemplate={continueFromTemplate}
           availableTemplates={availableTemplates}
           onDeleteCourse={deleteCourse}
+          onDuplicateCourse={duplicateCourse}
+          onSaveAsTemplate={saveAsCustomTemplate}
+          onExportWorkspace={exportWorkspace}
+          onImportWorkspace={importWorkspace}
         />
       )}
 
@@ -170,6 +180,8 @@ export function App() {
               setActiveSection(secId);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
+            onStartAIGeneration={startAIGeneration}
+            onOpenPreview={() => setView('preview')}
           />
 
           {/* Center Main Guided Form Canvas */}
@@ -190,6 +202,9 @@ export function App() {
                   onUpdate={updateActiveCourse}
                   onContinue={() => handleContinueSection('02')}
                   onBack={() => handleBackSection('02')}
+                  onStartAIGeneration={startAIGeneration}
+                  onOpenPreview={() => setView('preview')}
+                  onOpenExportModal={() => setIsExportModalOpen(true)}
                 />
               )}
 

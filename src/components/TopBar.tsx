@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { Course } from '../types';
-import { Check, Eye, Settings, LayoutDashboard, Sparkles, Download } from 'lucide-react';
+import { Check, Eye, Settings, LayoutDashboard, Sparkles, Download, ChevronDown, CheckCircle2, BookOpen } from 'lucide-react';
 import { AppView } from '../hooks/useCourseStore';
 
 interface TopBarProps {
   course: Course;
+  courses?: Course[];
+  onSelectCourse?: (id: string) => void;
   view: AppView;
   saveStatus: 'saved' | 'saving';
   onNavigateView: (view: AppView) => void;
@@ -16,6 +18,8 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({
   course,
+  courses = [],
+  onSelectCourse,
   view,
   saveStatus,
   onNavigateView,
@@ -25,6 +29,22 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(course.name || course.structure.title);
+  const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setTitleInput(course.name || course.structure.title);
+  }, [course.name, course.structure?.title]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsCourseDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleTitleSubmit = () => {
     setIsEditingTitle(false);
@@ -107,40 +127,100 @@ export const TopBar: React.FC<TopBarProps> = ({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center">
-            {isEditingTitle ? (
-              <input
-                id="topbar-title-inline-input"
-                type="text"
-                value={titleInput}
-                onChange={e => setTitleInput(e.target.value)}
-                onBlur={handleTitleSubmit}
-                onKeyDown={e => e.key === 'Enter' && handleTitleSubmit()}
-                autoFocus
-                className="text-sm font-bold text-white text-center border-b-2 border-[#45CC42] bg-white/15 px-2 py-0.5 outline-none rounded shadow-inner"
-              />
-            ) : (
-              <button
-                id="topbar-course-title-display"
-                onClick={() => {
-                  setTitleInput(course.name);
-                  setIsEditingTitle(true);
-                }}
-                className="group flex items-center gap-1.5 cursor-pointer max-w-full"
-                title="Click to rename course"
-              >
-                <span className="text-sm font-bold text-white truncate max-w-md group-hover:text-slate-200 transition-colors">
-                  {course.name || course.structure.title || 'Untitled Course'}
-                </span>
-                <span className="text-[10px] text-slate-300 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100">
-                  (edit)
-                </span>
-              </button>
-            )}
+          <div className="flex flex-col items-center justify-center relative" ref={dropdownRef}>
+            <div className="flex items-center gap-1.5 max-w-full">
+              {isEditingTitle ? (
+                <input
+                  id="topbar-title-inline-input"
+                  type="text"
+                  value={titleInput}
+                  onChange={e => setTitleInput(e.target.value)}
+                  onBlur={handleTitleSubmit}
+                  onKeyDown={e => e.key === 'Enter' && handleTitleSubmit()}
+                  autoFocus
+                  className="text-sm font-bold text-white text-center border-b-2 border-[#45CC42] bg-white/15 px-2 py-0.5 outline-none rounded shadow-inner"
+                />
+              ) : (
+                <button
+                  id="topbar-course-title-display"
+                  onClick={() => {
+                    setTitleInput(course.name);
+                    setIsEditingTitle(true);
+                  }}
+                  className="group flex items-center gap-1.5 cursor-pointer max-w-md truncate"
+                  title="Click to rename course"
+                >
+                  <span className="text-sm font-bold text-white truncate group-hover:text-slate-200 transition-colors">
+                    {course.name || course.structure.title || 'Untitled Course'}
+                  </span>
+                  <span className="text-[10px] text-slate-300 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100">
+                    (edit)
+                  </span>
+                </button>
+              )}
+
+              {courses.length > 0 && onSelectCourse && (
+                <button
+                  type="button"
+                  id="topbar-course-switcher-toggle"
+                  onClick={() => setIsCourseDropdownOpen(prev => !prev)}
+                  className="p-1 text-slate-300 hover:text-white hover:bg-white/15 rounded-md transition-colors cursor-pointer"
+                  title="Switch course in workspace"
+                >
+                  <ChevronDown className="w-4 h-4 text-[#45CC42]" />
+                </button>
+              )}
+            </div>
+
             <span className="text-[11px] text-[#45CC42] font-semibold tracking-wide flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#45CC42] shadow-[0_0_4px_rgba(69,204,66,0.8)]" />
-              <span>Course workspace</span>
+              <span>{course.code || 'EST-COURSE-01'} · Course workspace</span>
             </span>
+
+            {/* Course Switcher Dropdown Menu */}
+            {isCourseDropdownOpen && courses.length > 0 && (
+              <div className="absolute top-full mt-2 w-72 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 py-2 z-50 text-left font-sora animate-in fade-in zoom-in-95">
+                <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Switch Active Course
+                </div>
+                <div className="max-h-60 overflow-y-auto py-1">
+                  {courses.map(c => {
+                    const isCurrent = c.id === course.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          if (onSelectCourse) onSelectCourse(c.id);
+                          setIsCourseDropdownOpen(false);
+                        }}
+                        className={`w-full px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer text-left ${
+                          isCurrent ? 'bg-[#052B66]/5 font-bold text-[#052B66]' : 'text-slate-700'
+                        }`}
+                      >
+                        <div className="truncate pr-2">
+                          <div className="truncate font-semibold">{c.name || c.structure?.title || 'Untitled Course'}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{c.code || 'EST-COURSE'}</div>
+                        </div>
+                        {isCurrent && <Check className="w-3.5 h-3.5 text-[#45CC42] shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="pt-1.5 border-t border-slate-100 px-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCourseDropdownOpen(false);
+                      onNavigateView('dashboard');
+                    }}
+                    className="w-full text-center py-1.5 text-xs font-bold text-[#052B66] hover:text-blue-900 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    + Manage All in Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

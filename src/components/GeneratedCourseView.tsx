@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion } from '../types';
+import { generateCourseDocx } from '../utils/docxExport';
+import { printCoursePdf } from '../utils/pdfExport';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -20,7 +22,10 @@ import {
   Layers,
   ArrowLeft,
   Lock,
-  ExternalLink
+  ExternalLink,
+  Printer,
+  FileCode,
+  Loader2
 } from 'lucide-react';
 
 interface GeneratedCourseViewProps {
@@ -195,6 +200,31 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+  };
+
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+
+  const handleDownloadDocx = async () => {
+    setIsExportingDocx(true);
+    try {
+      const blob = await generateCourseDocx(course);
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_master_curriculum.docx`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to export DOCX:', e);
+    } finally {
+      setIsExportingDocx(false);
+    }
+  };
+
+  const handlePrintPdf = () => {
+    printCoursePdf(course);
   };
 
   return (
@@ -826,7 +856,20 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                       </span>
                     </div>
                     <div className="text-slate-600 font-mono text-[11px]">{src.reference}</div>
+                    {src.fileName && (
+                      <div className="text-[10.5px] text-slate-500 font-mono">
+                        Uploaded File: {src.fileName}
+                      </div>
+                    )}
                     <p className="text-slate-700 pt-1"><strong>Relevance:</strong> {src.relevance}</p>
+                    {src.contentSnippet && (
+                      <div className="mt-1.5 p-2.5 bg-white rounded-lg border border-slate-200 text-[11px] font-mono text-slate-600 line-clamp-3">
+                        <span className="text-[9.5px] font-sans font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Source Excerpt Used for AI Synthesis:
+                        </span>
+                        "{src.contentSnippet}"
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -846,38 +889,90 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                {/* Word Document (.docx) */}
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#052B66] text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-blue-700 text-white flex items-center justify-center shrink-0">
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
+                      <h4 className="text-sm font-bold text-[#052B66]">Microsoft Word (.docx) Blueprint</h4>
+                      <p className="text-[11px] text-slate-500">Official eStudy curriculum document with tables, rubrics, and callouts.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDownloadDocx}
+                    disabled={isExportingDocx}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {isExportingDocx ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Generating .docx...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        <span>Download Word Document (.docx)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* PDF Print View */}
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#052B66] text-white flex items-center justify-center shrink-0">
+                      <Printer className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#052B66]">Print / Save as PDF</h4>
+                      <p className="text-[11px] text-slate-500">Clean formatted executive layout ready for direct printing or saving to PDF.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handlePrintPdf}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Printer className="w-4 h-4 text-[#45CC42]" />
+                    <span>Print or Save to PDF</span>
+                  </button>
+                </div>
+
+                {/* Complete Markdown Documentation */}
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#45CC42] text-[#052B66] flex items-center justify-center shrink-0">
+                      <FileCode className="w-5 h-5" />
+                    </div>
+                    <div>
                       <h4 className="text-sm font-bold text-[#052B66]">Complete Markdown Documentation</h4>
-                      <p className="text-[11px] text-slate-500">Full course curriculum, lessons, and tests in standard markdown.</p>
+                      <p className="text-[11px] text-slate-500">Full course curriculum, lessons, scenarios, and tests in standard markdown.</p>
                     </div>
                   </div>
                   <button
                     onClick={copyMarkdownToClipboard}
-                    className="w-full py-2.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     <span>{copied ? 'Copied to Clipboard!' : 'Copy Markdown Text'}</span>
                   </button>
                 </div>
 
-                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                {/* JSON LMS Specification */}
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#052B66] text-white flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0">
                       <Download className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-[#052B66]">JSON Specification File</h4>
-                      <p className="text-[11px] text-slate-500">Structured JSON representation for programmatic LMS import.</p>
+                      <p className="text-[11px] text-slate-500">Structured JSON representation for programmatic LMS import and backup.</p>
                     </div>
                   </div>
                   <button
                     onClick={downloadJsonFile}
-                    className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Download className="w-4 h-4" />
                     <span>Download .JSON Package</span>

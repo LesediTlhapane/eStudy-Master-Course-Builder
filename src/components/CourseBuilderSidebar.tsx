@@ -73,12 +73,16 @@ interface CourseBuilderSidebarProps {
   activeSection: SectionId;
   qaResult: QAResult;
   onSelectSection: (sectionId: SectionId) => void;
+  onStartAIGeneration?: () => void;
+  onOpenPreview?: () => void;
 }
 
 export const CourseBuilderSidebar: React.FC<CourseBuilderSidebarProps> = ({
   activeSection,
   qaResult,
-  onSelectSection
+  onSelectSection,
+  onStartAIGeneration,
+  onOpenPreview
 }) => {
   // Count how many sections are marked as complete
   const completedSectionsCount = Object.values(qaResult.sectionProgress).filter(
@@ -180,6 +184,18 @@ export const CourseBuilderSidebar: React.FC<CourseBuilderSidebarProps> = ({
             {completedSectionsCount === 9 ? 'Ready for AI' : 'Draft'}
           </span>
         </div>
+
+        {/* Quick Action to Generate with AI */}
+        {onStartAIGeneration && (
+          <button
+            id="sidebar-generate-ai-btn"
+            onClick={onStartAIGeneration}
+            className="w-full py-2.5 px-3 rounded-xl bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] text-xs font-black shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-[#052B66]" />
+            <span>Generate with AI</span>
+          </button>
+        )}
       </div>
     </aside>
   );

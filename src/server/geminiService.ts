@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GeneratedPracticalTask, GeneratedCourseQA, GeneratedSource } from '../types';
 import { generateMasterPrompt } from '../utils/promptGenerator';
+import { processLocalCopilotChat } from '../utils/localCourseEngine';
 
 function getGenAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -326,6 +327,9 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
     type: src.type,
     reference: src.reference,
     relevance: src.relevance,
+    contentSnippet: src.contentSnippet,
+    fileName: src.fileName,
+    url: src.url,
     verified: true
   }));
 
@@ -1390,26 +1394,10 @@ Guidelines:
       };
     }
   } catch (err) {
-    console.error('Gemini Copilot chat error:', err);
+    console.error('Gemini Copilot chat error, using resilient framework engine:', err);
   }
 
-  // Fallback response if offline
-  return {
-    message: `I'm here to help you design, refine, and validate your course against the eStudy Master Course Framework v9.0.\n\n- Type **"build me a course on [topic]"** to generate a complete 9-section course specification.\n- Type **"check compliance"** to audit your course readiness.\n- Ask for guidance on any specific module or learning design element.`,
-    suggestedActions: [
-      {
-        id: 'build-eq',
-        label: '✨ Build Course on Emotional Intelligence',
-        actionType: 'send_prompt' as const,
-        payload: { prompt: 'build me a course on emotional intelligence' }
-      },
-      {
-        id: 'view-sec',
-        label: `📍 Focus Section ${activeSection}`,
-        actionType: 'jump_to_section' as const,
-        payload: { section: activeSection }
-      }
-    ]
-  };
+  // Resilient fallback response ensuring the bot always fulfills requests (course creation, engine advice, QA audits)
+  return processLocalCopilotChat(payload);
 }
 

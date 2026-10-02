@@ -449,6 +449,9 @@ export interface GeneratedSource {
   reference: string;
   relevance: string;
   verified: boolean;
+  contentSnippet?: string;
+  fileName?: string;
+  url?: string;
 }
 
 export interface GeneratedCourseQA {

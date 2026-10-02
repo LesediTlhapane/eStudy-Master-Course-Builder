@@ -6,12 +6,6 @@ export function printCoursePdf(course: Course) {
   const r = course.research;
   const modules = course.modules || [];
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Please allow pop-ups to generate and download the PDF document.');
-    return;
-  }
-
   const logoHtml = course.coverLogoUrl
     ? `<img src="${course.coverLogoUrl}" alt="Client Logo" style="max-height: 55px; object-fit: contain; margin-bottom: 12px;" />`
     : `<div style="display:inline-block; background: #052B66; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;">eStudy South Africa</div>`;
@@ -276,19 +270,32 @@ export function printCoursePdf(course: Course) {
   <div class="footer-note">
     eStudy South Africa · Universal Master Course Builder Framework v9.0 · Generated ${new Date().toLocaleDateString('en-ZA')}
   </div>
-
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 500);
-    };
-  </script>
 </body>
 </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
+  // Create or reuse hidden iframe to avoid window.open popups
+  let iframe = document.getElementById('estudy-print-iframe') as HTMLIFrameElement;
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'estudy-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+  }
+
+  const doc = iframe.contentWindow?.document;
+  if (doc) {
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    }, 400);
+  }
 }

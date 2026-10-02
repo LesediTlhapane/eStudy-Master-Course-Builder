@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Course, GeneratedCourse, AIGenerationStage } from '../types';
-import { generateLocalFallbackCourse } from '../server/geminiService';
+import { generateLocalFallbackCourse } from '../utils/localCourseEngine';
 import { CheckCircle2, Loader2, Sparkles, Shield, BookOpen, Layers, AlertCircle, ArrowRight } from 'lucide-react';
 
 interface AIGenerationProgressProps {

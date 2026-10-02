@@ -1,4 +1,7 @@
 import { Course } from '../types';
+import { emotionalIntelligenceTemplateCourse } from './emotionalIntelligenceCourse';
+
+export { emotionalIntelligenceTemplateCourse };
 
 /**
  * Benchmark Reference Course as defined in eStudy South Africa Master Prompt Template v9.0:
@@ -1152,6 +1155,13 @@ export interface CourseTemplateOption {
 
 export const availableTemplates: CourseTemplateOption[] = [
   {
+    id: 'emotional-intelligence-template',
+    name: 'Emotional Intelligence in the AI Workplace',
+    badge: 'Master Template',
+    description: 'Complete 9-section master course on self-regulation, empathy, conflict de-escalation, psychological safety, and POPIA compliance.',
+    course: emotionalIntelligenceTemplateCourse
+  },
+  {
     id: 'master-template-v9',
     name: 'eStudy Master Course Template v9.0',
     badge: 'Universal Framework',
@@ -1525,6 +1535,7 @@ export function createScratchCourse(title: string = 'Untitled Course'): Course {
 }
 
 export const sampleCourses: Course[] = [
+  emotionalIntelligenceTemplateCourse,
   financialLiteracyBenchmarkCourse,
   blankMasterTemplate
 ];
