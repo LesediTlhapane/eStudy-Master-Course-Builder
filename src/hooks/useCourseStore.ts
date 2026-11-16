@@ -152,7 +152,7 @@ export function useCourseStore(): UseCourseStoreReturn {
   });
 
   const [activeSection, setActiveSection] = useState<SectionId>('01');
-  const [view, setView] = useState<AppView>('dashboard');
+  const [view, setView] = useState<AppView>('cover');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
 

@@ -79,9 +79,9 @@ export const TopBar: React.FC<TopBarProps> = ({
       <div className="flex items-center gap-4 sm:gap-6">
         <button
           id="topbar-logo-btn"
-          onClick={() => onNavigateView('dashboard')}
+          onClick={() => onNavigateView('cover')}
           className="focus:outline-none hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-2 group"
-          title="Return to eStudy Course Builder Dashboard"
+          title="Return to eStudy Course Builder Cover Page"
         >
           <BrandLogo variant="white" invertText={true} />
         </button>
