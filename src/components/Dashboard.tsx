@@ -1,8 +1,32 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Course } from '../types';
 import { BrandLogo } from './BrandLogo';
 import { CourseTemplateOption, availableTemplates as defaultTemplates } from '../data/initialCourseData';
-import { Plus, ArrowRight, BookOpen, Clock, Sparkles, Trash2, CheckCircle2, Layers, Download, Upload, Copy, BookmarkPlus } from 'lucide-react';
+import { 
+  Plus, 
+  ArrowRight, 
+  BookOpen, 
+  Clock, 
+  Sparkles, 
+  Trash2, 
+  CheckCircle2, 
+  Layers, 
+  Download, 
+  Upload, 
+  Copy, 
+  BookmarkPlus,
+  Search,
+  SlidersHorizontal,
+  Compass,
+  Briefcase,
+  ShieldCheck,
+  Award,
+  ChevronRight,
+  FileText,
+  Zap
+} from 'lucide-react';
+import { QuickAICourseModal, QuickCourseFormData } from './QuickAICourseModal';
+import { AIProvider } from '../types';
 
 interface DashboardProps {
   courses: Course[];
@@ -11,6 +35,25 @@ interface DashboardProps {
   onStartFromMasterTemplate: () => void;
   onStartFromScratch?: (title?: string) => void;
   onContinueFromTemplate?: (templateId: string) => void;
+  onCreateQuickCourse?: (
+    payload: {
+      title: string;
+      description: string;
+      targetAudience: string;
+      industryDomain: string;
+      difficultyLevel: string;
+      estimatedDuration: string;
+      learningObjectives?: string[];
+      templateId?: string;
+    },
+    options?: {
+      generateImmediately?: boolean;
+      provider?: AIProvider;
+      model?: string;
+    }
+  ) => void;
+  defaultProvider?: AIProvider;
+  defaultModel?: string;
   availableTemplates?: CourseTemplateOption[];
   onDeleteCourse?: (courseId: string) => void;
   onDuplicateCourse?: (courseId: string) => void;
@@ -26,6 +69,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onStartFromMasterTemplate,
   onStartFromScratch,
   onContinueFromTemplate,
+  onCreateQuickCourse,
+  defaultProvider = 'gemini',
+  defaultModel,
   availableTemplates = defaultTemplates,
   onDeleteCourse,
   onDuplicateCourse,
@@ -33,11 +79,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onExportWorkspace,
   onImportWorkspace
 }) => {
+  const [showQuickModal, setShowQuickModal] = useState(false);
+  const [quickModalTemplateId, setQuickModalTemplateId] = useState<string | undefined>(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
+  const [industryDomain, setIndustryDomain] = useState('Corporate Enterprise & Operations');
   const [createMode, setCreateMode] = useState<'scratch' | 'template'>('scratch');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(availableTemplates[0]?.id || 'emotional-intelligence-template');
   const [notification, setNotification] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Draft' | 'In Review' | 'Completed'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (text: string, isError = false) => {
@@ -60,11 +112,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalTitle = newTitle.trim() || undefined;
+
     if (createMode === 'scratch') {
       if (onStartFromScratch) {
-        onStartFromScratch(newTitle.trim() || undefined);
+        onStartFromScratch(finalTitle);
       } else {
-        onCreateNew(newTitle.trim() || undefined);
+        onCreateNew(finalTitle);
       }
     } else {
       if (onContinueFromTemplate) {
@@ -74,54 +128,145 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
     }
     setNewTitle('');
+    setTargetAudience('');
     setShowCreateModal(false);
   };
 
+  // Filtered courses
+  const filteredCourses = useMemo(() => {
+    return courses.filter(course => {
+      const matchesSearch = 
+        (course.name && course.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (course.structure?.title && course.structure.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (course.code && course.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (course.structure?.industryDomain && course.structure.industryDomain.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [courses, searchQuery, statusFilter]);
+
   return (
-    <div id="estudy-dashboard-view" className="min-h-[calc(100vh-4rem)] bg-white text-slate-900 py-10 px-4 sm:px-6 lg:px-16 flex flex-col justify-between font-sora">
-      <div className="max-w-6xl w-full mx-auto space-y-10">
-        {/* Hero Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[11px] font-bold font-mono uppercase bg-blue-50 text-[#052B66] px-2.5 py-0.5 rounded border border-blue-200">
-                COURSE DESIGN WORKSPACE
+    <div id="estudy-dashboard-view" className="min-h-[calc(100vh-4rem)] bg-slate-50 text-slate-900 py-8 px-4 sm:px-6 lg:px-12 flex flex-col justify-between font-sora">
+      <div className="max-w-7xl w-full mx-auto space-y-8">
+        
+        {/* Commercial Hero & Value Proposition */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#052B66] bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+                Enterprise AI Course Builder
               </span>
-              <span className="text-xs text-slate-400 font-mono">v9.0 Framework</span>
+              <span className="text-xs text-slate-400 font-mono">v9.0 Master Architecture</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-[#052B66] tracking-tight sm:text-4xl">
-              eStudy Course Builder
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#052B66] tracking-tight">
+              Create Structured, Accredited Corporate Learning in Minutes
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-slate-600 font-normal">
-              Build complete, scenario-driven courses from scratch or continue on an existing master template.
+
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Design comprehensive, scenario-driven corporate courses with verified POPIA and regulatory compliance. Build from a tailored outline or generate immediately using high-performance AI engines.
             </p>
+
+            {/* Natural 4-Step Client Journey Indicator */}
+            <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-medium text-slate-600">
+              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="w-4 h-4 rounded-full bg-[#052B66] text-white flex items-center justify-center font-bold text-[10px]">1</span>
+                <span>Choose or Create</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="w-4 h-4 rounded-full bg-[#052B66] text-white flex items-center justify-center font-bold text-[10px]">2</span>
+                <span>Set Key Details</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="w-4 h-4 rounded-full bg-[#45CC42] text-[#052B66] flex items-center justify-center font-bold text-[10px]">3</span>
+                <span>AI Generates</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="w-4 h-4 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-[10px]">4</span>
+                <span>Review & Export</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Primary Call to Action */}
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 lg:w-72">
             <button
-              id="dashboard-start-scratch-header-cta"
+              id="dashboard-quick-ai-creator-cta"
               onClick={() => {
-                if (onStartFromScratch) onStartFromScratch();
-                else setShowCreateModal(true);
+                setQuickModalTemplateId(undefined);
+                setShowQuickModal(true);
               }}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] shadow-sm hover:shadow transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-xs font-black text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-md hover:shadow-lg transition-all cursor-pointer ring-2 ring-[#45CC42]/40"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>+ Start from Scratch</span>
+              <Sparkles className="w-4 h-4 text-[#052B66] stroke-[2.5]" />
+              <div className="text-left flex-1">
+                <div className="text-[12px] font-black uppercase tracking-tight flex items-center justify-between">
+                  <span>Quick AI Creator</span>
+                  <span className="text-[9px] bg-[#052B66] text-[#45CC42] px-1.5 py-0.2 rounded font-mono font-bold">Fast</span>
+                </div>
+                <div className="text-[10px] font-semibold text-[#052B66]/80 font-mono">Option A • Complete Course in 60s</div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-[#052B66]" />
             </button>
 
             <button
-              id="dashboard-custom-title-btn"
+              id="dashboard-start-scratch-header-cta"
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
-              <span>New Course Options</span>
+              <Layers className="w-3.5 h-3.5 text-[#052B66]" />
+              <span>Option B: Advanced 9-Section Builder</span>
+            </button>
+
+            <button
+              onClick={onStartFromMasterTemplate}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+              <span>Load Master Benchmark Course</span>
+            </button>
+
+            <div className="flex items-center justify-center gap-2 pt-0.5 text-[11px] text-slate-500">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Zero-code, ready for LMS</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick AI Course Creation Highlight Banner */}
+        <div className="bg-gradient-to-r from-blue-900 via-[#052B66] to-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-blue-800/60 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#45CC42] bg-[#45CC42]/15 px-2.5 py-0.5 rounded border border-[#45CC42]/30">
+                Recommended for Corporate Clients
+              </span>
+              <span className="text-xs text-blue-200/70 font-mono">Option A</span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+              Need a Complete Accredited Course in One Click?
+            </h2>
+            <p className="text-xs text-slate-200 leading-relaxed">
+              Enter your course title, target learners, and industry. Our AI automatically maps your inputs into the 9-section instructional design framework, creates workplace scenarios, and constructs comprehensive assessments.
+            </p>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-3">
+            <button
+              onClick={() => {
+                setQuickModalTemplateId(undefined);
+                setShowQuickModal(true);
+              }}
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-xs font-black text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-md transition-all cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-[#052B66] stroke-[2.5]" />
+              <span>Launch Quick AI Creator</span>
+              <ArrowRight className="w-3.5 h-3.5 text-[#052B66]" />
             </button>
           </div>
         </div>
 
-        {/* Two-Column Workspace Layout */}
+        {/* Global Notifications */}
         {notification && (
           <div className={`p-4 rounded-xl text-xs font-semibold flex items-center justify-between border ${
             notification.isError
@@ -146,187 +291,287 @@ export const Dashboard: React.FC<DashboardProps> = ({
           className="hidden"
         />
 
+        {/* Main Content: Workspace Courses & Templates */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Recent Courses in Workspace */}
+          
+          {/* Left Column: Client Courses List with Search & Filtering */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <div>
-                <h2 className="text-lg font-bold text-[#052B66]">
-                  Workspace Courses
-                </h2>
-                <span className="text-xs text-slate-500 font-medium">
-                  {courses.length} active course{courses.length !== 1 ? 's' : ''} in workspace (persisted locally)
-                </span>
+            
+            {/* Header with Search and Backup Actions */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-[#052B66]">
+                    Your Course Workspace
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {courses.length} course{courses.length !== 1 ? 's' : ''} saved in your local workspace
+                  </p>
+                </div>
+
+                {/* Workspace Backup & Restore Actions */}
+                <div className="flex items-center gap-2">
+                  {onExportWorkspace && (
+                    <button
+                      onClick={onExportWorkspace}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                      title="Export all workspace courses to a downloadable JSON backup file"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[#052B66]" />
+                      <span>Backup</span>
+                    </button>
+                  )}
+
+                  {onImportWorkspace && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                      title="Restore courses from a JSON backup file"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[#052B66]" />
+                      <span>Import</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Workspace Backup & Restore Actions */}
-              <div className="flex items-center gap-2">
-                {onExportWorkspace && (
-                  <button
-                    onClick={onExportWorkspace}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                    title="Export all workspace courses to a downloadable JSON backup file"
-                  >
-                    <Download className="w-3.5 h-3.5 text-[#052B66]" />
-                    <span>Backup (.json)</span>
-                  </button>
-                )}
+              {/* Search Bar & Filter Controls */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 border-t border-slate-100">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Search courses by name, code or industry..."
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
 
-                {onImportWorkspace && (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
-                    title="Restore courses from a JSON backup file"
+                <div className="flex items-center gap-1 text-xs self-stretch sm:self-auto">
+                  <span className="text-[11px] text-slate-400 font-medium">Status:</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e: any) => setStatusFilter(e.target.value)}
+                    className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#052B66]"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[#052B66]" />
-                    <span>Import Backup</span>
-                  </button>
-                )}
+                    <option value="all">All</option>
+                    <option value="Draft">Draft</option>
+                    <option value="In Review">In Review</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
               </div>
             </div>
 
+            {/* Courses List */}
             <div className="space-y-3">
-              {courses.map(course => {
-                const isDraft = course.status === 'Draft';
-                const isInReview = course.status === 'In Review';
-                const isCompleted = course.status === 'Completed';
-
-                return (
-                  <div
-                    key={course.id}
-                    id={`recent-course-card-${course.id}`}
-                    className="p-5 rounded-xl border border-slate-200 bg-white hover:border-[#052B66]/30 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+              {filteredCourses.length === 0 ? (
+                <div className="bg-white p-8 rounded-xl border border-slate-200 text-center space-y-3">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                  <h3 className="text-sm font-bold text-slate-700">No matching courses found</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Try adjusting your search criteria or create a new course to get started.
+                  </p>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] cursor-pointer"
                   >
-                    <div className="space-y-1.5 max-w-md">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                          {course.code || 'COURSE'}
-                        </span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create Course</span>
+                  </button>
+                </div>
+              ) : (
+                filteredCourses.map(course => {
+                  const isDraft = course.status === 'Draft';
+                  const isInReview = course.status === 'In Review';
+                  const isCompleted = course.status === 'Completed';
+                  const hasGenerated = Boolean(course.generatedCourse);
+
+                  return (
+                    <div
+                      key={course.id}
+                      id={`recent-course-card-${course.id}`}
+                      className="p-5 rounded-xl border border-slate-200/90 bg-white hover:border-[#052B66]/40 hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                    >
+                      <div className="space-y-2 max-w-md">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                            {course.code || 'COURSE'}
+                          </span>
+
+                          {hasGenerated ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>AI Generated</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-[#052B66] border border-blue-200">
+                              Outline Ready
+                            </span>
+                          )}
+
+                          <span className={`text-[11px] font-semibold ${
+                            isCompleted ? 'text-emerald-700' : isInReview ? 'text-amber-600' : 'text-slate-500'
+                          }`}>
+                            {course.status}
+                          </span>
+                        </div>
+
                         <h3 className="text-base font-bold text-slate-900 group-hover:text-[#052B66] transition-colors">
                           {course.name || course.structure?.title || 'Untitled Course'}
                         </h3>
+
+                        <div className="flex items-center gap-2.5 text-xs text-slate-500 font-medium flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            {course.lastModified}
+                          </span>
+                          <span>•</span>
+                          <span>{course.modules?.length || 3} Modules</span>
+                          {course.structure?.industryDomain && (
+                            <>
+                              <span>•</span>
+                              <span className="text-slate-600 truncate max-w-[160px]">
+                                {course.structure.industryDomain}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
-                        <span
-                          className={`inline-flex items-center gap-1 font-semibold ${
-                            isCompleted
-                              ? 'text-[#45CC42]'
-                              : isInReview
-                              ? 'text-amber-600'
-                              : 'text-slate-600'
-                          }`}
+                      {/* Course Card Actions */}
+                      <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
+                        <button
+                          id={`open-course-btn-${course.id}`}
+                          onClick={() => onSelectCourse(course.id)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-[#052B66] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200 shadow-2xs"
                         >
-                          {course.status}
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {course.lastModified}
-                        </span>
-                        {course.structure?.industryDomain && (
-                          <>
-                            <span>•</span>
-                            <span className="text-slate-500 truncate max-w-[150px]">
-                              {course.structure.industryDomain}
-                            </span>
-                          </>
+                          <span>{hasGenerated ? 'View Course' : 'Open Builder'}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+
+                        {onDuplicateCourse && (
+                          <button
+                            onClick={() => onDuplicateCourse(course.id)}
+                            className="p-2 text-slate-400 hover:text-[#052B66] rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Duplicate course"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {onSaveAsTemplate && (
+                          <button
+                            onClick={() => {
+                              onSaveAsTemplate(course.id);
+                              showToast(`Saved "${course.name}" to your templates!`);
+                            }}
+                            className="p-2 text-slate-400 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors cursor-pointer"
+                            title="Save as reusable workspace template"
+                          >
+                            <BookmarkPlus className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {courses.length > 1 && onDeleteCourse && (
+                          <button
+                            onClick={() => onDeleteCourse(course.id)}
+                            className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete course"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-center flex-wrap">
-                      <button
-                        id={`open-course-btn-${course.id}`}
-                        onClick={() => onSelectCourse(course.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200"
-                      >
-                        <span>Open Workspace →</span>
-                      </button>
-
-                      {onDuplicateCourse && (
-                        <button
-                          onClick={() => onDuplicateCourse(course.id)}
-                          className="p-1.5 text-slate-400 hover:text-[#052B66] rounded hover:bg-slate-100 transition-colors cursor-pointer"
-                          title="Duplicate course into workspace"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      {onSaveAsTemplate && (
-                        <button
-                          onClick={() => {
-                            onSaveAsTemplate(course.id);
-                            showToast(`Saved "${course.name}" to your Course Templates!`);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-[#45CC42] rounded hover:bg-emerald-50 transition-colors cursor-pointer"
-                          title="Save as reusable workspace template"
-                        >
-                          <BookmarkPlus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      {courses.length > 1 && onDeleteCourse && (
-                        <button
-                          onClick={() => onDeleteCourse(course.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                          title="Delete course"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
-          {/* Right Column: Templates Card Options */}
+          {/* Right Column: Pre-Configured Commercial Templates */}
           <div className="lg:col-span-5 space-y-4">
-            <h2 className="text-lg font-bold text-[#052B66]">
-              Course Templates
-            </h2>
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+              <div>
+                <h2 className="text-base font-bold text-[#052B66]">
+                  Pre-Built Course Templates
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Instant corporate frameworks ready to customize
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                {availableTemplates.length} available
+              </span>
+            </div>
 
             {/* Template Highlight Cards */}
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {availableTemplates.map(tpl => (
                 <div
                   key={tpl.id}
-                  className="bg-slate-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden flex flex-col justify-between border border-slate-800 hover:border-[#45CC42] transition-all"
+                  className="bg-white rounded-xl p-5 border border-slate-200 hover:border-[#052B66]/50 shadow-xs hover:shadow-sm transition-all flex flex-col justify-between space-y-3 group"
                 >
-                  <div className="space-y-2 z-10">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-[#052B66] border border-blue-200">
                         {tpl.badge}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">Template</span>
+                      <span className="text-[11px] text-slate-400 font-medium">Enterprise Ready</span>
                     </div>
 
-                    <h3 className="text-lg font-extrabold tracking-tight text-white">
+                    <h3 className="text-sm font-extrabold text-[#052B66] group-hover:text-blue-900 transition-colors">
                       {tpl.name}
                     </h3>
 
-                    <p className="text-xs text-slate-300 leading-relaxed">
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       {tpl.description}
                     </p>
                   </div>
 
-                  <div className="pt-5 z-10">
-                    <button
-                      onClick={() => {
-                        if (onContinueFromTemplate) {
-                          onContinueFromTemplate(tpl.id);
-                        } else {
-                          onStartFromMasterTemplate();
-                        }
-                      }}
-                      className="w-full py-2.5 px-4 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all flex items-center justify-center gap-2 cursor-pointer shadow"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" />
-                      <span>Continue on this template</span>
-                    </button>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>POPIA & Bloom's Aligned</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setQuickModalTemplateId(tpl.id);
+                          setShowQuickModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="Customize outline and generate complete course with AI"
+                      >
+                        <Sparkles className="w-3 h-3 text-[#052B66]" />
+                        <span>Quick AI Generate</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (onContinueFromTemplate) {
+                            onContinueFromTemplate(tpl.id);
+                          } else {
+                            onStartFromMasterTemplate();
+                          }
+                        }}
+                        className="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Open directly in Advanced 9-Section Builder"
+                      >
+                        <span>Builder →</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -335,32 +580,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Footer Principle Callout */}
-      <div className="max-w-6xl w-full mx-auto pt-14 pb-4 border-t border-slate-100">
-        <div className="space-y-1">
-          <h4 className="text-sm font-bold text-[#052B66]">
-            Strict User Intent · Modular 9-Section Course Pipeline
-          </h4>
-          <p className="text-xs text-slate-500">
-            Start completely from scratch or continue on an existing master template.
-          </p>
-        </div>
-      </div>
-
-      {/* Create Course Modal */}
+      {/* Modern Client-Friendly Create Course Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-200 text-slate-900">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-7 space-y-6 border border-slate-200 text-slate-900 animate-in fade-in zoom-in-95">
             <div>
-              <h3 className="text-lg font-bold text-[#052B66]">
-                New Course Initiation
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] bg-blue-50 px-2 py-0.5 rounded">
+                  New Course Wizard
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-[#052B66]">
+                Create a New Course
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Choose how you want to enter into your instructional workspace.
+                Configure basic parameters now. You can adjust details or immediately generate with AI.
               </p>
             </div>
 
-            {/* Mode Selector */}
+            {/* Mode Switcher */}
             <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
               <button
                 type="button"
@@ -372,7 +610,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-[#45CC42]" />
-                <span>Start from Scratch</span>
+                <span>Custom Course</span>
               </button>
 
               <button
@@ -385,77 +623,149 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5 text-[#052B66]" />
-                <span>Use Template</span>
+                <span>Start from Template</span>
               </button>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               {createMode === 'scratch' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Course Title (optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cybersecurity Incident Handling for Finance Teams"
-                    value={newTitle}
-                    onChange={e => setNewTitle(e.target.value)}
-                    autoFocus
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:border-[#052B66] focus:ring-2 focus:ring-[#052B66]/10 outline-none"
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Leaves all 9 sections 100% clean and unpopulated for your custom authoring.
-                  </p>
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Course Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Workplace Cybersecurity & POPIA Data Protection"
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      autoFocus
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:border-[#052B66] focus:ring-2 focus:ring-[#052B66]/10 outline-none"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Give your course a clear, business-oriented title.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Target Audience / Department (optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Finance team leads, customer consultants, and operational staff"
+                      value={targetAudience}
+                      onChange={e => setTargetAudience(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66] outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Industry / Sector
+                    </label>
+                    <select
+                      value={industryDomain}
+                      onChange={e => setIndustryDomain(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:border-[#052B66] focus:ring-1 focus:ring-[#052B66] outline-none"
+                    >
+                      <option value="Corporate Enterprise & Operations">Corporate Enterprise & Operations</option>
+                      <option value="Banking, Finance & Insurance">Banking, Finance & Insurance</option>
+                      <option value="Information Technology & Cyber">Information Technology & Cyber</option>
+                      <option value="Healthcare & Pharmaceutical">Healthcare & Pharmaceutical</option>
+                      <option value="Retail, Supply Chain & Logistics">Retail, Supply Chain & Logistics</option>
+                      <option value="Public Sector & Governance">Public Sector & Governance</option>
+                    </select>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-700">
-                    Select Starting Template
+                <div className="space-y-2.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Select Corporate Template
                   </label>
-                  {availableTemplates.map(tpl => (
-                    <label
-                      key={tpl.id}
-                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                        selectedTemplateId === tpl.id
-                          ? 'border-[#052B66] bg-blue-50/50'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="templateSelection"
-                        checked={selectedTemplateId === tpl.id}
-                        onChange={() => setSelectedTemplateId(tpl.id)}
-                        className="mt-0.5 text-[#052B66] focus:ring-[#052B66]"
-                      />
-                      <div className="text-xs">
-                        <span className="font-bold text-slate-900 block">{tpl.name}</span>
-                        <span className="text-slate-500 text-[11px]">{tpl.description}</span>
-                      </div>
-                    </label>
-                  ))}
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {availableTemplates.map(tpl => (
+                      <label
+                        key={tpl.id}
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          selectedTemplateId === tpl.id
+                            ? 'border-[#052B66] bg-blue-50/60 ring-2 ring-[#052B66]/20'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="templateSelection"
+                          checked={selectedTemplateId === tpl.id}
+                          onChange={() => setSelectedTemplateId(tpl.id)}
+                          className="mt-0.5 text-[#052B66] focus:ring-[#052B66]"
+                        />
+                        <div className="text-xs">
+                          <span className="font-bold text-slate-900 block">{tpl.name}</span>
+                          <span className="text-slate-500 text-[11px] leading-tight block">{tpl.description}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] cursor-pointer flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>{createMode === 'scratch' ? 'Open Blank Workspace' : 'Load Template'} →</span>
+                  <span>{createMode === 'scratch' ? 'Launch Course Workspace' : 'Load Template'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Quick AI Course Creation Modal (Option A) */}
+      <QuickAICourseModal
+        isOpen={showQuickModal}
+        onClose={() => {
+          setShowQuickModal(false);
+          setQuickModalTemplateId(undefined);
+        }}
+        availableTemplates={availableTemplates}
+        initialTemplateId={quickModalTemplateId}
+        defaultProvider={defaultProvider}
+        defaultModel={defaultModel}
+        onCreateAndGenerate={data => {
+          if (onCreateQuickCourse) {
+            onCreateQuickCourse(data, {
+              generateImmediately: true,
+              provider: data.provider,
+              model: data.model
+            });
+          } else if (onStartFromScratch) {
+            onStartFromScratch(data.title);
+          }
+          setShowQuickModal(false);
+        }}
+        onOpenAdvancedBuilder={data => {
+          if (onCreateQuickCourse) {
+            onCreateQuickCourse(data, {
+              generateImmediately: false
+            });
+          } else if (onStartFromScratch) {
+            onStartFromScratch(data.title);
+          }
+          setShowQuickModal(false);
+        }}
+      />
     </div>
   );
 };

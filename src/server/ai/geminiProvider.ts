@@ -26,7 +26,7 @@ export class GeminiProvider implements AIProviderAdapter {
     });
 
     const startTime = Date.now();
-    const timeoutMs = request.timeoutMs || 50000;
+    const timeoutMs = request.timeoutMs || 90000;
 
     const contents: any[] = [];
     contents.push({ role: 'user', parts: [{ text: request.prompt }] });
@@ -40,6 +40,9 @@ export class GeminiProvider implements AIProviderAdapter {
     }
     if (typeof request.temperature === 'number') {
       config.temperature = request.temperature;
+    }
+    if (typeof request.maxTokens === 'number' && request.maxTokens > 0) {
+      config.maxOutputTokens = request.maxTokens;
     }
 
     // Call Gemini API with timeout protection

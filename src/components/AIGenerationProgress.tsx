@@ -94,6 +94,7 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [fallbackTriggered, setFallbackTriggered] = useState(false);
   const [completedStages, setCompletedStages] = useState<Set<RealGenerationStageId>>(new Set());
+  const [retryCount, setRetryCount] = useState(0);
 
   const providerLabel = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
@@ -105,9 +106,26 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-open course in editor once generation finishes successfully
+  useEffect(() => {
+    if (isFinished && generatedResult && !fallbackTriggered) {
+      const autoTimer = setTimeout(() => {
+        onComplete(generatedResult);
+      }, 1400);
+      return () => clearTimeout(autoTimer);
+    }
+  }, [isFinished, generatedResult, fallbackTriggered, onComplete]);
+
   // Real execution lifecycle
   useEffect(() => {
     let isCancelled = false;
+    setCurrentStage('validating');
+    setProgressPercent(15);
+    setIsFinished(false);
+    setGeneratedResult(null);
+    setErrorNotice(null);
+    setFallbackTriggered(false);
+    setCompletedStages(new Set());
 
     async function runGenerationLifecycle() {
       const markStageDone = (st: RealGenerationStageId) => {
@@ -248,7 +266,7 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [course, provider, model]);
+  }, [course, provider, model, retryCount]);
 
   const currentStageIndex = REAL_STAGES.findIndex(s => s.id === currentStage);
 
@@ -276,11 +294,20 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
         {fallbackTriggered && (
           <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-xs text-amber-900 animate-fade-in">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
+            <div className="space-y-1 flex-1">
               <span className="font-extrabold">Generation Source Notice: Local Fallback Engine Active</span>
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 {errorNotice || 'The external AI provider was unavailable or timed out.'} The course content was compiled using eStudy’s deterministic corporate instructional engine to guarantee complete course functionality.
               </p>
+              <div className="pt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRetryCount(c => c + 1)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 transition-colors cursor-pointer"
+                >
+                  ↻ Retry Generation with AI
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -360,21 +387,32 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
         <div className="flex items-center justify-between pt-2">
           <button
             onClick={onCancel}
-            disabled={isFinished}
+            disabled={isFinished && !fallbackTriggered}
             className="text-xs font-semibold text-slate-500 hover:text-slate-800 disabled:opacity-20 cursor-pointer"
           >
             Cancel Generation
           </button>
 
           {isFinished && generatedResult ? (
-            <button
-              id="view-generated-course-cta"
-              onClick={() => onComplete(generatedResult)}
-              className="px-6 py-3 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all shadow-md flex items-center gap-2 cursor-pointer animate-fade-up"
-            >
-              <span>Review Generated Course</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-3">
+              {fallbackTriggered && (
+                <button
+                  type="button"
+                  onClick={() => setRetryCount(c => c + 1)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                >
+                  ↻ Retry with AI
+                </button>
+              )}
+              <button
+                id="view-generated-course-cta"
+                onClick={() => onComplete(generatedResult)}
+                className="px-6 py-3 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all shadow-md flex items-center gap-2 cursor-pointer animate-fade-up"
+              >
+                <span>{fallbackTriggered ? 'Review Fallback Course' : 'Review Generated Course'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
             <div className="text-[11px] text-slate-400 italic">
               Dispatching prompt directives to {providerLabel}...

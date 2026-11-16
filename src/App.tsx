@@ -40,6 +40,7 @@ export function App() {
     updateActiveCourse,
     switchCourse,
     createNewCourse,
+    createQuickCourse,
     startFromScratch,
     continueFromTemplate,
     startFromMasterTemplate,
@@ -126,6 +127,9 @@ export function App() {
           courses={courses}
           onSelectCourse={switchCourse}
           onCreateNew={createNewCourse}
+          onCreateQuickCourse={createQuickCourse}
+          defaultProvider={selectedAIProvider}
+          defaultModel={selectedAIModel}
           onStartFromMasterTemplate={startFromMasterTemplate}
           onStartFromScratch={startFromScratch}
           onContinueFromTemplate={continueFromTemplate}

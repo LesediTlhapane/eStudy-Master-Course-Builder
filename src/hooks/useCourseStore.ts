@@ -38,6 +38,23 @@ export interface UseCourseStoreReturn {
   updateActiveCourse: (updater: Partial<Course> | ((prev: Course) => Course)) => void;
   switchCourse: (courseId: string) => void;
   createNewCourse: (title?: string) => void;
+  createQuickCourse: (
+    payload: {
+      title: string;
+      description: string;
+      targetAudience: string;
+      industryDomain: string;
+      difficultyLevel: string;
+      estimatedDuration: string;
+      learningObjectives?: string[];
+      templateId?: string;
+    },
+    options?: {
+      generateImmediately?: boolean;
+      provider?: AIProvider;
+      model?: string;
+    }
+  ) => void;
   startFromScratch: (title?: string) => void;
   continueFromTemplate: (templateId: string) => void;
   startFromMasterTemplate: () => void;
@@ -135,7 +152,7 @@ export function useCourseStore(): UseCourseStoreReturn {
   });
 
   const [activeSection, setActiveSection] = useState<SectionId>('01');
-  const [view, setView] = useState<AppView>('cover');
+  const [view, setView] = useState<AppView>('dashboard');
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
 
@@ -262,6 +279,87 @@ export function useCourseStore(): UseCourseStoreReturn {
     setActiveCourseId(newId);
     setActiveSection('01');
     setView('builder');
+  }, [allTemplates]);
+
+  // Quick AI Course Creation: maps basic corporate inputs into the 9-section framework
+  const createQuickCourse = useCallback((
+    payload: {
+      title: string;
+      description: string;
+      targetAudience: string;
+      industryDomain: string;
+      difficultyLevel: string;
+      estimatedDuration: string;
+      learningObjectives?: string[];
+      templateId?: string;
+    },
+    options?: {
+      generateImmediately?: boolean;
+      provider?: AIProvider;
+      model?: string;
+    }
+  ) => {
+    // If a template is picked (other than 'scratch'), start from that template as base
+    const baseCourse = payload.templateId && payload.templateId !== 'scratch'
+      ? (allTemplates.find(t => t.id === payload.templateId)?.course || createScratchCourse(payload.title))
+      : createScratchCourse(payload.title);
+
+    const year = new Date().getFullYear();
+    const randCode = Math.floor(100 + Math.random() * 900);
+    const code = `EST-${year}-${randCode}`;
+
+    const newCourse: Course = {
+      ...JSON.parse(JSON.stringify(baseCourse)),
+      id: `course-${Date.now()}`,
+      name: payload.title,
+      code,
+      status: 'Draft',
+      lastModified: 'Just now',
+      problem: {
+        ...baseCourse.problem,
+        taskOrSkill: payload.description || baseCourse.problem?.taskOrSkill || `Practical workplace competencies and performance excellence in ${payload.title}.`,
+        targetGroup: payload.targetAudience || baseCourse.problem?.targetGroup || 'Operational professionals and corporate team members',
+        operationalImpact: baseCourse.problem?.operationalImpact || `Enhanced productivity, elimination of errors, and compliance with statutory standards.`,
+        skillGaps: baseCourse.problem?.skillGaps || `Need for structured standard operating procedures and verification checklists.`,
+        aiLiteracyGap: baseCourse.problem?.aiLiteracyGap || `Understanding practical tool usage, safe data practices, and verification checklists.`
+      },
+      structure: {
+        ...baseCourse.structure,
+        title: payload.title,
+        code,
+        industryDomain: payload.industryDomain || baseCourse.structure?.industryDomain || 'Corporate Enterprise & Operations',
+        targetRoles: payload.targetAudience || baseCourse.structure?.targetRoles || 'Corporate employees and team leads',
+        difficultyLevel: payload.difficultyLevel || baseCourse.structure?.difficultyLevel || 'Intermediate',
+        estimatedDuration: payload.estimatedDuration || baseCourse.structure?.estimatedDuration || '4 Hours',
+        purposeStatement: payload.description || baseCourse.structure?.purposeStatement || `Equip learners with actionable skills and compliance readiness in ${payload.title}.`
+      }
+    };
+
+    if (payload.learningObjectives && payload.learningObjectives.length > 0) {
+      newCourse.learningDesign = {
+        ...newCourse.learningDesign,
+        learningObjectivesList: payload.learningObjectives
+      };
+    }
+
+    const sanitized = sanitizeCourse(newCourse);
+    setCourses(prev => [sanitized, ...prev]);
+    setActiveCourseId(sanitized.id);
+
+    if (options?.generateImmediately) {
+      if (options.provider) {
+        setSelectedAIProviderState(options.provider);
+        try { localStorage.setItem(AI_PROVIDER_KEY, options.provider); } catch (e) {}
+      }
+      if (options.model) {
+        setSelectedAIModelState(options.model);
+        try { localStorage.setItem(AI_MODEL_KEY, options.model); } catch (e) {}
+      }
+      setView('generating');
+    } else {
+      setActiveSection('01');
+      setView('builder');
+    }
   }, [allTemplates]);
 
   const createNewCourse = useCallback((title: string = 'Untitled Course') => {
@@ -443,6 +541,7 @@ export function useCourseStore(): UseCourseStoreReturn {
     updateActiveCourse,
     switchCourse,
     createNewCourse,
+    createQuickCourse,
     startFromScratch,
     continueFromTemplate,
     startFromMasterTemplate,

@@ -3,6 +3,7 @@ import { aiRouter } from './aiRouter';
 import { extractAndParseJSON } from './courseValidator';
 import { generateLocalFallbackCourse } from '../../utils/localCourseEngine';
 import { sanitizeCourse } from '../../utils/courseSanitizer';
+import { enrichLessonToTextbookStandard, enforceComprehensiveCourseVolume } from '../../utils/courseVolumeEngine';
 
 export interface GranularRegenerationResult {
   success: boolean;
@@ -118,12 +119,16 @@ Return a single JSON object matching this schema:
       if (parsedMod && parsedMod.title && Array.isArray(parsedMod.lessons)) {
         parsedMod.id = targetMod.id;
         parsedMod.moduleNumber = targetMod.moduleNumber;
+        parsedMod.lessons = parsedMod.lessons.map((l: GeneratedLesson, lIdx: number) =>
+          enrichLessonToTextbookStandard(l, lIdx, parsedMod.title, parsedMod.purpose || '', course)
+        );
         if (modIndex !== -1) {
           updatedCourse.modules[modIndex] = parsedMod;
         } else {
           updatedCourse.modules.push(parsedMod);
         }
-        updatedPart = parsedMod;
+        updatedCourse = enforceComprehensiveCourseVolume(updatedCourse, course);
+        updatedPart = updatedCourse.modules[modIndex !== -1 ? modIndex : updatedCourse.modules.length - 1];
       } else {
         throw new Error('Regenerated module JSON missing required lessons array or title.');
       }
@@ -174,11 +179,18 @@ Return a single JSON object matching this schema:
       const parsedLesson = extractAndParseJSON(aiResponse.text);
       if (parsedLesson && parsedLesson.title && parsedLesson.contentBody) {
         parsedLesson.id = targetId;
+        const enrichedLesson = enrichLessonToTextbookStandard(
+          parsedLesson,
+          0,
+          modTitle,
+          foundMod?.purpose || '',
+          course
+        );
         updatedCourse.modules = updatedCourse.modules.map(m => ({
           ...m,
-          lessons: m.lessons.map(l => l.id === targetId ? { ...l, ...parsedLesson } : l)
+          lessons: m.lessons.map(l => l.id === targetId ? { ...l, ...enrichedLesson } : l)
         }));
-        updatedPart = parsedLesson;
+        updatedPart = enrichedLesson;
       } else {
         throw new Error('Regenerated lesson JSON missing required contentBody or title.');
       }

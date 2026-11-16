@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrandLogo } from './BrandLogo';
 import { Course } from '../types';
-import { Check, Eye, Settings, LayoutDashboard, Sparkles, Download, ChevronDown, CheckCircle2, BookOpen } from 'lucide-react';
+import { 
+  Check, 
+  Eye, 
+  Settings, 
+  LayoutDashboard, 
+  Sparkles, 
+  Download, 
+  ChevronDown, 
+  CheckCircle2, 
+  BookOpen, 
+  ChevronRight,
+  Edit2,
+  FileText
+} from 'lucide-react';
 import { AppView } from '../hooks/useCourseStore';
 
 interface TopBarProps {
@@ -33,7 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setTitleInput(course.name || course.structure.title);
+    setTitleInput(course.name || course.structure?.title);
   }, [course.name, course.structure?.title]);
 
   useEffect(() => {
@@ -55,13 +68,15 @@ export const TopBar: React.FC<TopBarProps> = ({
     }
   };
 
+  const hasGeneratedCourse = Boolean(course.generatedCourse);
+
   return (
     <header
       id="estudy-app-topbar"
-      className="h-16 bg-[#052B66] border-b border-[#042150] px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-md font-sora text-white"
+      className="h-16 bg-[#052B66] border-b border-[#042150] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 select-none shadow-md font-sora text-white"
     >
-      {/* Left: Brand logo & Dashboard link */}
-      <div className="flex items-center gap-6">
+      {/* Left: Brand logo & Navigation Tabs */}
+      <div className="flex items-center gap-4 sm:gap-6">
         <button
           id="topbar-logo-btn"
           onClick={() => onNavigateView('dashboard')}
@@ -71,60 +86,80 @@ export const TopBar: React.FC<TopBarProps> = ({
           <BrandLogo variant="white" invertText={true} />
         </button>
 
-        <div className="h-6 w-[1px] bg-white/15 hidden sm:block" />
+        <div className="h-5 w-[1px] bg-white/20 hidden md:block" />
 
-        {/* Quick Dashboard link */}
-        <button
-          id="topbar-cover-btn"
-          onClick={() => onNavigateView('cover')}
-          className={`text-xs font-medium px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
-            view === 'cover'
-              ? 'bg-white/20 text-white font-semibold'
-              : 'text-slate-200 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <span>Cover</span>
-        </button>
-
-        <button
-          id="topbar-dashboard-btn"
-          onClick={() => onNavigateView('dashboard')}
-          className={`text-xs font-medium px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
-            view === 'dashboard'
-              ? 'bg-white/20 text-white font-semibold'
-              : 'text-slate-200 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          <LayoutDashboard className="w-3.5 h-3.5 text-[#45CC42]" />
-          <span>Dashboard</span>
-        </button>
-
-        {course.generatedCourse && (
+        {/* Commercial Pipeline Breadcrumb / Views */}
+        <nav className="hidden lg:flex items-center gap-1 text-xs">
           <button
-            id="topbar-generated-view-btn"
-            onClick={() => onNavigateView('generated')}
-            className={`text-xs font-bold px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
-              view === 'generated'
-                ? 'bg-[#45CC42] text-[#052B66]'
-                : 'text-[#45CC42] bg-[#45CC42]/20 hover:bg-[#45CC42]/30 border border-[#45CC42]/40'
+            id="topbar-dashboard-btn"
+            onClick={() => onNavigateView('dashboard')}
+            className={`px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              view === 'dashboard'
+                ? 'bg-white/20 text-white font-bold'
+                : 'text-slate-200 hover:text-white hover:bg-white/10'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Generated Course</span>
+            <LayoutDashboard className="w-3.5 h-3.5 text-[#45CC42]" />
+            <span>Dashboard</span>
           </button>
-        )}
+
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+
+          <button
+            id="topbar-builder-btn"
+            onClick={() => onNavigateView('builder')}
+            className={`px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              view === 'builder'
+                ? 'bg-white/20 text-white font-bold'
+                : 'text-slate-200 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-[#45CC42]" />
+            <span>1. Course Outline</span>
+          </button>
+
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+
+          <button
+            id="topbar-preview-btn"
+            onClick={() => onNavigateView('preview')}
+            className={`px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              view === 'preview'
+                ? 'bg-white/20 text-white font-bold'
+                : 'text-slate-200 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Eye className="w-3.5 h-3.5 text-[#45CC42]" />
+            <span>2. Master Spec</span>
+          </button>
+
+          {hasGeneratedCourse && (
+            <>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <button
+                id="topbar-generated-view-btn"
+                onClick={() => onNavigateView('generated')}
+                className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  view === 'generated'
+                    ? 'bg-[#45CC42] text-[#052B66]'
+                    : 'text-[#45CC42] bg-[#45CC42]/20 hover:bg-[#45CC42]/30 border border-[#45CC42]/40'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>3. Completed Course</span>
+              </button>
+            </>
+          )}
+        </nav>
       </div>
 
-      {/* Centre: Current Course Name & Workspace Status */}
-      <div className="flex-1 max-w-xl mx-4 text-center">
+      {/* Centre: Current Active Course Switcher */}
+      <div className="flex-1 max-w-md mx-2 sm:mx-4 text-center">
         {view === 'dashboard' ? (
-          <div>
-            <h1 className="text-sm font-bold text-white tracking-tight">
-              eStudy Master Course Generation Workspace
-            </h1>
-            <p className="text-[11px] text-[#45CC42] font-semibold">
-              Universal Framework v9.0
-            </p>
+          <div className="hidden sm:block">
+            <h2 className="text-xs font-bold text-white tracking-wide uppercase text-slate-300">
+              Corporate Learning Workspace
+            </h2>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center relative" ref={dropdownRef}>
@@ -138,7 +173,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   onBlur={handleTitleSubmit}
                   onKeyDown={e => e.key === 'Enter' && handleTitleSubmit()}
                   autoFocus
-                  className="text-sm font-bold text-white text-center border-b-2 border-[#45CC42] bg-white/15 px-2 py-0.5 outline-none rounded shadow-inner"
+                  className="text-xs sm:text-sm font-bold text-white text-center border-b-2 border-[#45CC42] bg-white/15 px-2 py-0.5 outline-none rounded shadow-inner"
                 />
               ) : (
                 <button
@@ -147,15 +182,13 @@ export const TopBar: React.FC<TopBarProps> = ({
                     setTitleInput(course.name);
                     setIsEditingTitle(true);
                   }}
-                  className="group flex items-center gap-1.5 cursor-pointer max-w-md truncate"
+                  className="group flex items-center gap-1.5 cursor-pointer max-w-[200px] sm:max-w-xs truncate"
                   title="Click to rename course"
                 >
-                  <span className="text-sm font-bold text-white truncate group-hover:text-slate-200 transition-colors">
+                  <span className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-slate-200 transition-colors">
                     {course.name || course.structure.title || 'Untitled Course'}
                   </span>
-                  <span className="text-[10px] text-slate-300 group-hover:text-white transition-colors opacity-0 group-hover:opacity-100">
-                    (edit)
-                  </span>
+                  <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </button>
               )}
 
@@ -164,20 +197,22 @@ export const TopBar: React.FC<TopBarProps> = ({
                   type="button"
                   id="topbar-course-switcher-toggle"
                   onClick={() => setIsCourseDropdownOpen(prev => !prev)}
-                  className="p-1 text-slate-300 hover:text-white hover:bg-white/15 rounded-md transition-colors cursor-pointer"
-                  title="Switch course in workspace"
+                  className="p-1 text-slate-300 hover:text-white hover:bg-white/15 rounded-md transition-colors cursor-pointer shrink-0"
+                  title="Switch course"
                 >
-                  <ChevronDown className="w-4 h-4 text-[#45CC42]" />
+                  <ChevronDown className="w-3.5 h-3.5 text-[#45CC42]" />
                 </button>
               )}
             </div>
 
-            <span className="text-[11px] text-[#45CC42] font-semibold tracking-wide flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#45CC42] shadow-[0_0_4px_rgba(69,204,66,0.8)]" />
-              <span>{course.code || 'EST-COURSE-01'} · Course workspace</span>
-            </span>
+            <div className="hidden sm:flex items-center gap-1.5 text-[10.5px] text-[#45CC42] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#45CC42]" />
+              <span>{course.code || 'EST-COURSE'}</span>
+              <span className="text-slate-400 font-normal">·</span>
+              <span className="text-slate-300 font-normal">{course.status || 'Draft'}</span>
+            </div>
 
-            {/* Course Switcher Dropdown Menu */}
+            {/* Course Switcher Dropdown */}
             {isCourseDropdownOpen && courses.length > 0 && (
               <div className="absolute top-full mt-2 w-72 bg-white text-slate-800 rounded-xl shadow-2xl border border-slate-200 py-2 z-50 text-left font-sora animate-in fade-in zoom-in-95">
                 <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -225,68 +260,48 @@ export const TopBar: React.FC<TopBarProps> = ({
         )}
       </div>
 
-      {/* Right: Saved status, Preview button, Export button, Settings */}
-      <div className="flex items-center gap-2.5">
+      {/* Right: Save Status, Primary Action (Export / AI Engine), Settings */}
+      <div className="flex items-center gap-2">
         {view !== 'dashboard' && (
           <div
             id="topbar-save-status"
-            className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full text-slate-200 bg-white/10 border border-white/15 mr-1"
+            className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full text-slate-200 bg-white/10 border border-white/15"
           >
             {saveStatus === 'saved' ? (
               <>
-                <Check className="w-3.5 h-3.5 text-[#45CC42] stroke-[2.5]" />
-                <span className="text-white font-medium text-[11px]">Saved ✓</span>
+                <Check className="w-3 h-3 text-[#45CC42] stroke-[3]" />
+                <span className="text-white">Auto-saved</span>
               </>
             ) : (
               <>
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-amber-300 font-medium text-[11px]">Saving...</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="text-amber-300">Saving...</span>
               </>
             )}
           </div>
         )}
 
-        {/* Word / PDF Export & AI Engine Selection Button */}
+        {/* Primary AI & Export Button */}
         {onOpenExportModal && (
           <button
             id="topbar-export-btn"
             onClick={onOpenExportModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-sm transition-all cursor-pointer"
-            title="Export to Word (.docx), PDF or send to AI engine with ratings"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export / AI Engine</span>
-          </button>
-        )}
-
-        {view !== 'preview' ? (
-          <button
-            id="topbar-preview-btn"
-            onClick={() => onNavigateView('preview')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-colors cursor-pointer"
-          >
-            <Eye className="w-3.5 h-3.5 text-[#45CC42]" />
-            <span>Prompt Preview</span>
-          </button>
-        ) : (
-          <button
-            id="topbar-builder-btn"
-            onClick={() => onNavigateView('builder')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-sm transition-all cursor-pointer"
+            title="Generate with AI or Export Word / PDF"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#052B66]" />
-            <span>Return to Builder</span>
+            <span className="hidden sm:inline">AI Generation & Export</span>
+            <span className="sm:hidden">Generate</span>
           </button>
         )}
 
         <button
           id="topbar-settings-btn"
           onClick={onOpenSettings}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-colors cursor-pointer"
-          title="Course Workspace Settings & Export"
+          className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          title="Settings & Workspace Management"
         >
-          <Settings className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Settings</span>
+          <Settings className="w-4 h-4" />
         </button>
       </div>
     </header>

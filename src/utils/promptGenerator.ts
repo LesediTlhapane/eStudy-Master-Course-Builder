@@ -396,13 +396,21 @@ ${val(e.psychologicalSafetyNotes, 'Transparent, blame-free learning environment 
 ${ethicsCardsFormatted}
 
 ================================================================================
-7. OUTPUT STANDARDS & DELIVERABLES (SECTION 07)
+7. OUTPUT STANDARDS, VOLUME & DELIVERABLES (SECTION 07)
 ================================================================================
 • LMS Output Format: ${val(out.outputFormat, 'LMS-Ready SCORM / xAPI compliant digital courseware')}
+• Target Document Volume: 22 Pages Minimum to 30 Pages Maximum (~8,500 to 12,000 words of comprehensive textbook-grade instructional content; strictly never a brief 2-page summary)
 • Target Reading Level: ${val(out.accessibilityTargetReadingLevel, 'Plain language · NQF Level 4 / Grade 12 equivalent')}
+• Mandatory Structural Depth Per Course:
+  - 4 to 5 Complete Curriculum Modules
+  - 3 to 4 Multi-Section Lessons per Module (600–800 words per lesson covering: Theoretical & Operational Context, Core Principles, Step-by-Step Standard Operating Procedures, South African Statutory & POPIA Compliance, Worked Case Examples, and Quality Checklists)
+  - 4 Detailed Scenarios per Module (3 Realistic South African Workplace Scenarios + 1 AI Governance & Human-in-the-Loop Scenario)
+  - 5 Scenario-Based Knowledge Check MCQs per Module with comprehensive rationales
+  - 1 Practical Workplace Application Task per Module with weighted Evaluation Rubric
+  - 5 Pre-Course Diagnostic Questions + 10 Summative Final Exam Questions + Multi-Part Capstone Case Study
 • Mandatory Courseware Deliverables:
-  1. Complete interactive module content with scenario decision branches.
-  2. Printable 30-Day Workplace Action Plan.
+  1. Complete 22–30 Page Participant & Facilitator Course Manual with scenario decision branches.
+  2. Printable 30-60-90 Day Workplace Action Plan.
   3. Operational Rollout SOP Framework.
   4. Statutory Risk & Compliance Matrix.
   5. Facilitator & Mentor Implementation Guide.

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, AIProvider } from '../types';
 import { generateCourseDocx } from '../utils/docxExport';
 import { printCoursePdf } from '../utils/pdfExport';
+import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from '../utils/courseVolumeEngine';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -44,13 +45,22 @@ interface GeneratedCourseViewProps {
 
 export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   course,
-  generatedCourse,
+  generatedCourse: rawGeneratedCourse,
   selectedProvider,
   selectedModel,
   onUpdateGeneratedCourse,
   onBackToBuilder,
   onBackToDashboard
 }) => {
+  const generatedCourse = useMemo(
+    () => enforceComprehensiveCourseVolume(JSON.parse(JSON.stringify(rawGeneratedCourse)), course),
+    [rawGeneratedCourse, course]
+  );
+  const volumeMetrics = useMemo(
+    () => calculateGeneratedCourseVolume(generatedCourse),
+    [generatedCourse]
+  );
+
   const [activeTab, setActiveTab] = useState<'curriculum' | 'assessments' | 'qa' | 'sources' | 'export'>('curriculum');
   const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({
     [generatedCourse.modules?.[0]?.id || 'module-1']: true
@@ -225,11 +235,11 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   const handleDownloadDocx = async () => {
     setIsExportingDocx(true);
     try {
-      const blob = await generateCourseDocx(course);
+      const blob = await generateCourseDocx({ ...course, generatedCourse });
       const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute('href', url);
-      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_master_curriculum.docx`);
+      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_master_curriculum_${volumeMetrics.estimatedPages}p.docx`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -242,7 +252,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   };
 
   const handlePrintPdf = () => {
-    printCoursePdf(course);
+    printCoursePdf({ ...course, generatedCourse });
   };
 
   return (
@@ -298,15 +308,18 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
           </div>
 
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xs font-mono font-bold text-[#45CC42] bg-[#45CC42]/15 px-2.5 py-0.5 rounded border border-[#45CC42]/30">
                 {generatedCourse.code}
               </span>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              <span className="text-xs font-mono font-bold text-white bg-white/15 px-2.5 py-0.5 rounded border border-white/20">
+                {volumeMetrics.estimatedPages} Pages · {volumeMetrics.totalWords.toLocaleString()} Words (22–30 Page Standard)
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white w-full sm:w-auto">
                 {generatedCourse.title}
               </h1>
             </div>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
+            <p className="text-xs text-slate-300 max-w-4xl leading-relaxed">
               {generatedCourse.overview}
             </p>
           </div>
@@ -400,6 +413,18 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                 <span className="font-semibold text-slate-700">
                   {new Date(generatedCourse.generationMetadata?.generatedAt || generatedCourse.generatedAt).toLocaleDateString('en-ZA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   {generatedCourse.generationMetadata?.generationDurationMs ? ` (${(generatedCourse.generationMetadata.generationDurationMs / 1000).toFixed(1)}s)` : ''}
+                </span>
+              </div>
+            </div>
+
+            <div className="h-7 w-px bg-slate-200 hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#052B66]" />
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Manual Volume (22–30p Target)</span>
+                <span className="font-extrabold text-[#052B66]">
+                  {volumeMetrics.estimatedPages} Pages · {volumeMetrics.totalWords.toLocaleString()} Words ({volumeMetrics.moduleCount} Modules, {volumeMetrics.lessonCount} Lessons)
                 </span>
               </div>
             </div>
