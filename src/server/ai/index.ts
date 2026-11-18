@@ -7,3 +7,4 @@ export * from './courseValidator';
 export * from './granularRegenerator';
 export * from './courseGenerator';
 export * from './copilotService';
+export * from './templateExtractor';

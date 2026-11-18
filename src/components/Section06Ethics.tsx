@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Course } from '../types';
-import { ArrowLeft, ArrowRight, Shield, Check, Lock, AlertTriangle, UserCheck, Scale, FileText, Database, Eye, Globe } from 'lucide-react';
+import { ArrowLeft, Shield, Lock, Scale } from 'lucide-react';
 import { SlideHeader } from './SlideHeader';
 import { SlideFooter } from './SlideFooter';
 import { FrameworkCallout } from './FrameworkCallout';
@@ -19,8 +19,16 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
   onContinue,
   onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'pillars' | 'cards' | 'governance'>('pillars');
   const ethics = course.ethics;
+  const flagged = course.flaggedFields || {};
+
+  const confirmFlag = (key: string) => {
+    onUpdate(prev => {
+      const next = { ...(prev.flaggedFields || {}) };
+      delete next[key];
+      return { ...prev, flaggedFields: next };
+    });
+  };
 
   const handleUpdateField = (field: keyof Course['ethics'], val: any) => {
     onUpdate(prev => ({
@@ -33,294 +41,164 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
   };
 
   return (
-    <div id="section-06-ethics-container" className="space-y-6 max-w-6xl">
+    <div id="section-06-ethics-container" className="space-y-8 max-w-6xl font-sora">
       {/* Slide Header */}
       <SlideHeader
         sectionNumber="06"
-        title="Ethics, Compliance & Responsible AI Governance"
-        subtitle="Enforce POPIA compliance, human-in-the-loop oversight, bias mitigation, and clear escalation protocols."
-        slideNumber="29"
-        totalSlides="39"
-        badgeText="POPIA & Ethics Enforced"
+        title="6. ETHICAL & PROFESSIONAL STANDARDS"
+        subtitle="Complete 6.1 Core Ethics Requirements and 6.2 AI Ethics & Responsible AI on a single page."
+        slideNumber="06"
+        totalSlides="09"
+        badgeText="Section 6 · Ethics & POPIA"
       />
 
       {/* Framework Requirement Callout */}
       <FrameworkCallout
-        title="Framework Requirement"
-        requirement="Mandatory South African statutory compliance (POPIA Act No. 4 of 2013). All 8 ethical dimensions and strict human-in-the-loop sign-off protocols must be configured."
+        title="South African Regulatory & Responsible AI Requirement"
+        requirement="Every course must enforce South African statutory compliance (including POPIA Act No. 4 of 2013), human-in-the-loop accountability, bias mitigation, and clear escalation protocols."
         variant="ethics"
       />
 
-      {/* Slide Tab Navigation */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setActiveTab('pillars')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'pillars'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Slide 29: Core Governance Pillars</span>
-          </button>
+      {/* ================================================================= */}
+      {/* 6.1 CORE ETHICS REQUIREMENTS                                      */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 space-y-5 shadow-xs border-l-4 border-l-[#052B66]">
+        <div className="border-b border-slate-100 pb-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
+            SUBSECTION 6.1
+          </span>
+          <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#45CC42]" />
+            <span>6.1 Core Ethics Requirements</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Specify ethical decision-making, confidentiality (POPIA), professional accountability, and psychological safety requirements.
+          </p>
+        </div>
 
-          <button
-            onClick={() => setActiveTab('cards')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'cards'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Scale className="w-3.5 h-3.5" />
-            <span>Slide 30: 8 Ethical Dimensions</span>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <EditorialField
+            label="Ethical Decision-Making & Escalation Framework"
+            value={ethics.decisionMakingFramework}
+            onChange={val => handleUpdateField('decisionMakingFramework', val)}
+            placeholder="e.g. Tier 1 routine tasks verified by operator; Tier 2 client-facing outputs require supervisor sign-off; Tier 3 statutory issues escalated to Compliance."
+            multiline
+            rows={3}
+            required
+          />
 
-          <button
-            onClick={() => setActiveTab('governance')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'governance'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Slide 31 & 32: Decision Gates & Sovereignty</span>
-          </button>
+          <EditorialField
+            label="Confidentiality & Data Protection Requirements (POPIA)"
+            value={ethics.confidentialityRequirements}
+            onChange={val => handleUpdateField('confidentialityRequirements', val)}
+            placeholder="e.g. Strict compliance with POPIA Act 4 of 2013; mandatory redaction of personal identifiers and client account details."
+            multiline
+            rows={3}
+            required
+            flaggedNote={flagged['ethics.confidentialityRequirements']}
+            onConfirmFlag={() => confirmFlag('ethics.confidentialityRequirements')}
+          />
+
+          <EditorialField
+            label="Professional Accountability Mechanism"
+            value={ethics.accountabilityMechanism}
+            onChange={val => handleUpdateField('accountabilityMechanism', val)}
+            placeholder="e.g. Employees retain full professional and legal accountability for all work outputs, calculations, and client communications."
+            multiline
+            rows={3}
+            required
+          />
+
+          <EditorialField
+            label="Psychological Safety, Inclusivity & Error Reporting"
+            value={ethics.psychologicalSafetyNotes}
+            onChange={val => handleUpdateField('psychologicalSafetyNotes', val)}
+            placeholder="e.g. Constructive, non-punitive error-reporting channel encouraging early escalation of process or system mistakes."
+            multiline
+            rows={3}
+          />
         </div>
       </div>
 
-      {activeTab === 'pillars' && (
-        /* Slide 29: 4 Primary Pillars of Responsible AI */
+      {/* ================================================================= */}
+      {/* 6.2 AI ETHICS & RESPONSIBLE AI                                    */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 space-y-5 shadow-xs border-l-4 border-l-[#45CC42]">
+        <div className="border-b border-slate-100 pb-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#45CC42]/20 px-2.5 py-0.5 rounded-md border border-[#45CC42]/40 inline-block mb-1">
+            SUBSECTION 6.2
+          </span>
+          <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+            <Scale className="w-4 h-4 text-[#052B66]" />
+            <span>6.2 AI Ethics & Responsible AI</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Complete the official Section 6.2 AI Ethics dimensions: Bias & Fairness, Data Privacy, Transparency & Explainability, Human-in-the-Loop, Misuse Prevention, and Workforce Impact.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Pillar 1: POPIA & Data Privacy */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                PILLAR 01 · DATA PRIVACY
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
-                <Lock className="w-4 h-4 text-[#052B66]" />
-                <span>POPIA & Client Confidentiality</span>
-              </h3>
-            </div>
+          <EditorialField
+            label="Bias & Fairness (Specific to course domain) [INSERT]"
+            value={ethics.aiBiasRisk}
+            onChange={val => handleUpdateField('aiBiasRisk', val)}
+            placeholder="e.g. Auditing automated outputs for demographic, linguistic, or socio-economic bias in South African client contexts."
+            multiline
+            rows={3}
+            required
+          />
 
-            <EditorialField
-              label="[DATA PRIVACY & POPIA SAFEGUARDS]"
-              value={ethics.dataPrivacyFramework || ethics.confidentialityRequirements}
-              onChange={val => {
-                handleUpdateField('dataPrivacyFramework', val);
-                handleUpdateField('confidentialityRequirements', val);
-              }}
-              placeholder="e.g. Mandatory zero-PII input rule, client data redaction protocols, and strict prohibition of non-enterprise AI instances."
-              multiline
-              rows={3}
-              helperText="Strict prohibition of entering personal or sensitive corporate data."
-            />
-          </div>
+          <EditorialField
+            label="Data Privacy & POPIA / GDPR Safeguards [INSERT]"
+            value={ethics.dataPrivacyFramework}
+            onChange={val => handleUpdateField('dataPrivacyFramework', val)}
+            placeholder="e.g. Never input confidential, personal, or proprietary data into unapproved AI tools; enforce POPIA Condition 7 safeguards."
+            multiline
+            rows={3}
+            required
+            flaggedNote={flagged['ethics.dataPrivacyFramework']}
+            onConfirmFlag={() => confirmFlag('ethics.dataPrivacyFramework')}
+          />
 
-          {/* Pillar 2: Human Oversight & Accountability */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                PILLAR 02 · ACCOUNTABILITY
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
-                <UserCheck className="w-4 h-4 text-[#052B66]" />
-                <span>Human-in-the-Loop Oversight</span>
-              </h3>
-            </div>
+          <EditorialField
+            label="Transparency, Explainability & AI Disclosure [INSERT]"
+            value={ethics.aiDisclosureRequirement}
+            onChange={val => handleUpdateField('aiDisclosureRequirement', val)}
+            placeholder="e.g. Learners must be able to explain how an AI-assisted output was reached and disclose AI assistance on internal reports."
+            multiline
+            rows={3}
+            required
+          />
 
-            <EditorialField
-              label="[HUMAN-IN-THE-LOOP OVERSIGHT & SIGN-OFF]"
-              value={ethics.humanOverrideScenarios || ethics.accountabilityMechanism}
-              onChange={val => {
-                handleUpdateField('humanOverrideScenarios', val);
-                handleUpdateField('accountabilityMechanism', val);
-              }}
-              placeholder="e.g. Mandatory human review and sign-off for high-impact decisions, customer communications, and financial summaries."
-              multiline
-              rows={3}
-              helperText="Human employees retain 100% legal and operational accountability."
-            />
-          </div>
+          <EditorialField
+            label="Human-in-the-Loop Override Scenarios [INSERT]"
+            value={ethics.humanOverrideScenarios}
+            onChange={val => handleUpdateField('humanOverrideScenarios', val)}
+            placeholder="e.g. AI assists, humans decide: mandatory human review and override for financial approvals, HR decisions, and legal compliance."
+            multiline
+            rows={3}
+            required
+          />
 
-          {/* Pillar 3: Bias & Fairness Mitigation */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                PILLAR 03 · FAIRNESS
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span>Bias Detection & Cultural Fairness</span>
-              </h3>
-            </div>
+          <EditorialField
+            label="Data Sovereignty & Cross-Border Jurisdiction"
+            value={ethics.dataSovereigntyContext}
+            onChange={val => handleUpdateField('dataSovereigntyContext', val)}
+            placeholder="e.g. Compliance with POPIA Section 72 cross-border data transfer restrictions when using cloud platforms."
+            multiline
+            rows={2}
+          />
 
-            <EditorialField
-              label="[BIAS DETECTION & FAIRNESS PROTOCOLS]"
-              value={ethics.aiBiasRisk}
-              onChange={val => handleUpdateField('aiBiasRisk', val)}
-              placeholder="e.g. Screen for demographic or linguistic bias in AI resume ranking, marketing personas, and automated credit risk evaluations."
-              multiline
-              rows={3}
-              helperText="Identifying demographic or institutional bias in the South African context."
-            />
-          </div>
-
-          {/* Pillar 4: Transparency & Disclosure */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                PILLAR 04 · TRANSPARENCY
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66] flex items-center gap-1.5 mt-0.5">
-                <Check className="w-4 h-4 text-[#45CC42] stroke-[2.5]" />
-                <span>Transparency & Attribution</span>
-              </h3>
-            </div>
-
-            <EditorialField
-              label="[AI DISCLOSURE & ATTRIBUTION STANDARD]"
-              value={ethics.aiDisclosureRequirement}
-              onChange={val => handleUpdateField('aiDisclosureRequirement', val)}
-              placeholder="e.g. Include disclosure notice 'Drafted with AI assistance, verified and approved by [Employee Name]' on official reports."
-              multiline
-              rows={3}
-              helperText="Clear standards on when and how to disclose AI-assisted work."
-            />
-          </div>
+          <EditorialField
+            label="Workforce Impact & Augmentation Narrative"
+            value={ethics.aiWorkforceImpactNarrative}
+            onChange={val => handleUpdateField('aiWorkforceImpactNarrative', val)}
+            placeholder="e.g. Honest, constructive framing of how AI augments employee capability and reduces repetitive administrative rework."
+            multiline
+            rows={2}
+          />
         </div>
-      )}
-
-      {activeTab === 'cards' && (
-        /* Slide 30: 8 Ethical Dimensions Grid */
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
-          <div className="border-b border-slate-100 pb-3">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-              SLIDE 30 · 8 ETHICAL DIMENSIONS
-            </span>
-            <h3 className="text-sm font-bold text-[#052B66]">
-              [COMPREHENSIVE ETHICAL RESPONSIBILITY FRAMEWORK]
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">01 · Privacy & Data</span>
-              <h4 className="text-xs font-bold text-slate-900">Zero-PII Input Rule</h4>
-              <p className="text-[11px] text-slate-600">POPIA compliance, automatic redaction, and no public cloud data ingestion.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">02 · Human Agency</span>
-              <h4 className="text-xs font-bold text-slate-900">Human Sign-Off Gate</h4>
-              <p className="text-[11px] text-slate-600">No autonomous client-facing outputs without certified human review.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">03 · Bias Mitigation</span>
-              <h4 className="text-xs font-bold text-slate-900">Cultural & Demographic</h4>
-              <p className="text-[11px] text-slate-600">Auditing outputs for South African linguistic and socio-economic equity.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">04 · Transparency</span>
-              <h4 className="text-xs font-bold text-slate-900">Attribution Notice</h4>
-              <p className="text-[11px] text-slate-600">Explicit disclosure of synthetic generation in corporate publications.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">05 · Intellectual Property</span>
-              <h4 className="text-xs font-bold text-slate-900">Copyright & Citations</h4>
-              <p className="text-[11px] text-slate-600">Protecting proprietary IP and verifying external copyright limits.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">06 · System Integrity</span>
-              <h4 className="text-xs font-bold text-slate-900">Hallucination Audits</h4>
-              <p className="text-[11px] text-slate-600">Mandatory 3-point cross-reference of numerical and statutory data.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">07 · Psychological Safety</span>
-              <h4 className="text-xs font-bold text-slate-900">Blameless Error Logging</h4>
-              <p className="text-[11px] text-slate-600">Encouraging early error reporting without fear of punitive action.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-              <span className="text-[10px] font-black text-[#052B66] uppercase">08 · Accountability</span>
-              <h4 className="text-xs font-bold text-slate-900">Legal Responsibility</h4>
-              <p className="text-[11px] text-slate-600">Clear chain of custody and signed approvals for all workflow assets.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'governance' && (
-        /* Slide 31 & 32: Decision Gates & Sovereignty */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                SLIDE 31 · DECISION GATES
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                [HUMAN-IN-THE-LOOP DECISION PROTOCOL]
-              </h3>
-            </div>
-
-            <EditorialField
-              label="[DECISION MAKING & ESCALATION PROTOCOL]"
-              value={ethics.decisionMakingFramework || 'Tier 1 low-risk tasks self-certified by operator; Tier 2 customer-facing tasks require peer sign-off; Tier 3 legal/financial require department head sign-off.'}
-              onChange={val => handleUpdateField('decisionMakingFramework', val)}
-              multiline
-              rows={3}
-              helperText="Clear rules dictating when human review and escalation are required."
-            />
-
-            <EditorialField
-              label="[PSYCHOLOGICAL SAFETY & ERROR DISCLOSURE]"
-              value={ethics.psychologicalSafetyNotes || 'Non-punitive reporting channel for synthetic inaccuracies, prompt failures, and near-miss compliance incidents.'}
-              onChange={val => handleUpdateField('psychologicalSafetyNotes', val)}
-              multiline
-              rows={3}
-              helperText="Creating an open workplace culture around AI error discovery."
-            />
-          </div>
-
-          <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                SLIDE 32 · SOVEREIGNTY & WORKFORCE
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                [DATA SOVEREIGNTY & WORKFORCE IMPACT]
-              </h3>
-            </div>
-
-            <EditorialField
-              label="[DATA SOVEREIGNTY & JURISDICTION]"
-              value={ethics.dataSovereigntyContext || 'Adherence to South African cross-border data transfer regulations under POPIA Section 72.'}
-              onChange={val => handleUpdateField('dataSovereigntyContext', val)}
-              multiline
-              rows={3}
-              helperText="Legal jurisdiction and cloud data location boundaries."
-            />
-
-            <EditorialField
-              label="[AI WORKFORCE IMPACT & AUGMENTATION]"
-              value={ethics.aiWorkforceImpactNarrative || 'Positions AI as an augmentation tool to elevate professional capability, reduce tedious manual rework, and boost high-value strategic time.'}
-              onChange={val => handleUpdateField('aiWorkforceImpactNarrative', val)}
-              multiline
-              rows={3}
-              helperText="Constructive framing of automation impact on job roles."
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
       {/* Navigation Buttons */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-200">
@@ -329,20 +207,19 @@ export const Section06Ethics: React.FC<Section06EthicsProps> = ({
           className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>← Back to Learning Design</span>
+          <span>← Back to Section 5: Learning Design</span>
         </button>
 
         <button
           id="section-06-continue-btn"
           onClick={onContinue}
-          className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+          className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md transition-all flex items-center gap-2 cursor-pointer"
         >
-          <span>Continue to Output Format (Section 07) →</span>
+          <span>Continue to Section 7: Output Format Requirements →</span>
         </button>
       </div>
 
-      {/* Slide Footer */}
-      <SlideFooter currentSlide="29" totalSlides="39" />
+      <SlideFooter currentSlide="06" totalSlides="09" />
     </div>
   );
 };

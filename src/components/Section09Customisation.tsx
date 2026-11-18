@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Course, CustomisationPlanningNote, TemplateCourseHistory } from '../types';
-import { ArrowLeft, ArrowRight, Lock, ShieldCheck, Sparkles, FileText, Check, Plus, Trash2, Sliders, History, BookOpen } from 'lucide-react';
+import { ArrowLeft, Sparkles, Trash2, Sliders, History, FileText } from 'lucide-react';
 import { SlideHeader } from './SlideHeader';
 import { SlideFooter } from './SlideFooter';
 import { FrameworkCallout } from './FrameworkCallout';
@@ -19,7 +19,6 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
   onPreviewPrompt,
   onBack
 }) => {
-  const [activeTab, setActiveTab] = useState<'adaptation' | 'planning' | 'history'>('adaptation');
   const custom = course.customisation;
 
   const handleUpdate = (field: keyof Course['customisation'], val: any) => {
@@ -33,7 +32,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
   };
 
   // Planning Notes Handlers
-  const [newSection, setNewSection] = useState('Section 04: Modules');
+  const [newSection, setNewSection] = useState('Section 1 – Problem Statement');
   const [newChanges, setNewChanges] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
@@ -50,173 +49,136 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
   };
 
   const handleDeletePlanningNote = (idx: number) => {
-    handleUpdate('planningNotes', (custom.planningNotes || []).filter((_, i) => i !== idx));
+    handleUpdate(
+      'planningNotes',
+      (custom.planningNotes || []).filter((_, i) => i !== idx)
+    );
   };
 
-  // History Version Handlers
-  const [newHistTitle, setNewHistTitle] = useState(course.structure?.title || 'Master Course v9.0');
-  const [newHistIndustry, setNewHistIndustry] = useState(course.structure?.industryDomain || 'Corporate Operations');
+  // 9.1 Courses Built Using This Template Handlers
+  const [newHistTitle, setNewHistTitle] = useState('');
+  const [newHistIndustry, setNewHistIndustry] = useState('');
   const [newHistVersion, setNewHistVersion] = useState('v9.0');
 
   const handleAddHistory = () => {
+    const titleToLog = newHistTitle.trim() || course.structure?.title || course.name || 'Master Course';
+    const industryToLog = newHistIndustry.trim() || course.structure?.industryDomain || 'Corporate Training';
     const historyItem: TemplateCourseHistory = {
-      courseTitle: newHistTitle,
-      industry: newHistIndustry,
+      courseTitle: titleToLog,
+      industry: industryToLog,
       dateBuilt: new Date().toISOString().split('T')[0],
-      version: newHistVersion
+      version: newHistVersion || 'v9.0'
     };
     handleUpdate('historicalCourses', [...(custom.historicalCourses || []), historyItem]);
+    setNewHistTitle('');
+    setNewHistIndustry('');
   };
 
   const handleDeleteHistory = (idx: number) => {
-    handleUpdate('historicalCourses', (custom.historicalCourses || []).filter((_, i) => i !== idx));
+    handleUpdate(
+      'historicalCourses',
+      (custom.historicalCourses || []).filter((_, i) => i !== idx)
+    );
   };
 
   return (
-    <div id="section-09-customisation-container" className="space-y-6 max-w-6xl">
+    <div id="section-09-customisation-container" className="space-y-8 max-w-6xl font-sora">
       {/* Slide Header */}
       <SlideHeader
         sectionNumber="09"
-        title="Customisation, Adaptation Ledger & Version History"
-        subtitle="Configure client-specific branding, tone, LMS preferences, adaptation notes, and audit version control."
-        slideNumber="37"
-        totalSlides="39"
-        badgeText="Framework Safeguards Active"
+        title="9. CUSTOMISATION GUIDE"
+        subtitle="Record client-specific adaptations, tone, branding, and 9.1 Courses Built Using This Template on a single page."
+        slideNumber="09"
+        totalSlides="09"
+        badgeText="Section 9 · Customisation Guide"
       />
 
       {/* Framework Requirement Callout */}
       <FrameworkCallout
-        title="Framework Requirement"
-        requirement="Sections 01 through 08 represent the non-negotiable core pedagogical framework of eStudy South Africa. Customisations applied in Section 09 add client-specific adaptations without diluting the depth of the 9 master sections."
+        title="How to Adapt This Template for Any Course (Page 17 of PDF Template)"
+        requirement="Sections 1–7 change per course (replace all [INSERT] fields with course-specific content). Sections 5, 6, 7 & 8 remain consistent across all courses (this is the quality backbone)."
         variant="ethics"
       />
 
-      {/* Slide Tab Navigation */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setActiveTab('adaptation')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'adaptation'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Slide 37: Brand & Tone Adaptation</span>
-          </button>
+      {/* ================================================================= */}
+      {/* ORGANISATIONAL TONE, BRANDING & DELIVERY PREFERENCES              */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 space-y-5 shadow-xs border-l-4 border-l-[#052B66]">
+        <div className="border-b border-slate-100 pb-3">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
+            SECTION 9 · ORGANISATIONAL ADAPTATION
+          </span>
+          <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-[#45CC42]" />
+            <span>Brand Tone, Enterprise Guidelines & LMS Delivery Preferences</span>
+          </h3>
+        </div>
 
-          <button
-            onClick={() => setActiveTab('planning')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'planning'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Slide 38: Customisation Planning Ledger</span>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <EditorialField
+            label="Brand Tone & Communication Style"
+            value={custom.tone}
+            onChange={val => handleUpdate('tone', val)}
+            placeholder="e.g. Professional, supportive, action-oriented, and accessible across South African corporate departments."
+            multiline
+            rows={3}
+          />
 
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'history'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <History className="w-3.5 h-3.5" />
-            <span>Slide 39: Version History & Log</span>
-          </button>
+          <EditorialField
+            label="Client / Organisation Branding Guidelines"
+            value={custom.branding}
+            onChange={val => handleUpdate('branding', val)}
+            placeholder="e.g. Align with internal Corporate Operations Guide, reference internal risk policies, and maintain institutional terminology."
+            multiline
+            rows={3}
+          />
+
+          <EditorialField
+            label="Target LMS & Delivery Preferences"
+            value={custom.deliveryPreferences}
+            onChange={val => handleUpdate('deliveryPreferences', val)}
+            placeholder="e.g. eStudy LMS / SCORM 1.2 / Moodle / Printable Word & PDF Workbooks."
+            multiline
+            rows={3}
+          />
+
+          <EditorialField
+            label="Industry Examples & Terminology"
+            value={custom.industryExamples}
+            onChange={val => handleUpdate('industryExamples', val)}
+            placeholder="e.g. South African banking, retail, manufacturing, mining, or public sector terminology."
+            multiline
+            rows={3}
+          />
         </div>
       </div>
 
-      {activeTab === 'adaptation' && (
-        /* Slide 37: Brand & Tone Adaptation */
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                  SLIDE 37 · TONE & BRANDING
-                </span>
-                <h3 className="text-sm font-bold text-[#052B66]">
-                  [BRAND TONE & COMMUNICATION STYLE]
-                </h3>
-              </div>
-
-              <EditorialField
-                label="[BRAND TONE & VOICE]"
-                value={custom.tone || 'Professional, supportive, action-oriented, and accessible across corporate departments.'}
-                onChange={val => handleUpdate('tone', val)}
-                multiline
-                rows={3}
-                helperText="How the course communicates with learners (e.g. conversational, authoritative, encouraging)."
-              />
-
-              <EditorialField
-                label="[CLIENT / ENTERPRISE BRANDING GUIDELINES]"
-                value={custom.branding || 'Align with Corporate Operations Guide, reference internal risk policies, and maintain institutional terminology.'}
-                onChange={val => handleUpdate('branding', val)}
-                multiline
-                rows={3}
-                helperText="Brand styling, logos, and organizational policies to weave into content."
-              />
-            </div>
-
-            <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                  SLIDE 37 · DELIVERY ENVIRONMENT
-                </span>
-                <h3 className="text-sm font-bold text-[#052B66]">
-                  [DELIVERY ENVIRONMENT & INDUSTRY TERMINOLOGY]
-                </h3>
-              </div>
-
-              <EditorialField
-                label="[TARGET LMS & DELIVERY PREFERENCES]"
-                value={custom.deliveryPreferences || 'SCORM 1.2 / Moodle / Canvas LMS / eStudy Platform with interactive micro-learning modules.'}
-                onChange={val => handleUpdate('deliveryPreferences', val)}
-                multiline
-                rows={3}
-                helperText="Technical LMS platform requirements and offline export needs."
-              />
-
-              <EditorialField
-                label="[INDUSTRY EXAMPLES & TERMINOLOGY]"
-                value={custom.industryExamples || 'Specific South African banking, insurance, telecom, and public sector terminology.'}
-                onChange={val => handleUpdate('industryExamples', val)}
-                multiline
-                rows={3}
-                helperText="Domain-specific jargon, abbreviations, and authentic operational nomenclature."
-              />
-            </div>
+      {/* ================================================================= */}
+      {/* CUSTOMISATION PLANNING TABLE                                      */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#45CC42]" />
+              <span>Template Section Customisation Notes</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Optional notes on how specific sections of the Master Template were adapted for this course.
+            </p>
           </div>
+          <span className="text-xs text-slate-500 font-mono">
+            {(custom.planningNotes || []).length} note(s)
+          </span>
         </div>
-      )}
 
-      {activeTab === 'planning' && (
-        /* Slide 38: Customisation Planning Ledger */
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                SLIDE 38 · ADAPTATION LEDGER
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                [CUSTOMISATION PLANNING & ADAPTATION NOTES]
-              </h3>
-            </div>
-            <span className="text-xs text-slate-500 font-mono">
-              {(custom.planningNotes || []).length} adaptations logged
-            </span>
-          </div>
-
+        {(custom.planningNotes || []).length > 0 && (
           <div className="space-y-2.5">
             {(custom.planningNotes || []).map((item, idx) => (
-              <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-4">
+              <div
+                key={idx}
+                className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start justify-between gap-4"
+              >
                 <div className="space-y-1 flex-1">
                   <span className="text-[10px] font-black text-[#052B66] bg-white border border-slate-200 px-2 py-0.5 rounded uppercase">
                     {item.templateSection}
@@ -224,117 +186,153 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
                   <h4 className="text-xs font-bold text-slate-900 pt-1">{item.whatChanges}</h4>
                   {item.notes && <p className="text-[11px] text-slate-600">{item.notes}</p>}
                 </div>
-                <button onClick={() => handleDeletePlanningNote(idx)} className="text-slate-400 hover:text-rose-600 p-1">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add Adaptation Form */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-            <span className="text-xs font-bold text-[#052B66] uppercase tracking-wide">
-              + Log Framework Customisation
-            </span>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <select
-                  value={newSection}
-                  onChange={e => setNewSection(e.target.value)}
-                  className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
-                >
-                  <option value="Section 01: Problem">Section 01: Problem</option>
-                  <option value="Section 02: Sources">Section 02: Sources</option>
-                  <option value="Section 03: Structure">Section 03: Structure</option>
-                  <option value="Section 04: Modules">Section 04: Modules</option>
-                  <option value="Section 05: Learning Design">Section 05: Learning Design</option>
-                  <option value="Section 06: Ethics">Section 06: Ethics</option>
-                  <option value="Section 07: Output">Section 07: Output</option>
-                  <option value="Section 08: QA">Section 08: QA</option>
-                </select>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  value={newChanges}
-                  onChange={e => setNewChanges(e.target.value)}
-                  placeholder="What is being adapted? (e.g. Add company data policy)"
-                  className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newNotes}
-                  onChange={e => setNewNotes(e.target.value)}
-                  placeholder="Rationale / Impact notes"
-                  className="flex-1 text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
-                />
                 <button
                   type="button"
-                  onClick={handleAddPlanningNote}
-                  className="px-4 py-2.5 bg-[#052B66] text-white text-xs font-bold rounded-lg hover:bg-[#042150] cursor-pointer"
+                  onClick={() => handleDeletePlanningNote(idx)}
+                  className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
                 >
-                  Log
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'history' && (
-        /* Slide 39: Version History & Log */
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                SLIDE 39 · VERSION CONTROL
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                [COURSE DEVELOPMENT HISTORY & VERSION CONTROL LOG]
-              </h3>
-            </div>
-            <span className="text-xs text-slate-500 font-mono">
-              {(custom.historicalCourses || []).length} versions recorded
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {(custom.historicalCourses || []).map((h, idx) => (
-              <div key={idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-black font-mono text-[#052B66] bg-white border border-slate-200 px-2.5 py-1 rounded">
-                    {h.version}
-                  </span>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{h.courseTitle}</h4>
-                    <p className="text-[11px] text-slate-500">{h.industry} · Logged: {h.dateBuilt}</p>
-                  </div>
-                </div>
-                <button onClick={() => handleDeleteHistory(idx)} className="text-slate-400 hover:text-rose-600 p-1">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             ))}
           </div>
+        )}
 
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-            <div className="text-xs text-slate-700">
-              <span className="font-bold text-[#052B66]">Current Build Version:</span> Master Course Generation Framework v9.0
-            </div>
-            <button
-              type="button"
-              onClick={handleAddHistory}
-              className="px-4 py-2 bg-[#052B66] text-white text-xs font-bold rounded-lg hover:bg-[#042150] cursor-pointer"
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          <span className="text-xs font-bold text-[#052B66] uppercase tracking-wide block">
+            + Add Customisation Note
+          </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select
+              value={newSection}
+              onChange={e => setNewSection(e.target.value)}
+              className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
             >
-              + Snapshot Current Version
-            </button>
+              <option value="Section 1 – Problem Statement">Section 1 – Problem Statement</option>
+              <option value="Section 2 – Sources">Section 2 – Sources</option>
+              <option value="Section 3 – Course Structure">Section 3 – Course Structure</option>
+              <option value="Section 4 – Modules">Section 4 – Modules</option>
+              <option value="Section 5 – Learning Design">Section 5 – Learning Design</option>
+              <option value="Section 6 – Ethics">Section 6 – Ethics</option>
+              <option value="Section 7 – Output Format">Section 7 – Output Format</option>
+              <option value="Section 8 – QA">Section 8 – QA</option>
+            </select>
+
+            <input
+              type="text"
+              value={newChanges}
+              onChange={e => setNewChanges(e.target.value)}
+              placeholder="What changes? (e.g. Tailored scenarios for retail branches)"
+              className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+            />
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newNotes}
+                onChange={e => setNewNotes(e.target.value)}
+                placeholder="Additional notes..."
+                className="flex-1 text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleAddPlanningNote}
+                className="px-4 py-2.5 bg-[#052B66] text-white text-xs font-bold rounded-lg hover:bg-[#042150] cursor-pointer"
+              >
+                Add
+              </button>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* ================================================================= */}
+      {/* 9.1 COURSES BUILT USING THIS TEMPLATE                             */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5 border-l-4 border-l-[#45CC42]">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#45CC42]/20 px-2.5 py-0.5 rounded-md border border-[#45CC42]/40 inline-block mb-1">
+              SUBSECTION 9.1
+            </span>
+            <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+              <History className="w-4 h-4 text-[#052B66]" />
+              <span>9.1 Courses Built Using This Template</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Official version log from page 17 of the PDF template (#, Course Title, Industry, Date Built, Version).
+            </p>
+          </div>
+        </div>
+
+        {(custom.historicalCourses || []).length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse border border-slate-200 rounded-xl overflow-hidden">
+              <thead>
+                <tr className="bg-[#052B66] text-white text-[11px] font-extrabold uppercase tracking-wider">
+                  <th className="py-2.5 px-3 w-12">#</th>
+                  <th className="py-2.5 px-4">Course Title</th>
+                  <th className="py-2.5 px-4">Industry</th>
+                  <th className="py-2.5 px-4">Date Built</th>
+                  <th className="py-2.5 px-4">Version</th>
+                  <th className="py-2.5 px-3 w-12"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-xs">
+                {(custom.historicalCourses || []).map((h, idx) => (
+                  <tr key={idx} className="bg-white">
+                    <td className="py-2.5 px-3 font-bold text-[#052B66]">{idx + 1}</td>
+                    <td className="py-2.5 px-4 font-semibold text-slate-900">{h.courseTitle}</td>
+                    <td className="py-2.5 px-4 text-slate-600">{h.industry}</td>
+                    <td className="py-2.5 px-4 font-mono text-slate-600">{h.dateBuilt}</td>
+                    <td className="py-2.5 px-4 font-mono font-bold text-[#052B66]">{h.version}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteHistory(idx)}
+                        className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+          <input
+            type="text"
+            value={newHistTitle}
+            onChange={e => setNewHistTitle(e.target.value)}
+            placeholder={course.structure?.title || 'Course Title'}
+            className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+          />
+          <input
+            type="text"
+            value={newHistIndustry}
+            onChange={e => setNewHistIndustry(e.target.value)}
+            placeholder={course.structure?.industryDomain || 'Industry / Domain'}
+            className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+          />
+          <input
+            type="text"
+            value={newHistVersion}
+            onChange={e => setNewHistVersion(e.target.value)}
+            placeholder="Version (e.g. v9.0)"
+            className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAddHistory}
+            className="px-4 py-2.5 bg-[#052B66] text-white text-xs font-bold rounded-lg hover:bg-[#042150] cursor-pointer"
+          >
+            + Log Course Version
+          </button>
+        </div>
+      </div>
 
       {/* Navigation Buttons */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-200">
@@ -343,7 +341,7 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
           className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>← Back to Quality Assurance</span>
+          <span>← Back to Section 8: Quality Assurance</span>
         </button>
 
         <button
@@ -352,12 +350,11 @@ export const Section09Customisation: React.FC<Section09CustomisationProps> = ({
           className="px-8 py-3.5 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
         >
           <Sparkles className="w-4 h-4" />
-          <span>Generate & Preview Master Prompt →</span>
+          <span>Review Master Prompt & Generate Course →</span>
         </button>
       </div>
 
-      {/* Slide Footer */}
-      <SlideFooter currentSlide="37" totalSlides="39" />
+      <SlideFooter currentSlide="09" totalSlides="09" />
     </div>
   );
 };

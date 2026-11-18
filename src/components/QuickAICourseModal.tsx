@@ -203,9 +203,13 @@ export const QuickAICourseModal: React.FC<QuickAICourseModalProps> = ({
   const availableModels = getClientModels(provider, 'course_generation');
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto"
+    >
       <div 
         id="quick-ai-course-creation-modal"
+        onClick={e => e.stopPropagation()}
         className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full my-8 border border-slate-200 text-slate-900 overflow-hidden flex flex-col font-sora animate-in fade-in zoom-in-95"
       >
         {/* Header Strip */}

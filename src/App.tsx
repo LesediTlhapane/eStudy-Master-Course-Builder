@@ -9,6 +9,7 @@ import { AIGenerationProgress } from './components/AIGenerationProgress';
 import { GeneratedCourseView } from './components/GeneratedCourseView';
 import { SettingsModal } from './components/SettingsModal';
 import { AIEngineExportModal } from './components/AIEngineExportModal';
+import { TemplateUploadModal } from './components/TemplateUploadModal';
 import { Section01Problem } from './components/Section01Problem';
 import { Section02Sources } from './components/Section02Sources';
 import { Section03Structure } from './components/Section03Structure';
@@ -19,7 +20,46 @@ import { Section07Output } from './components/Section07Output';
 import { Section08QA } from './components/Section08QA';
 import { Section09Customisation } from './components/Section09Customisation';
 import { FloatingCourseCopilot } from './components/FloatingCourseCopilot';
-import { SectionId } from './types';
+import { Course, ResearchSource, SectionId } from './types';
+
+function mergeWithoutOverwriting<T extends Record<string, any>>(
+  target: T,
+  source: Partial<T> | undefined,
+  overwrite: boolean
+): T {
+  if (!source) return target;
+  const result: any = { ...target };
+  for (const key of Object.keys(source)) {
+    const srcVal = (source as any)[key];
+    const tgtVal = result[key];
+    if (srcVal === undefined || srcVal === null || srcVal === '') continue;
+
+    if (Array.isArray(srcVal)) {
+      if (srcVal.length === 0) continue;
+      const tgtIsEmptyArray =
+        !Array.isArray(tgtVal) ||
+        tgtVal.length === 0 ||
+        tgtVal.every((item: any) =>
+          typeof item === 'string'
+            ? item.trim() === ''
+            : item && typeof item === 'object'
+              ? Object.values(item).every(v => !v || (typeof v === 'string' && v.trim() === ''))
+              : !item
+        );
+      if (overwrite || tgtIsEmptyArray) {
+        result[key] = srcVal;
+      }
+    } else if (typeof srcVal === 'object') {
+      result[key] = mergeWithoutOverwriting(tgtVal || {}, srcVal, overwrite);
+    } else {
+      const tgtIsEmpty = tgtVal === undefined || tgtVal === null || String(tgtVal).trim() === '';
+      if (overwrite || tgtIsEmpty) {
+        result[key] = srcVal;
+      }
+    }
+  }
+  return result;
+}
 
 export function App() {
   const {
@@ -29,7 +69,6 @@ export function App() {
     view,
     saveStatus,
     qaResult,
-    targetFocusField,
     availableTemplates,
     selectedAIProvider,
     selectedAIModel,
@@ -50,7 +89,6 @@ export function App() {
     exportWorkspace,
     importWorkspace,
     jumpToSection,
-    clearTargetFocusField,
     resetToSampleData,
     startAIGeneration,
     setGeneratedCourseForActive
@@ -58,6 +96,7 @@ export function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Helper for sequential section navigation
   const handleContinueSection = (currentSec: SectionId) => {
@@ -91,18 +130,139 @@ export function App() {
     }));
   };
 
+  const handleApplyExtractedCourse = (
+    extracted: Partial<Course>,
+    flaggedFields: Record<string, string>,
+    uploadedSource: ResearchSource,
+    overwriteExisting: boolean,
+    createNew: boolean
+  ) => {
+    if (createNew || view === 'cover' || view === 'dashboard') {
+      startFromScratch();
+    }
+
+    setTimeout(() => {
+      updateActiveCourse(prev => {
+        const mergedProblem = mergeWithoutOverwriting(prev.problem, extracted.problem, overwriteExisting);
+        const mergedResearch = mergeWithoutOverwriting(prev.research, extracted.research, overwriteExisting);
+        const mergedStructure = mergeWithoutOverwriting(prev.structure, extracted.structure, overwriteExisting);
+        const mergedLearningDesign = mergeWithoutOverwriting(
+          prev.learningDesign,
+          extracted.learningDesign,
+          overwriteExisting
+        );
+        const mergedEthics = mergeWithoutOverwriting(prev.ethics, extracted.ethics, overwriteExisting);
+        const mergedOutput = mergeWithoutOverwriting(
+          prev.outputRequirements,
+          extracted.outputRequirements,
+          overwriteExisting
+        );
+        const mergedCustomisation = mergeWithoutOverwriting(
+          prev.customisation,
+          extracted.customisation,
+          overwriteExisting
+        );
+
+        const newTitle =
+          mergedStructure.title && mergedStructure.title.trim().length > 0
+            ? mergedStructure.title
+            : extracted.name && extracted.name.trim().length > 0
+              ? extracted.name
+              : prev.name;
+
+        const newCode =
+          mergedStructure.code && mergedStructure.code.trim().length > 0
+            ? mergedStructure.code
+            : extracted.code && extracted.code.trim().length > 0
+              ? extracted.code
+              : prev.code;
+
+        const existingSources = Array.isArray(mergedResearch.sources) ? mergedResearch.sources : [];
+        const hasUploadedSource = existingSources.some(s => s.fileName === uploadedSource.fileName);
+
+        return {
+          ...prev,
+          name: newTitle,
+          code: newCode,
+          uploadedTemplateName: uploadedSource.fileName || uploadedSource.name,
+          flaggedFields: {
+            ...(prev.flaggedFields || {}),
+            ...(extracted.flaggedFields || {}),
+            ...(flaggedFields || {})
+          },
+          problem: mergedProblem,
+          research: {
+            ...mergedResearch,
+            sources: hasUploadedSource ? existingSources : [uploadedSource, ...existingSources]
+          },
+          structure: {
+            ...mergedStructure,
+            title: newTitle,
+            code: newCode
+          },
+          modules:
+            Array.isArray(extracted.modules) &&
+            extracted.modules.length > 0 &&
+            (overwriteExisting || prev.modules.every(m => !m.title))
+              ? extracted.modules
+              : prev.modules,
+          learningDesign: mergedLearningDesign,
+          ethics: mergedEthics,
+          outputRequirements: mergedOutput,
+          customisation: mergedCustomisation
+        };
+      });
+
+      setActiveSection('01');
+      setView('builder');
+    }, 30);
+  };
+
+  // Map App view state to TopBar activeView
+  const topBarView =
+    view === 'generating'
+      ? 'ai_generating'
+      : view === 'generated'
+        ? 'generated_course'
+        : view;
+
+  const handleTopBarNavigate = (
+    nextView: 'cover' | 'dashboard' | 'builder' | 'preview' | 'ai_generating' | 'generated_course'
+  ) => {
+    if (nextView === 'ai_generating') setView('generating');
+    else if (nextView === 'generated_course') setView('generated');
+    else setView(nextView);
+  };
+
   // 1. Cover Page Fullscreen view
   if (view === 'cover') {
     return (
-      <CoverPage
-        course={activeCourse}
-        onUpdateCourse={updateActiveCourse}
-        onStartBuilding={() => setView('builder')}
-        onEnterDashboard={() => setView('dashboard')}
-        onStartFromScratch={startFromScratch}
-        onContinueFromTemplate={continueFromTemplate}
-        availableTemplates={availableTemplates}
-      />
+      <>
+        <CoverPage
+          activeCourse={activeCourse}
+          courses={courses}
+          onUpdateCourse={updateActiveCourse}
+          onStartBuilding={() => setView('builder')}
+          onSelectCourse={courseId => {
+            switchCourse(courseId);
+            setView('builder');
+          }}
+          onCreateNewCourse={title => {
+            startFromScratch(title);
+          }}
+          onGoToDashboard={() => setView('dashboard')}
+          onOpenUploadTemplate={() => setIsUploadModalOpen(true)}
+        />
+        <TemplateUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          existingCourse={activeCourse}
+          selectedProvider={selectedAIProvider}
+          selectedModel={selectedAIModel}
+          onApplyExtractedCourse={handleApplyExtractedCourse}
+          defaultCreateNew={true}
+        />
+      </>
     );
   }
 
@@ -110,35 +270,31 @@ export function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sora flex flex-col selection:bg-[#45CC42] selection:text-[#052B66]">
       {/* Global Top Bar */}
       <TopBar
-        course={activeCourse}
-        courses={courses}
-        onSelectCourse={switchCourse}
-        view={view}
-        saveStatus={saveStatus}
-        onNavigateView={setView}
+        activeView={topBarView}
+        activeCourse={activeCourse}
+        qaResult={qaResult}
+        onNavigate={handleTopBarNavigate}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onUpdateTitle={handleUpdateCourseTitle}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onUpdateCourseTitle={handleUpdateCourseTitle}
+        onStartAIGeneration={startAIGeneration}
+        onOpenUploadTemplate={() => setIsUploadModalOpen(true)}
+        onOpenExportHub={() => setIsExportModalOpen(true)}
       />
 
       {/* Main View Router */}
       {view === 'dashboard' && (
         <Dashboard
           courses={courses}
+          activeCourseId={activeCourse.id}
           onSelectCourse={switchCourse}
-          onCreateNew={createNewCourse}
-          onCreateQuickCourse={createQuickCourse}
-          defaultProvider={selectedAIProvider}
-          defaultModel={selectedAIModel}
-          onStartFromMasterTemplate={startFromMasterTemplate}
-          onStartFromScratch={startFromScratch}
-          onContinueFromTemplate={continueFromTemplate}
-          availableTemplates={availableTemplates}
+          onCreateNewCourse={title => startFromScratch(title)}
           onDeleteCourse={deleteCourse}
-          onDuplicateCourse={duplicateCourse}
-          onSaveAsTemplate={saveAsCustomTemplate}
-          onExportWorkspace={exportWorkspace}
-          onImportWorkspace={importWorkspace}
+          onOpenBuilder={() => setView('builder')}
+          onOpenUploadTemplate={() => setIsUploadModalOpen(true)}
+          onViewGeneratedCourse={courseId => {
+            switchCourse(courseId);
+            setView('generated');
+          }}
         />
       )}
 
@@ -212,7 +368,6 @@ export function App() {
                   course={activeCourse}
                   onUpdate={updateActiveCourse}
                   onContinue={() => handleContinueSection('01')}
-                  onBack={() => setView('dashboard')}
                 />
               )}
 
@@ -277,6 +432,7 @@ export function App() {
                 <Section08QA
                   course={activeCourse}
                   qaResult={qaResult}
+                  onUpdate={updateActiveCourse}
                   onNavigateSection={(sec, field) => jumpToSection(sec, field)}
                   onPreviewPrompt={() => setView('preview')}
                   onBack={() => handleBackSection('08')}
@@ -310,6 +466,17 @@ export function App() {
         onJumpToSection={(sec, field) => jumpToSection(sec, field)}
         onStartAIGeneration={startAIGeneration}
         onNavigateView={setView}
+      />
+
+      {/* Upload Document & Auto-Populate Template Modal */}
+      <TemplateUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        existingCourse={activeCourse}
+        selectedProvider={selectedAIProvider}
+        selectedModel={selectedAIModel}
+        onApplyExtractedCourse={handleApplyExtractedCourse}
+        defaultCreateNew={view !== 'builder'}
       />
 
       {/* AI Engine & Word / PDF Export Modal */}

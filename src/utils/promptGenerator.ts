@@ -233,9 +233,11 @@ Implementation Deliverables:
           .join('\n\n')
       : `[Ethics cards pending configuration]`;
 
+    const lp = r.learnerProfile || ({} as any);
+
     return `================================================================================
 eStudy South Africa — Master Instructional Prompt
-Universal Course Architecture & AI Generation Prompt
+Universal Course Architecture & AI Generation Prompt (v9.0)
 ================================================================================
 
 COURSE METADATA:
@@ -257,150 +259,142 @@ You are an expert instructional designer, curriculum developer, and AI learning 
 Generate a complete, structured, industry-ready training programme tailored specifically to the validated specifications below for:
 ${courseTitle}
 
-Ensure the generated course adheres to eStudy South Africa's instructional design standards:
+Ensure the generated course adheres to eStudy South Africa's instructional design standards (using South African English throughout):
 1. Scenario-driven and performance-focused (anchored in daily workplace realities).
 2. Fully compliant with South African regulatory frameworks (specifically POPIA data privacy and industry conduct standards).
 3. Structured with clear human oversight on all AI-augmented tasks.
 4. Directly deployable to an enterprise LMS (SCORM/xAPI compliant) with zero placeholders.
 
 ================================================================================
-1. PROBLEM & CONTEXT (SECTION 01)
+1. IDENTIFY PROBLEM / CHALLENGE / DEVELOPMENT AREA (SECTION 01)
 ================================================================================
 Target Audience: ${targetGroup}
 Core Performance Skill: ${taskOrSkill}
 Operational / Compliance Impact: ${impact}
 
-Operational Problem Statement:
+1.1 Required Problem Statement:
 ${problemStatementText}
 
-Root Causes Identified:
+1.2 Root Cause Analysis:
 ${rootCausesFormatted}
+• Process or System Failures: ${val(p.processFailures, '[Process failures not specified]')}
+• Skills or Knowledge Gaps: ${val(p.skillGaps, '[Skill gaps not specified]')}
+• Organisational or Environmental Constraints: ${val(p.constraints, '[Constraints not specified]')}
 
-Process & Procedural Failures:
-${val(p.processFailures, '[Process failures not specified]')}
-
-Specific Skills Gaps:
-${val(p.skillGaps, '[Skill gaps not specified]')}
-
-Operational & Workplace Constraints:
-${val(p.constraints, '[Constraints not specified]')}
-
-AI Literacy Gap:
-${val(p.aiLiteracyGap, 'Baseline AI literacy and understanding of automated tools in this domain')}
-
-Enterprise Digital Readiness Level:
-${val(p.digitalReadinessLevel, 'General enterprise productivity tools and digital literacy')}
-
-AI Ethics & Compliance Risk Profile:
-${val(p.aiEthicsComplianceRisk, 'Zero tolerance for PII leaks under South African POPIA Act 4 of 2013 and mandatory transparency')}
+1.3 AI-Specific Considerations:
+• AI Literacy Gap: ${val(p.aiLiteracyGap, 'Baseline AI literacy and understanding of automated tools in this domain')}
+• Data and Digital Readiness Level: ${val(p.digitalReadinessLevel, 'General enterprise productivity tools and digital literacy')}
+• Ethical or Compliance Risks Introduced by AI Use: ${val(p.aiEthicsComplianceRisk, 'Zero tolerance for PII leaks under South African POPIA Act 4 of 2013 and mandatory transparency')}
 
 ================================================================================
-2. AUTHORITATIVE SOURCES & RESEARCH (SECTION 02)
+2. SOURCES OF INFORMATION (RESEARCH LAYER) (SECTION 02)
 ================================================================================
-Mandatory Statutory & Industry Frameworks:
+2.1 Reference Links & Supporting Documents:
 ${sourcesFormatted}
 
-Primary Regulatory Compliance Anchor:
-${val(r.regulatoryFramework, 'POPIA Act No. 4 of 2013 / South African statutory workplace compliance')}
+2.2 Industry / Regulatory Sources:
+• Regulatory Framework: ${val(r.regulatoryFramework, 'POPIA Act No. 4 of 2013 / South African statutory workplace compliance')}
+• Benchmark Course / Standard: ${val(r.benchmarkCourseRef, 'eStudy South Africa Master Curriculum Benchmark Standard v9.0')}
 
-AI Tools & Enterprise Platform Baseline:
-${val(r.aiToolsPlatformName, 'Standard enterprise generative AI and analytics platforms')}
+2.3 AI & Technology Sources:
+• AI Tools or Platforms Used in This Domain: ${val(r.aiToolsPlatformName, 'Standard enterprise generative AI and analytics platforms')}
+• Relevant AI Ethics Framework: ${val(r.aiEthicsFramework, 'King IV Principle 12 & POPIA Section 71 Automated Decision-Making Standards')}
+• Industry Case Studies or Use Cases: ${val(r.industryCaseStudies, '[Industry case studies not specified]')}
 
-Governing AI Ethics Framework:
-${val(r.aiEthicsFramework, 'King IV Principle 12 & POPIA Section 71 Automated Decision-Making Standards')}
-
-Benchmark Course Reference:
-${val(r.benchmarkCourseRef, 'eStudy South Africa Master Curriculum Benchmark Standard v9.0')}
+Learner Profile and Environment:
+• Learner Job Roles: ${val(lp.jobRoles || s.targetRoles, targetGroup)}
+• Departments: ${val(lp.departments, '[Not specified]')}
+• Experience Levels: ${val(lp.experienceLevels || s.experienceLevel, '[Not specified]')}
+• Existing Knowledge: ${val(lp.existingKnowledge, '[Not specified]')}
+• Digital Literacy: ${val(lp.digitalLiteracy, '[Not specified]')}
+• AI Familiarity: ${val(lp.aiFamiliarity || s.aiFamiliarityBaseline, '[Not specified]')}
+• Workplace Environment: ${val(lp.workplaceEnvironment, '[Not specified]')}
+• Organisational Constraints: ${val(lp.organisationalConstraints || p.constraints, '[Not specified]')}
+• Available Tools & Technology: ${val(lp.availableTools || s.toolsSystems, '[Not specified]')}
 
 ================================================================================
-3. COURSE STRUCTURE & OUTCOMES (SECTION 03)
+3. COURSE STRUCTURE (SECTION 03)
 ================================================================================
-Course Purpose & Strategic Rationale:
-${val(s.purposeStatement, val(s.scopeSummary, '[Course purpose not specified]'))}
+3.2 Course Overview & 3.3 About the Course:
+• Course Purpose: ${val(s.purposeStatement, val(s.scopeSummary, '[Course purpose not specified]'))}
+• Workplace Relevance: ${val(s.workplaceRelevance, val(s.performanceLink, '[Workplace relevance not specified]'))}
+• Expected Performance Improvement: ${val(s.performanceImprovement, '[Performance improvement objectives not specified]')}
 
-Workplace Operational Relevance:
-${val(s.workplaceRelevance, val(s.performanceLink, '[Workplace relevance not specified]'))}
-
-Performance Improvement Objectives:
-${val(s.performanceImprovement, '[Performance improvement objectives not specified]')}
-
-Expected Measurable Outcomes:
+3.4 Benefits of the Course:
 Organisational Benefits:
 ${orgBenefitsFormatted}
 
-Employee / Learner Career Benefits:
+Employee Benefits:
 ${empBenefitsFormatted}
 
-Risk Reduction & Compliance Outcomes:
+Risk Reduction Outcomes:
 ${riskReductionFormatted}
 
-Prerequisites:
-• Prior Knowledge: ${val(s.prerequisiteKnowledge, 'Standard operational knowledge in domain')}
-• Experience Level: ${val(s.prerequisiteExperience, 'Foundational workplace experience')}
-• Required Systems & Tools: ${val(s.toolsSystems, 'Standard enterprise workstation & internet connectivity')}
+3.6 Target Audience:
+• Target Roles: ${val(s.targetRoles || targetGroup, '[Target roles not specified]')}
+• Experience Level: ${val(s.experienceLevel, '[Not specified]')}
+• Industry Context: ${val(s.industryContext || s.industryDomain, '[Not specified]')}
+• AI Familiarity Baseline: ${val(s.aiFamiliarityBaseline, 'Basic')} — ${val(s.aiFamiliarityExplanation, 'Understands basic digital tools')}
 
-Pre-Course Diagnostic Assessment Questions:
+3.7 Prerequisites:
+• Required Prior Knowledge: ${val(s.prerequisiteKnowledge, 'Standard operational knowledge in domain')}
+• Required Experience: ${val(s.prerequisiteExperience, 'Foundational workplace experience')}
+• Required Tools or Systems: ${val(s.toolsSystems, 'Standard enterprise workstation & internet connectivity')}
+
+3.8 Pre-Course Diagnostic Questions:
 ${diagnosticsFormatted}
 
 ================================================================================
-4. DETAILED CURRICULUM SPECIFICATIONS (SECTION 04)
+4. DETAILED MODULE DEVELOPMENT TEMPLATE (SECTION 04)
 ================================================================================
 ${modulesFormatted}
 
 ================================================================================
-5. LEARNING DESIGN & PEDAGOGY (SECTION 05)
+5. LEARNING DESIGN & ASSESSMENT REQUIREMENTS (SECTION 05)
 ================================================================================
-Core Pedagogical Approach:
+5.1 Instructional Design Principles:
 ${val(ld.instructionalApproach, 'Blended, micro-learning, scenario-based experiential learning')}
 
-Assessment Strategy & Evaluation Structure:
+5.2 Interactive Elements:
+• AI Tool Demonstration / Simulation: ${val(ld.aiDemoSimulationDescription, 'Interactive AI prompt evaluation and critical human verification simulation')}
+• Prompt-Writing Exercise: ${val(ld.promptExerciseDescription, 'Learner writes, refines, and audits domain-specific AI prompts for operational efficiency')}
+• Guided Practice Activity: ${val(ld.guidedPracticeDescription, 'Step-by-step scenario walkthrough with decision branches and immediate feedback')}
+• Critical Thinking / AI Limitations Exercise: ${val(ld.criticalThinkingDescription, 'Auditing AI generated outputs for hallucination, statutory conflict, and bias')}
+• Learner Collaboration / Discussion Task: ${val(ld.collaborationActivity, 'Peer review of prompt structures and scenario debrief discussion')}
+
+5.3 Assessment Design:
+• Practical Application Task Weighting: ${val(ld.practicalTaskWeighting, '40%')}
+• Summative Final Assessment Pass Mark: ${val(ld.finalAssessmentPassMark, '80%')}
+• Capstone / Summative Assessment Description: ${val(ld.summativeAssessmentDescription, 'Comprehensive workplace action plan and procedural audit deliverable')}
 ${assessmentsFormatted}
 
-AI Tool Simulation & Demonstration Task:
-${val(ld.aiDemoSimulationDescription, 'Interactive AI prompt evaluation and critical human verification simulation')}
-
-Prompt Construction & Prompt-Engineering Task:
-${val(ld.promptExerciseDescription, 'Learner writes, refines, and audits domain-specific AI prompts for operational efficiency')}
-
-Guided Practice Activity:
-${val(ld.guidedPracticeDescription, 'Step-by-step scenario walkthrough with decision branches and immediate feedback')}
-
-Summative Capstone Workplace Project:
-${val(ld.summativeAssessmentDescription, 'Comprehensive workplace action plan and procedural audit deliverable')}
-
-Learner Collaboration & Discussion Task:
-${val(ld.collaborationActivity, 'Peer review of prompt structures and scenario debrief discussion')}
-
-Critical Thinking & AI Limitations Exercise:
-${val(ld.criticalThinkingDescription, 'Auditing AI generated outputs for hallucination, statutory conflict, and bias')}
-
 ================================================================================
-6. ETHICAL AI, GOVERNANCE & POPIA SAFEGUARDS (SECTION 06)
+6. ETHICAL AI, GOVERNANCE & HUMAN FACTORS (SECTION 06)
 ================================================================================
-Data Protection & Privacy Safeguard (POPIA Act 4 of 2013):
-${val(e.dataPrivacySafeguards, 'Strict prohibition of personal, proprietary, or customer PII in cloud AI prompts')}
+6.1 Responsible AI Principles:
+• Data Protection & Privacy Safeguard (POPIA Act 4 of 2013): ${val(e.dataPrivacySafeguards, 'Strict prohibition of personal, proprietary, or customer PII in cloud AI prompts')}
+• Algorithmic Bias Mitigation & Fairness: ${val(e.biasMitigationPlan, 'Cross-demographic validation of AI decisions and explicit fairness auditing')}
+• Mandatory Human Oversight & Override Protocols: ${val(e.humanOversightNotes, 'Human-in-the-loop sign-off required for all final operational decisions and escalations')}
 
-Algorithmic Bias Mitigation & Fairness:
-${val(e.biasMitigationPlan, 'Cross-demographic validation of AI decisions and explicit fairness auditing')}
+6.2 Human Factors & Workplace Safety:
+• Confidentiality & Proprietary Information Safeguards: ${val(e.confidentialityRequirements, 'Synthetic test data utilised for all learning exercises; enterprise confidentiality rules enforced')}
+• Psychological Safety & Learner Support: ${val(e.psychologicalSafetyNotes, 'Transparent, blame-free learning environment encouraging safe experimentation')}
 
-Mandatory Human Oversight & Override Protocols:
-${val(e.humanOversightNotes, 'Human-in-the-loop sign-off required for all final operational decisions and escalations')}
-
-Confidentiality & Proprietary Information Safeguards:
-${val(e.confidentialityRequirements, 'Synthetic test data utilized for all learning exercises; enterprise confidentiality rules enforced')}
-
-Psychological Safety & Learner Support:
-${val(e.psychologicalSafetyNotes, 'Transparent, blame-free learning environment encouraging safe experimentation')}
-
-6.3 Specific Ethical Decision Frameworks:
+Specific Ethical Decision Frameworks:
 ${ethicsCardsFormatted}
 
 ================================================================================
-7. OUTPUT STANDARDS, VOLUME & DELIVERABLES (SECTION 07)
+7. COURSE OUTPUT REQUIREMENTS & ACCREDITATION (SECTION 07)
 ================================================================================
 • LMS Output Format: ${val(out.outputFormat, 'LMS-Ready SCORM / xAPI compliant digital courseware')}
 • Target Document Volume: 22 Pages Minimum to 30 Pages Maximum (~8,500 to 12,000 words of comprehensive textbook-grade instructional content; strictly never a brief 2-page summary)
 • Target Reading Level: ${val(out.accessibilityTargetReadingLevel, 'Plain language · NQF Level 4 / Grade 12 equivalent')}
+• 7.5 Accreditation & Standards Alignment:
+  - SETA / QCTO Alignment: ${val(out.accreditationAlignment || s.setaNqfLevel, '[Not specified]')}
+  - NQF Level: ${val(out.nqfLevel, '[Not specified]')}
+  - Credits / Notional Hours: ${val(out.notionalHoursCredits || s.estimatedDuration, '[Not specified]')}
+  - Qualification / Unit Standard ID: ${val(out.qualificationUnitStandardId, '[Not specified]')}
+  - Assessment Moderation Requirements: ${val(out.moderationRequirements, '[Not specified]')}
 • Mandatory Structural Depth Per Course:
   - 4 to 5 Complete Curriculum Modules
   - 3 to 4 Multi-Section Lessons per Module (600–800 words per lesson covering: Theoretical & Operational Context, Core Principles, Step-by-Step Standard Operating Procedures, South African Statutory & POPIA Compliance, Worked Case Examples, and Quality Checklists)
@@ -416,10 +410,10 @@ ${ethicsCardsFormatted}
   5. Facilitator & Mentor Implementation Guide.
 
 ================================================================================
-8. BRANDING & QUALITY ASSURANCE (SECTION 09)
+9. CUSTOMISATION & BRANDING (SECTION 09)
 ================================================================================
 • Brand Authority: ${val(cust.branding, 'eStudy South Africa')}
-• Voice & Tone: ${val(cust.tone, 'Professional, supportive, action-oriented, and accessible')}
+• Voice & Tone: ${val(cust.tone, 'Professional, supportive, action-oriented, and accessible (South African English)')}
 • Delivery Channels: ${val(cust.deliveryPreferences, 'Enterprise LMS + Facilitator Guide + Participant Action Plan')}
 
 END OF MASTER INSTRUCTIONAL PROMPT

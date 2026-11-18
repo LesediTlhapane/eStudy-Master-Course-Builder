@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, AIProvider } from '../types';
-import { generateCourseDocx } from '../utils/docxExport';
-import { printCoursePdf } from '../utils/pdfExport';
+import { generateCourseDocx, generateMasterTemplateDocx } from '../utils/docxExport';
+import { printCoursePdf, printMasterTemplatePdf } from '../utils/pdfExport';
 import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from '../utils/courseVolumeEngine';
 import {
   CheckCircle2,
@@ -231,6 +231,30 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   };
 
   const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [isExportingTemplateDocx, setIsExportingTemplateDocx] = useState(false);
+
+  const handleDownloadTemplateDocx = async () => {
+    setIsExportingTemplateDocx(true);
+    try {
+      const blob = await generateMasterTemplateDocx(course);
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_master_template_v9.docx`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to export Master Template DOCX:', e);
+    } finally {
+      setIsExportingTemplateDocx(false);
+    }
+  };
+
+  const handlePrintTemplatePdf = () => {
+    printMasterTemplatePdf(course);
+  };
 
   const handleDownloadDocx = async () => {
     setIsExportingDocx(true);
@@ -239,7 +263,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
       const url = URL.createObjectURL(blob);
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute('href', url);
-      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_master_curriculum_${volumeMetrics.estimatedPages}p.docx`);
+      downloadAnchor.setAttribute('download', `${(course.name || course.structure?.title || 'course').toLowerCase().replace(/[^a-z0-9]/g, '_')}_generated_training_course_${volumeMetrics.estimatedPages}p.docx`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -1049,11 +1073,78 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
         {/* Tab 5: Export & Deploy */}
         {activeTab === 'export' && (
           <div className="space-y-6">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            {/* Download 1: Completed Master Course Template */}
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs space-y-5">
               <div>
-                <h3 className="text-lg font-bold text-[#052B66]">Export Course Artifacts</h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+                  Download 1
+                </span>
+                <h3 className="text-lg font-bold text-[#052B66] mt-2">Completed Master Course Template (v9.0)</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Download structured course files for LMS ingestion (Moodle, Canvas, Blackboard) or human review.
+                  Download your completed 9-section eStudy Master Prompt Template with all headings, numbering, and embedded branding.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#052B66] text-white flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-[#45CC42]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#052B66]">Master Template Word (.docx)</h4>
+                      <p className="text-[11px] text-slate-500">All 9 official template sections with your entered course specifications.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDownloadTemplateDocx}
+                    disabled={isExportingTemplateDocx}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {isExportingTemplateDocx ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Generating Template .docx...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 text-[#45CC42]" />
+                        <span>Download Template (.docx)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0">
+                      <Printer className="w-5 h-5 text-[#45CC42]" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-[#052B66]">Master Template PDF</h4>
+                      <p className="text-[11px] text-slate-500">Formatted v9.0 Master Course Template ready for printing or saving as PDF.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handlePrintTemplatePdf}
+                    className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Printer className="w-4 h-4 text-[#45CC42]" />
+                    <span>Print / Save Template as PDF</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Download 2: Generated Training Course */}
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                  Download 2
+                </span>
+                <h3 className="text-lg font-bold text-[#052B66] mt-2">Generated Training Course</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Download the complete AI-generated training course (modules, lessons, scenarios, assessments, and implementation guides) with embedded branding.
                 </p>
               </div>
 
@@ -1065,8 +1156,8 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                       <FileText className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-[#052B66]">Microsoft Word (.docx) Blueprint</h4>
-                      <p className="text-[11px] text-slate-500">Official eStudy curriculum document with tables, rubrics, and callouts.</p>
+                      <h4 className="text-sm font-bold text-[#052B66]">Generated Course Word (.docx)</h4>
+                      <p className="text-[11px] text-slate-500">Complete eStudy training curriculum with modules, lessons, scenarios, and rubrics.</p>
                     </div>
                   </div>
                   <button
@@ -1082,7 +1173,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                     ) : (
                       <>
                         <Download className="w-4 h-4" />
-                        <span>Download Word Document (.docx)</span>
+                        <span>Download Course (.docx)</span>
                       </>
                     )}
                   </button>
@@ -1095,7 +1186,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                       <Printer className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-[#052B66]">Print / Save as PDF</h4>
+                      <h4 className="text-sm font-bold text-[#052B66]">Generated Course PDF</h4>
                       <p className="text-[11px] text-slate-500">Clean formatted executive layout ready for direct printing or saving to PDF.</p>
                     </div>
                   </div>
@@ -1104,7 +1195,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                     className="w-full py-2.5 rounded-lg text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                   >
                     <Printer className="w-4 h-4 text-[#45CC42]" />
-                    <span>Print or Save to PDF</span>
+                    <span>Print / Save Course as PDF</span>
                   </button>
                 </div>
 
@@ -1155,8 +1246,14 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
 
       {/* Inline Editing Modal */}
       {editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fade-up">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setEditingItem(null)}
+        >
+          <div
+            className="bg-white text-slate-900 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fade-up"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="px-6 py-4 bg-[#052B66] text-white flex items-center justify-between">
               <h3 className="text-sm font-bold capitalize">
                 Edit {editingItem.type}: {editingItem.item.title || editingItem.item.question || 'Component'}

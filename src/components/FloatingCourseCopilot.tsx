@@ -144,12 +144,11 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
         id: 'msg-init',
         role: 'assistant',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        content: `Hi! I'm your **eStudy Course Copilot**.\n\nI can help you plan, build, improve, and validate your course against the **eStudy Master Course Framework v9.0**.\n\nTell me what course you want to create, or ask me to improve something in your current course.`,
+        content: `Hi! I'm your **eStudy Course Copilot**.\n\nTell me any course topic (for example: *"The use of AI in mechanical engineering"*) and I will **immediately fill in all 9 sections** of the eStudy Master Course Template v9.0 for you—no back-and-forth questions required!`,
         suggestedActions: [
-          { id: 'act-new', label: '🚀 Build a New Course', actionType: 'send_prompt', payload: { prompt: 'I want to build a new course on...' } },
-          { id: 'act-improve', label: '⚡ Improve My Course', actionType: 'send_prompt', payload: { prompt: 'Improve my current course structure and modules' } },
-          { id: 'act-check', label: '🔍 Check Framework Compliance', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } },
-          { id: 'act-sec', label: '📍 Help Me Complete This Section', actionType: 'send_prompt', payload: { prompt: `Help me complete ${SECTION_TITLES[activeSection] || 'this section'}` } }
+          { id: 'act-mech', label: '⚙️ Build: The Use of AI in Mechanical Engineering', actionType: 'send_prompt', payload: { prompt: 'Build a template for me "The use of AI in mechanical engineering"' } },
+          { id: 'act-eq', label: '🤝 Build: Emotional Intelligence for Leaders', actionType: 'send_prompt', payload: { prompt: 'Build a template for me "Emotional Intelligence for Workplace Leaders"' } },
+          { id: 'act-check', label: '🔍 Check Framework Compliance', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } }
         ]
       }
     ];
@@ -252,8 +251,8 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
         onUpdateCourse(prev => ({
           ...prev,
           ...data.coursePatch,
-          name: data.coursePatch.name || prev.name,
-          code: data.coursePatch.code || prev.code,
+          name: data.coursePatch.name || data.coursePatch.structure?.title || prev.name,
+          code: data.coursePatch.code || data.coursePatch.structure?.code || prev.code,
           structure: {
             ...prev.structure,
             ...(data.coursePatch.structure || {})
@@ -264,7 +263,11 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
           },
           research: {
             ...prev.research,
-            ...(data.coursePatch.research || {})
+            ...(data.coursePatch.research || {}),
+            learnerProfile: {
+              ...(prev.research?.learnerProfile || ({} as any)),
+              ...(data.coursePatch.research?.learnerProfile || {})
+            }
           },
           modules: data.coursePatch.modules || prev.modules,
           learningDesign: {
@@ -281,7 +284,11 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
           },
           qa: {
             ...prev.qa,
-            ...(data.coursePatch.qa || {})
+            ...(data.coursePatch.qa || {}),
+            checklistItems: {
+              ...(prev.qa?.checklistItems || {}),
+              ...(data.coursePatch.qa?.checklistItems || {})
+            }
           },
           customisation: {
             ...prev.customisation,

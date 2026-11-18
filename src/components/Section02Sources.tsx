@@ -1,18 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { Course, ResearchSource, SourceType, SourceStatus, SourceMedium } from '../types';
+import { Course, ResearchSource, SourceType, SourceStatus, SourceMedium, LearnerProfileEnvironment } from '../types';
 import {
   Plus,
   Trash2,
   Edit3,
-  ArrowRight,
   ArrowLeft,
   BookOpen,
   FileText,
   Globe,
-  Link,
   Upload,
-  CheckCircle2,
-  Check,
   Search,
   Scale,
   Sparkles,
@@ -20,8 +16,8 @@ import {
   X,
   FileCode,
   Users,
-  ShieldAlert,
-  Info
+  Cpu,
+  Image as ImageIcon
 } from 'lucide-react';
 import { SlideHeader } from './SlideHeader';
 import { SlideFooter } from './SlideFooter';
@@ -47,7 +43,7 @@ const PRESET_FRAMEWORKS = [
     medium: 'framework' as SourceMedium
   },
   {
-    name: 'Financial Sector Conduct Authority (FSCA) Fintech & AI Circular',
+    name: 'Financial Sector Conduct Authority (FSCA) Market Conduct & AI Circular',
     type: 'Regulatory framework' as SourceType,
     reference: 'FSCA Regulatory Strategy & Fintech Governance Framework',
     relevance: 'Market conduct, algorithmic fairness, and consumer protection in automated financial workflows.',
@@ -69,6 +65,18 @@ const PRESET_FRAMEWORKS = [
   }
 ];
 
+const DEFAULT_LEARNER_PROFILE: LearnerProfileEnvironment = {
+  jobRoles: '',
+  departments: '',
+  experienceLevels: '',
+  existingKnowledge: '',
+  digitalLiteracy: '',
+  aiFamiliarity: '',
+  workplaceEnvironment: '',
+  organisationalConstraints: '',
+  availableToolsAndTechnology: ''
+};
+
 export const Section02Sources: React.FC<Section02SourcesProps> = ({
   course,
   onUpdate,
@@ -78,7 +86,6 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
   onOpenPreview,
   onOpenExportModal
 }) => {
-  const [activeTab, setActiveTab] = useState<'sources' | 'profile'>('sources');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalTab, setModalTab] = useState<'upload' | 'url' | 'text' | 'framework'>('upload');
@@ -96,10 +103,60 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const logoUploadRef = useRef<HTMLInputElement | null>(null);
+  const bannerUploadRef = useRef<HTMLInputElement | null>(null);
 
   const research = course.research;
   const sources = research.sources || [];
-  const structure = course.structure;
+  const learnerProfile = research.learnerProfile || DEFAULT_LEARNER_PROFILE;
+  const flagged = course.flaggedFields || {};
+
+  const confirmFlag = (key: string) => {
+    onUpdate(prev => {
+      const next = { ...(prev.flaggedFields || {}) };
+      delete next[key];
+      return { ...prev, flaggedFields: next };
+    });
+  };
+
+  const handleResearchFieldChange = (field: 'regulatorySources' | 'aiToolsReferenced' | 'ethicsFrameworks' | 'industryUseCases', val: string) => {
+    onUpdate(prev => ({
+      ...prev,
+      research: {
+        ...prev.research,
+        [field]: val
+      }
+    }));
+  };
+
+  const handleLearnerProfileChange = (field: keyof LearnerProfileEnvironment, val: string) => {
+    onUpdate(prev => ({
+      ...prev,
+      research: {
+        ...prev.research,
+        learnerProfile: {
+          ...(prev.research.learnerProfile || DEFAULT_LEARNER_PROFILE),
+          [field]: val
+        }
+      }
+    }));
+  };
+
+  const handleImageAssetUpload = (field: 'coverLogoUrl' | 'coverVisualUrl', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onUpdate(prev => ({
+          ...prev,
+          [field]: reader.result as string
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Filter sources
   const filteredSources = sources.filter(s => {
@@ -155,18 +212,17 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
       setFormName(file.name.replace(/\.[^/.]+$/, ''));
     }
 
-    // Attempt to read text content snippet for txt / markdown files
-    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+    if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.csv')) {
       const reader = new FileReader();
       reader.onload = evt => {
         const text = evt.target?.result as string;
         if (text) {
-          setFormSnippet(text.slice(0, 1000));
+          setFormSnippet(text.slice(0, 2000));
         }
       };
       reader.readAsText(file);
     } else {
-      setFormSnippet(`Uploaded file: ${file.name} (${file.type || 'Document'})`);
+      setFormSnippet(`Uploaded supporting reference document: ${file.name} (${file.type || 'Document'})`);
     }
   };
 
@@ -176,16 +232,16 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
 
     const sourceData: ResearchSource = {
       id: editingSourceId || `src-${Date.now()}`,
-      name: formName.trim(),
+      name: formName,
       type: formType,
-      reference: formReference.trim() || formUrl.trim() || formFileName || 'Internal Reference Document',
-      relevance: formRelevance.trim() || 'Authoritative evidence referenced during instructional course synthesis.',
+      reference: formReference || formUrl || formFileName || 'Internal Reference Document',
+      relevance: formRelevance || 'Authoritative evidence referenced during instructional course synthesis.',
       status: formStatus,
       medium: modalTab,
-      url: formUrl.trim() || undefined,
-      fileName: formFileName.trim() || undefined,
-      fileSize: formFileSize.trim() || undefined,
-      contentSnippet: formSnippet.trim() || undefined,
+      url: formUrl || undefined,
+      fileName: formFileName || undefined,
+      fileSize: formFileSize || undefined,
+      contentSnippet: formSnippet || undefined,
       dateAdded: new Date().toLocaleDateString('en-ZA')
     };
 
@@ -213,7 +269,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
   const handleAddPreset = (preset: typeof PRESET_FRAMEWORKS[0]) => {
     const exists = sources.some(s => s.name.toLowerCase() === preset.name.toLowerCase());
     if (exists) {
-      alert('This framework reference is already included in your sources.');
+      setShowAddModal(false);
       return;
     }
 
@@ -262,185 +318,124 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
   };
 
   return (
-    <div id="section-02-sources-container" className="space-y-6 max-w-6xl font-sora">
+    <div id="section-02-sources-container" className="space-y-8 max-w-6xl font-sora">
       {/* Slide Header */}
       <SlideHeader
         sectionNumber="02"
-        title="Sources & Knowledge Grounding"
-        subtitle="Manage uploaded documents, legislation, external URLs, and authoritative evidence (Google NotebookLM style)."
-        slideNumber="06"
-        totalSlides="39"
+        title="2. SOURCES OF INFORMATION (RESEARCH LAYER)"
+        subtitle="Provide a minimum of 3 credible, traceable sources, regulatory frameworks, AI & technology references, and learner environment profiles."
+        slideNumber="02"
+        totalSlides="09"
         badgeText={`${sources.length} Sources Linked`}
       />
 
       {/* Framework Requirement Callout */}
       <FrameworkCallout
         title="Authoritative Grounding Requirement"
-        requirement="Minimum of 3 credible, traceable sources. All AI and regulatory references must cite specific applicable statutes (e.g. POPIA, FAIS, SAQA)."
+        requirement="Provide a minimum of 3 credible, traceable sources. All AI and regulatory references must cite specific, named frameworks or statutes (e.g., POPIA, FSCA, King IV, SAQA)."
         variant="requirement"
       />
 
-      {/* Section View Tabs */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab('sources')}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'sources'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-[#45CC42]" />
-            <span>Sources ({sources.length})</span>
-          </button>
+      {/* ================================================================= */}
+      {/* PART A: SOURCES AND EVIDENCE (2.1, 2.2, 2.3)                      */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 space-y-6 shadow-xs border-l-4 border-l-[#052B66]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1.5">
+              PART A · SOURCES AND EVIDENCE
+            </span>
+            <h3 className="text-base font-extrabold text-[#052B66]">
+              2.1 Reference Links & Supporting Documents <span className="text-rose-600 font-black">*</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Add reference URLs, upload supporting documents (PDF, DOCX, TXT), or paste policy excerpts for AI course synthesis.
+            </p>
+          </div>
 
           <button
-            onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'profile'
-                ? 'bg-[#052B66] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+            id="add-source-btn"
+            onClick={() => handleOpenAdd('upload')}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-extrabold bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] shadow-xs transition-all cursor-pointer shrink-0"
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Learner Profile & Environment</span>
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Add Reference / Upload Document</span>
           </button>
         </div>
 
-        {activeTab === 'sources' && (
+        {/* Quick-Add Buttons */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
-            id="notebooklm-add-source-btn"
+            type="button"
             onClick={() => handleOpenAdd('upload')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#45CC42] hover:bg-[#3ec23b] text-[#052B66] shadow-sm transition-all cursor-pointer"
+            className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-[#45CC42] transition-all flex items-center gap-3 text-left group cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>+ Add Sources</span>
+            <div className="w-9 h-9 rounded-lg bg-[#45CC42]/15 text-[#052B66] flex items-center justify-center shrink-0">
+              <Upload className="w-4 h-4 text-[#052B66]" />
+            </div>
+            <div className="truncate">
+              <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
+                Upload Document
+              </div>
+              <div className="text-[10.5px] text-slate-400 truncate">PDF, DOCX, TXT</div>
+            </div>
           </button>
-        )}
-      </div>
 
-      {activeTab === 'sources' ? (
-        /* Google NotebookLM Style Sources View */
-        <div className="space-y-6">
-          {/* AI Generation Guidance & Instant Trigger Card */}
-          <div className="bg-gradient-to-r from-[#052B66] to-[#0d3f8a] text-white p-5 rounded-2xl shadow-md border border-[#45CC42]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1.5 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#45CC42]/20 border border-[#45CC42]/40 text-[#45CC42] text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>AI Course Generation Engine</span>
-              </div>
-              <h4 className="text-base font-extrabold text-white">
-                Upload Information & Generate Your Course with AI
-              </h4>
-              <p className="text-xs text-slate-200 leading-relaxed">
-                Yes! Any documents, text excerpts, company SOPs, or South African regulatory frameworks you upload here are passed directly to the AI engine. The engine analyzes your information to generate complete modules, workplace scenarios, diagnostic checks, and capstone assessments.
-              </p>
+          <button
+            type="button"
+            onClick={() => handleOpenAdd('url')}
+            className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-[#45CC42] transition-all flex items-center gap-3 text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+              <Globe className="w-4 h-4" />
             </div>
-
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              {onStartAIGeneration && (
-                <button
-                  type="button"
-                  id="section02-generate-ai-btn"
-                  onClick={onStartAIGeneration}
-                  className="px-4 py-2.5 rounded-xl text-xs font-black text-[#052B66] bg-[#45CC42] hover:bg-[#3ec23b] shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-[#052B66]" />
-                  <span>Generate Course with AI Now</span>
-                </button>
-              )}
-              {onOpenPreview && (
-                <button
-                  type="button"
-                  onClick={onOpenPreview}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Review Master Prompt →</span>
-                </button>
-              )}
-              {onOpenExportModal && (
-                <button
-                  type="button"
-                  onClick={onOpenExportModal}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-white/5 hover:bg-white/15 border border-white/15 transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Export to Claude, ChatGPT, or DeepSeek"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-[#45CC42]" />
-                  <span>External AI Engines</span>
-                </button>
-              )}
+            <div className="truncate">
+              <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
+                Add Reference Link
+              </div>
+              <div className="text-[10.5px] text-slate-400 truncate">URL or Document Title</div>
             </div>
-          </div>
+          </button>
 
-          {/* Top Quick-Add Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button
-              onClick={() => handleOpenAdd('upload')}
-              className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#45CC42] hover:shadow-xs transition-all flex items-center gap-3 text-left group cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-[#45CC42]/15 text-[#052B66] flex items-center justify-center shrink-0">
-                <Upload className="w-4 h-4 text-[#052B66]" />
+          <button
+            type="button"
+            onClick={() => handleOpenAdd('text')}
+            className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-[#45CC42] transition-all flex items-center gap-3 text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="truncate">
+              <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
+                Paste SOP / Policy
               </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
-                  Upload Documents
-                </div>
-                <div className="text-[10.5px] text-slate-400 truncate">PDF, DOCX, TXT</div>
-              </div>
-            </button>
+              <div className="text-[10.5px] text-slate-400 truncate">Direct text excerpt</div>
+            </div>
+          </button>
 
-            <button
-              onClick={() => handleOpenAdd('url')}
-              className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#45CC42] hover:shadow-xs transition-all flex items-center gap-3 text-left group cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                <Globe className="w-4 h-4" />
+          <button
+            type="button"
+            onClick={() => handleOpenAdd('framework')}
+            className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-[#45CC42] transition-all flex items-center gap-3 text-left group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#052B66] flex items-center justify-center shrink-0">
+              <Scale className="w-4 h-4 text-[#45CC42]" />
+            </div>
+            <div className="truncate">
+              <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
+                SA Frameworks
               </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
-                  Source URL / Web
-                </div>
-                <div className="text-[10.5px] text-slate-400 truncate">Website or portal</div>
-              </div>
-            </button>
+              <div className="text-[10.5px] text-slate-400 truncate">POPIA, FSCA, King IV</div>
+            </div>
+          </button>
+        </div>
 
-            <button
-              onClick={() => handleOpenAdd('text')}
-              className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#45CC42] hover:shadow-xs transition-all flex items-center gap-3 text-left group cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4" />
-              </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
-                  Paste Text / Notes
-                </div>
-                <div className="text-[10.5px] text-slate-400 truncate">Policy excerpts, SOPs</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleOpenAdd('framework')}
-              className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#45CC42] hover:shadow-xs transition-all flex items-center gap-3 text-left group cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#052B66] flex items-center justify-center shrink-0">
-                <Scale className="w-4 h-4 text-[#45CC42]" />
-              </div>
-              <div className="truncate">
-                <div className="text-xs font-bold text-slate-800 group-hover:text-[#052B66]">
-                  SA Regulations
-                </div>
-                <div className="text-[10.5px] text-slate-400 truncate">POPIA, FSCA, King IV</div>
-              </div>
-            </button>
-          </div>
-
-          {/* Search & Filter Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+        {/* Search & Source List */}
+        {sources.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <span className="w-2 h-2 rounded-full bg-[#45CC42]" />
-              <span>{sources.length} Total Sources Grounding Course Synthesis</span>
+              <span>{sources.length} Reference Link(s) & Supporting Documents Added (Minimum 3 recommended)</span>
             </div>
 
             <div className="relative max-w-xs w-full">
@@ -450,236 +445,385 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search sources..."
-                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-[#052B66] outline-none"
+                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 bg-white focus:border-[#052B66] outline-none"
               />
             </div>
           </div>
+        )}
 
-          {/* Source Cards List (NotebookLM Style) */}
-          {filteredSources.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-[#052B66] mx-auto flex items-center justify-center">
-                <BookOpen className="w-7 h-7 stroke-[1.75]" />
-              </div>
-              <div className="space-y-1 max-w-md mx-auto">
-                <h4 className="text-sm font-bold text-slate-800">
-                  {searchQuery ? 'No sources match your search' : 'No Sources Added Yet'}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  Add documents, legislation, or web links to provide evidence grounding for AI course synthesis.
-                </p>
-              </div>
-              <button
-                onClick={() => handleOpenAdd('upload')}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all cursor-pointer shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add First Source</span>
-              </button>
+        {filteredSources.length === 0 ? (
+          <div className="bg-slate-50/70 rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-[#052B66] mx-auto flex items-center justify-center">
+              <BookOpen className="w-6 h-6 stroke-[1.75]" />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredSources.map(src => (
-                <div
-                  key={src.id}
-                  id={`notebook-source-${src.id}`}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:border-[#45CC42] transition-all flex flex-col justify-between space-y-3 group border-l-4 border-l-[#45CC42]"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                          {getSourceIcon(src)}
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            {src.type}
-                          </span>
-                        </div>
+            <div className="space-y-1 max-w-md mx-auto">
+              <h4 className="text-sm font-bold text-slate-800">
+                {searchQuery ? 'No sources match your search' : 'No Reference Links or Supporting Documents Added Yet'}
+              </h4>
+              <p className="text-xs text-slate-500">
+                Add Link 1, Link 2, and Link 3 (URLs, uploaded documents, or South African regulatory frameworks) to ground your course.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleOpenAdd('upload')}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] transition-all cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add First Source</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredSources.map((src, idx) => (
+              <div
+                key={src.id}
+                className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs hover:border-[#45CC42] transition-all flex flex-col justify-between space-y-3 group border-l-4 border-l-[#45CC42]"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        {getSourceIcon(src)}
                       </div>
-
-                      <span className="text-[10px] font-bold bg-[#45CC42]/20 text-[#052B66] border border-[#45CC42]/40 px-2 py-0.5 rounded-full">
-                        {src.status === 'Verified' ? '✓ Verified' : src.status}
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2 py-0.5 rounded">
+                        Link {idx + 1} · {src.type}
                       </span>
                     </div>
 
-                    <div>
-                      <h4 className="text-sm font-bold text-[#052B66] group-hover:text-blue-900 transition-colors leading-snug">
-                        {src.name}
-                      </h4>
-                      {src.reference && (
-                        <p className="text-[11px] text-slate-500 mt-1 font-mono line-clamp-1">
-                          Ref: {src.reference}
-                        </p>
-                      )}
-                    </div>
+                    <span className="text-[10px] font-bold bg-[#45CC42]/20 text-[#052B66] border border-[#45CC42]/40 px-2 py-0.5 rounded-full">
+                      {src.status === 'Verified' ? '✓ Verified' : src.status}
+                    </span>
+                  </div>
 
-                    {src.relevance && (
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
-                        {src.relevance}
+                  <div>
+                    <h4 className="text-sm font-bold text-[#052B66] leading-snug">
+                      {src.name}
+                    </h4>
+                    {src.reference && (
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-mono line-clamp-1">
+                        Ref: {src.reference}
                       </p>
                     )}
-
-                    {src.fileName && (
-                      <div className="flex items-center gap-2 text-[10.5px] text-slate-500 bg-slate-50 p-2 rounded-lg">
-                        <FileCode className="w-3.5 h-3.5 text-[#052B66]" />
-                        <span className="truncate">{src.fileName}</span>
-                        {src.fileSize && <span className="text-slate-400">({src.fileSize})</span>}
-                      </div>
-                    )}
-
-                    {src.contentSnippet && (
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 text-[11px] text-slate-600 font-mono line-clamp-3">
-                        <span className="text-[9.5px] uppercase font-bold text-slate-400 block mb-0.5 font-sans">
-                          Grounding Text Excerpt (Included in AI Prompt):
-                        </span>
-                        "{src.contentSnippet}"
-                      </div>
-                    )}
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                    <span className="text-[10px]">
-                      {src.dateAdded ? `Added ${src.dateAdded}` : 'Authoritative Grounding'}
-                    </span>
+                  {src.relevance && (
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                      {src.relevance}
+                    </p>
+                  )}
 
-                    <div className="flex items-center gap-1">
-                      {src.url && (
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="Open external link"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-                      <button
-                        onClick={() => handleOpenEdit(src)}
-                        className="p-1.5 text-slate-400 hover:text-[#052B66] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Source"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSource(src.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Source"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  {src.fileName && (
+                    <div className="flex items-center gap-2 text-[10.5px] text-slate-500 bg-slate-50 p-2 rounded-lg">
+                      <FileCode className="w-3.5 h-3.5 text-[#052B66]" />
+                      <span className="truncate">{src.fileName}</span>
+                      {src.fileSize && <span className="text-slate-400">({src.fileSize})</span>}
                     </div>
+                  )}
+
+                  {src.contentSnippet && (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-[11px] text-slate-600 font-mono line-clamp-2">
+                      "{src.contentSnippet}"
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                  <span className="text-[10px]">
+                    {src.dateAdded ? `Added ${src.dateAdded}` : 'Reference Source'}
+                  </span>
+
+                  <div className="flex items-center gap-1">
+                    {src.url && (
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        title="Open external link"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(src)}
+                      className="p-1.5 text-slate-400 hover:text-[#052B66] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      title="Edit Source"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSource(src.id)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Source"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Slide 5: Learner Profile & Environment */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-            <div className="border-b border-slate-100 pb-3">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                SLIDE 05 · AUDIENCE CONTEXT
-              </span>
-              <h3 className="text-sm font-bold text-[#052B66]">
-                Target Learner Cohort & Baseline
-              </h3>
-            </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 2.2 Industry / Regulatory Sources & 2.3 AI & Technology Sources */}
+        <div className="pt-4 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h4 className="text-sm font-extrabold text-[#052B66] flex items-center gap-2">
+              <Scale className="w-4 h-4 text-[#45CC42]" />
+              <span>2.2 Industry / Regulatory Sources</span>
+            </h4>
 
             <EditorialField
-              label="[LEARNER PROFILE]"
-              value={structure.targetRoles}
-              onChange={val =>
-                onUpdate(prev => ({
-                  ...prev,
-                  structure: { ...prev.structure, targetRoles: val }
-                }))
-              }
-              placeholder="e.g. Operational analysts, client support consultants, departmental administrative leads"
-              helperText="Detailed description of the learner cohort who will engage with this course."
+              label="[INSERT: REGULATORY FRAMEWORK]"
+              value={research.regulatorySources || ''}
+              onChange={val => handleResearchFieldChange('regulatorySources', val)}
+              placeholder="e.g. POPIA Act 4 of 2013, FSCA Market Conduct Standards, National Credit Act (NCA), King IV Report, SAQA NQF Guidelines"
+              example="POPIA (Protection of Personal Information Act), FSCA Conduct Standard 3 of 2020, and internal data protection policies."
+              helperText="Specify the South African legislation, industry regulations, or statutory frameworks governing this topic."
               multiline
-              rows={3}
+              rows={4}
               required
+              flaggedNote={flagged['research.regulatorySources']}
+              onConfirmFlag={() => confirmFlag('research.regulatorySources')}
             />
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-extrabold text-[#052B66] flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-[#45CC42]" />
+              <span>2.3 AI & Technology Sources</span>
+            </h4>
 
             <EditorialField
-              label="[CURRENT CAPABILITY / ENTRY LEVEL]"
-              value={structure.experienceLevel}
-              onChange={val =>
-                onUpdate(prev => ({
-                  ...prev,
-                  structure: { ...prev.structure, experienceLevel: val }
-                }))
-              }
-              placeholder="e.g. 1-3 years operational experience; intermediate computer literacy; basic familiarity with internal systems."
-              helperText="Baseline skills and digital proficiency of learners before entering the course."
-              multiline
-              rows={3}
-            />
-
-            <EditorialField
-              label="[PREREQUISITES & ENTRY ASSUMPTIONS]"
-              value={structure.scopeSummary}
-              onChange={val =>
-                onUpdate(prev => ({
-                  ...prev,
-                  structure: { ...prev.structure, scopeSummary: val }
-                }))
-              }
-              placeholder="e.g. Familiarity with standard workplace productivity software and basic enterprise email protocols."
-              helperText="Mandatory prior knowledge, certifications, or internal onboarding required."
+              label="AI Tools or Platforms Used in This Domain [INSERT]"
+              value={research.aiToolsReferenced || ''}
+              onChange={val => handleResearchFieldChange('aiToolsReferenced', val)}
+              placeholder="e.g. Microsoft Copilot, ChatGPT Enterprise, Google Gemini Workspace, SAP Business AI"
               multiline
               rows={2}
+              flaggedNote={flagged['research.aiToolsReferenced']}
+              onConfirmFlag={() => confirmFlag('research.aiToolsReferenced')}
+            />
+
+            <EditorialField
+              label="Relevant AI Ethics Framework [INSERT]"
+              value={research.ethicsFrameworks || ''}
+              onChange={val => handleResearchFieldChange('ethicsFrameworks', val)}
+              placeholder="e.g. POPIA Section 71 Automated Decision-Making, UNESCO AI Ethics, NIST AI RMF, EU AI Act"
+              multiline
+              rows={2}
+              flaggedNote={flagged['research.ethicsFrameworks']}
+              onConfirmFlag={() => confirmFlag('research.ethicsFrameworks')}
+            />
+
+            <EditorialField
+              label="Industry Case Studies or Use Cases [INSERT]"
+              value={research.industryUseCases || ''}
+              onChange={val => handleResearchFieldChange('industryUseCases', val)}
+              placeholder="e.g. Automated customer query triage in retail banking; AI-assisted financial variance analysis"
+              multiline
+              rows={2}
+              flaggedNote={flagged['research.industryUseCases']}
+              onConfirmFlag={() => confirmFlag('research.industryUseCases')}
             />
           </div>
+        </div>
+      </div>
 
-          <div className="lg:col-span-6 space-y-6">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#052B66]/10 px-2.5 py-0.5 rounded-md border border-[#052B66]/20 inline-block mb-1">
-                  SLIDE 05 · OPERATIONAL ENVIRONMENT
-                </span>
-                <h3 className="text-sm font-bold text-[#052B66]">
-                  Work Environment & Accessibility
-                </h3>
+      {/* ================================================================= */}
+      {/* PART B: LEARNER PROFILE AND ENVIRONMENT                           */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 space-y-6 shadow-xs border-l-4 border-l-[#45CC42]">
+        <div className="border-b border-slate-100 pb-4">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#052B66] bg-[#45CC42]/20 px-2.5 py-0.5 rounded-md border border-[#45CC42]/40 inline-block mb-1.5">
+            PART B · LEARNER PROFILE AND ENVIRONMENT
+          </span>
+          <h3 className="text-base font-extrabold text-[#052B66] flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#052B66]" />
+            <span>Learner Cohort, Baseline Knowledge & Workplace Environment</span>
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Define the learner profile and operational environment so the course content and scenarios match real workplace conditions.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <EditorialField
+            label="Learner Job Roles"
+            value={learnerProfile.jobRoles}
+            onChange={val => handleLearnerProfileChange('jobRoles', val)}
+            placeholder="e.g. Junior to mid-level administrators, financial clerks, team supervisors"
+            required
+          />
+
+          <EditorialField
+            label="Departments"
+            value={learnerProfile.departments}
+            onChange={val => handleLearnerProfileChange('departments', val)}
+            placeholder="e.g. Finance, Operations, Client Services, Human Resources"
+            required
+          />
+
+          <EditorialField
+            label="Experience Levels"
+            value={learnerProfile.experienceLevels}
+            onChange={val => handleLearnerProfileChange('experienceLevels', val)}
+            placeholder="e.g. 1–4 years workplace experience"
+          />
+
+          <EditorialField
+            label="Existing Knowledge"
+            value={learnerProfile.existingKnowledge}
+            onChange={val => handleLearnerProfileChange('existingKnowledge', val)}
+            placeholder="e.g. Understands basic departmental workflows; limited formal compliance training"
+            multiline
+            rows={2}
+          />
+
+          <EditorialField
+            label="Digital Literacy"
+            value={learnerProfile.digitalLiteracy}
+            onChange={val => handleLearnerProfileChange('digitalLiteracy', val)}
+            placeholder="e.g. Proficient in email, spreadsheets, and web browsers"
+            multiline
+            rows={2}
+          />
+
+          <EditorialField
+            label="AI Familiarity"
+            value={learnerProfile.aiFamiliarity}
+            onChange={val => handleLearnerProfileChange('aiFamiliarity', val)}
+            placeholder="e.g. Basic awareness of consumer AI tools; no formal workplace prompting or verification skills"
+            multiline
+            rows={2}
+          />
+
+          <EditorialField
+            label="Workplace Environment"
+            value={learnerProfile.workplaceEnvironment}
+            onChange={val => handleLearnerProfileChange('workplaceEnvironment', val)}
+            placeholder="e.g. Fast-paced office or hybrid environment with strict SLA turnaround targets"
+            multiline
+            rows={2}
+          />
+
+          <EditorialField
+            label="Organisational Constraints"
+            value={learnerProfile.organisationalConstraints}
+            onChange={val => handleLearnerProfileChange('organisationalConstraints', val)}
+            placeholder="e.g. Limited study time during shifts; strict firewall restrictions on external tools"
+            multiline
+            rows={2}
+          />
+
+          <EditorialField
+            label="Available Tools and Technology"
+            value={learnerProfile.availableToolsAndTechnology}
+            onChange={val => handleLearnerProfileChange('availableToolsAndTechnology', val)}
+            placeholder="e.g. Microsoft 365, internal ERP/CRM system, LMS portal on desktop and mobile"
+            multiline
+            rows={2}
+          />
+        </div>
+      </div>
+
+      {/* ================================================================= */}
+      {/* COURSE BRANDING ASSETS (LOGO & BANNER FOR EXPORTS)                */}
+      {/* ================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold text-[#052B66] flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-[#45CC42]" />
+              <span>Course Logo & Banner Image (Included in Word & PDF Downloads)</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              Upload your organisation or course logo and cover banner. These images are automatically embedded into both the Completed Master Template and Generated Training Course exports.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {course.coverLogoUrl ? (
+                <img
+                  src={course.coverLogoUrl}
+                  alt="Course Logo"
+                  className="w-12 h-12 object-contain rounded-lg bg-white border border-slate-200 p-1 shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#052B66]">Course / Organisation Logo</div>
+                <div className="text-[11px] text-slate-500 truncate">
+                  {course.coverLogoUrl ? 'Custom logo uploaded and ready for export' : 'Default eStudy header will be used if none uploaded'}
+                </div>
               </div>
-
-              <EditorialField
-                label="[WORK ENVIRONMENT & TOOLING]"
-                value={structure.workplaceRelevance}
-                onChange={val =>
-                  onUpdate(prev => ({
-                    ...prev,
-                    structure: { ...prev.structure, workplaceRelevance: val }
-                  }))
-                }
-                placeholder="e.g. Dual-screen desktop setup, web-based internal CRM, cloud office suite, and enterprise chat tools."
-                helperText="The physical or digital setting where learners perform their daily workplace tasks."
-                multiline
-                rows={3}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => logoUploadRef.current?.click()}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-[#052B66] hover:border-[#052B66] cursor-pointer"
+              >
+                {course.coverLogoUrl ? 'Change Logo' : 'Upload Logo'}
+              </button>
+              <input
+                ref={logoUploadRef}
+                type="file"
+                accept="image/*"
+                onChange={e => handleImageAssetUpload('coverLogoUrl', e)}
+                className="hidden"
               />
+            </div>
+          </div>
 
-              <EditorialField
-                label="[ACCESSIBILITY & LEARNING NEEDS]"
-                value={structure.deliveryLanguages}
-                onChange={val =>
-                  onUpdate(prev => ({
-                    ...prev,
-                    structure: { ...prev.structure, deliveryLanguages: val }
-                  }))
-                }
-                placeholder="e.g. English primary with plain language glossary; multi-device mobile LMS compatibility; WCAG 2.1 AA screen reader support."
-                helperText="Language accessibility, Plain English writing standard, and assistive technology accommodations."
-                multiline
-                rows={3}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              {course.coverVisualUrl ? (
+                <img
+                  src={course.coverVisualUrl}
+                  alt="Course Banner"
+                  className="w-16 h-12 object-cover rounded-lg bg-white border border-slate-200 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-12 rounded-lg bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#052B66]">Course Cover Banner Image</div>
+                <div className="text-[11px] text-slate-500 truncate">
+                  {course.coverVisualUrl ? 'Custom cover banner uploaded and ready for export' : 'Optional cover banner for PDF & Word exports'}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => bannerUploadRef.current?.click()}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-[#052B66] hover:border-[#052B66] cursor-pointer"
+              >
+                {course.coverVisualUrl ? 'Change Banner' : 'Upload Banner'}
+              </button>
+              <input
+                ref={bannerUploadRef}
+                type="file"
+                accept="image/*"
+                onChange={e => handleImageAssetUpload('coverVisualUrl', e)}
+                className="hidden"
               />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Navigation Footer Buttons */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-200">
@@ -688,7 +832,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
           className="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>← Back to Problem Context</span>
+          <span>← Back to Section 1: Problem Statement</span>
         </button>
 
         <button
@@ -696,24 +840,31 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
           onClick={onContinue}
           className="px-7 py-3 rounded-xl text-xs font-bold text-white bg-[#052B66] hover:bg-[#042150] shadow-md transition-all flex items-center gap-2 cursor-pointer"
         >
-          <span>Continue to Course Architecture →</span>
+          <span>Continue to Section 3: Course Structure →</span>
         </button>
       </div>
 
-      <SlideFooter currentSlide="06" totalSlides="39" />
+      <SlideFooter currentSlide="02" totalSlides="09" />
 
-      {/* Google NotebookLM Style Add Sources Modal */}
+      {/* Add / Edit Source Modal (with Backdrop Click-to-Close) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in font-sora">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full p-6 space-y-5">
+        <div
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in font-sora"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full p-6 space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-[#45CC42]" />
                 <h3 className="text-sm font-extrabold text-[#052B66]">
-                  {editingSourceId ? 'Edit Source' : 'Add Source to Course Notebook'}
+                  {editingSourceId ? 'Edit Reference Source' : 'Add Reference Link or Supporting Document'}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
               >
@@ -862,9 +1013,6 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
                       onChange={e => setFormSnippet(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-lg border border-slate-300 focus:border-[#052B66] outline-none font-mono"
                     />
-                    <div className="text-[11px] text-slate-400">
-                      This text will be directly supplied to the AI engine to ground your modules, scenarios, and assessments.
-                    </div>
                   </div>
                 )}
 
@@ -885,7 +1033,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Source Title / Legislation Name *
+                    Source Title / Document Name *
                   </label>
                   <input
                     type="text"

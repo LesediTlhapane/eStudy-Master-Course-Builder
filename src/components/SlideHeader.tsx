@@ -13,12 +13,10 @@ export const SlideHeader: React.FC<SlideHeaderProps> = ({
   sectionNumber,
   title,
   subtitle,
-  slideNumber,
-  totalSlides = '39',
   badgeText
 }) => {
   return (
-    <div className="border-b border-slate-200 pb-5 space-y-2">
+    <div className="border-b border-slate-200 pb-5 space-y-2.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3.5">
           <div className="flex items-center justify-center bg-[#052B66] text-[#45CC42] px-3.5 py-1.5 rounded-xl border border-[#042150] shadow-sm font-mono text-2xl sm:text-3xl font-black shrink-0">
@@ -43,15 +41,13 @@ export const SlideHeader: React.FC<SlideHeaderProps> = ({
           </div>
         </div>
 
-        {slideNumber && (
-          <div className="text-xs font-mono font-semibold self-start sm:self-center shrink-0 bg-[#052B66]/10 text-[#052B66] px-3 py-1 rounded-full border border-[#052B66]/20">
-            Slide <span className="font-bold text-[#052B66]">{slideNumber}</span> / {totalSlides}
-          </div>
-        )}
+        <div className="text-[11.5px] font-bold text-red-600 bg-red-50 border border-red-200 px-3 py-1.5 rounded-xl self-start sm:self-center shrink-0">
+          * All fields marked with a red star (*) are compulsory.
+        </div>
       </div>
 
-      {/* Iconic Green Accent Bar matching PowerPoint Slide Theme */}
-      <div className="w-28 h-1.5 bg-[#45CC42] rounded-full mt-2.5 shadow-[0_2px_8px_rgba(69,204,66,0.35)]" />
+      {/* Iconic Green Accent Bar matching eStudy Theme */}
+      <div className="w-28 h-1.5 bg-[#45CC42] rounded-full mt-2 shadow-[0_2px_8px_rgba(69,204,66,0.35)]" />
     </div>
   );
 };

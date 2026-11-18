@@ -1,4 +1,5 @@
 import { AIProvider, AIModelMeta } from '../../types';
+import { getGroqApiKeys } from './groqProvider';
 
 export const STATIC_MODEL_REGISTRY: AIModelMeta[] = [
   // --- Google Gemini Models ---
@@ -173,37 +174,39 @@ export function getModelMeta(provider: AIProvider, modelId: string): AIModelMeta
   return STATIC_MODEL_REGISTRY.find(m => m.provider === provider && m.id === modelId);
 }
 
-export function checkKeysConfigured(): { gemini: boolean; groq: boolean } {
+export function checkKeysConfigured(): { gemini: boolean; groq: boolean; groqKeyCount: number } {
   const geminiKey = process.env.GEMINI_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
+  const groqKeys = getGroqApiKeys();
 
   const gemini = Boolean(geminiKey && geminiKey !== 'MY_GEMINI_API_KEY' && geminiKey.trim().length > 0);
-  const groq = Boolean(groqKey && groqKey !== 'MY_GROQ_API_KEY' && groqKey.trim().length > 0);
+  const groq = groqKeys.length > 0;
 
-  return { gemini, groq };
+  return { gemini, groq, groqKeyCount: groqKeys.length };
 }
 
 /**
  * Optionally query Groq API dynamically to verify available models on the account.
  */
 export async function queryLiveGroqModels(): Promise<string[]> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey || apiKey === 'MY_GROQ_API_KEY') return [];
+  const groqKeys = getGroqApiKeys();
+  if (groqKeys.length === 0) return [];
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/models', {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+  for (const apiKey of groqKeys) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && Array.isArray(data.data)) {
+        return data.data.map((m: any) => m.id);
       }
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (data && Array.isArray(data.data)) {
-      return data.data.map((m: any) => m.id);
+    } catch (err) {
+      console.warn('Could not query live Groq models:', err);
     }
-  } catch (err) {
-    console.warn('Could not query live Groq models:', err);
   }
   return [];
 }

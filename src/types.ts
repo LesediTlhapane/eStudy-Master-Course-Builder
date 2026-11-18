@@ -2,11 +2,13 @@ export type SourceType =
   | 'Regulatory framework'
   | 'Ethics framework'
   | 'Internal policy'
+  | 'Internal Document'
   | 'Industry standard'
   | 'Academic research'
   | 'Technology documentation'
   | 'Case study'
-  | 'Benchmarking source';
+  | 'Benchmarking source'
+  | string;
 
 export type SourceStatus = 'Required' | 'Verified' | 'Review' | 'Not verified' | 'Not started';
 
@@ -44,7 +46,17 @@ export interface Scenario {
 
 export interface DiagnosticQuestion {
   id: string;
-  category: 'General domain' | 'Problem awareness' | 'Current practices' | 'AI / digital readiness' | 'Ethics & compliance';
+  category:
+    | 'General domain'
+    | 'General domain knowledge'
+    | 'Problem awareness'
+    | 'Current practices'
+    | 'Current workplace practices'
+    | 'AI / digital readiness'
+    | 'AI or digital readiness'
+    | 'Ethics & compliance'
+    | 'Ethical or compliance awareness'
+    | string;
   question: string;
   purpose?: string;
   options?: string[];
@@ -105,15 +117,46 @@ export interface ModuleRequirements {
 
 export interface CourseModule {
   id: string;
-  moduleNumber: number;
+  number?: number;
+  moduleNumber?: number;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   purpose: string;
   duration?: string;
-  keySkills: string[];
-  learningObjectives: string[];
-  requirements: ModuleRequirements;
-  status: 'Complete' | 'In progress' | 'Not started';
+  keySkills: string[] | string;
+  learningObjectives?: string[];
+  learningOutcomes?: string[];
+  coreConcepts?: string;
+  definitionsFrameworks?: string;
+  rootCausesExploration?: string;
+  aiTopicCoverage?: string;
+  practicalExercises?: string;
+  workplaceScenarios?: string;
+  miniCaseStudy?: string;
+  aiPracticalElement?: string;
+  implementationPlan?: string;
+  sopTemplatesChecklists?: string;
+  kpiMetrics?: string;
+  capstoneProject?: string;
+  aiGovernanceElement?: string;
+  lessons?: any[];
+  requirements?: ModuleRequirements;
+  status?: 'Complete' | 'In progress' | 'Not started';
+}
+
+export type ModulePlan = CourseModule;
+
+export interface LearnerProfileEnvironment {
+  jobRoles: string;
+  departments: string;
+  experienceLevels: string;
+  existingKnowledge: string;
+  digitalLiteracy: string;
+  aiFamiliarity: string;
+  workplaceEnvironment: string;
+  organisationalConstraints: string;
+  availableToolsAndTechnology: string;
+  availableTools?: string;
 }
 
 export interface AssessmentItem {
@@ -168,6 +211,8 @@ export interface Course {
   coverVisualUrl?: string;
   preferredAiEngine?: string;
   skippedFields?: string[];
+  flaggedFields?: Record<string, string>;
+  uploadedTemplateName?: string;
   
   // Section 01 - Problem & Challenge
   problem: {
@@ -187,13 +232,19 @@ export interface Course {
   research: {
     sources: ResearchSource[];
     regulatoryFramework: string;
+    regulatorySources?: string;
     aiToolsPlatformName: string;
+    aiToolsReferenced?: string;
     aiEthicsFramework: string;
+    ethicsFrameworks?: string;
     caseStudyUseCases: string;
+    industryUseCases?: string;
+    industryCaseStudies?: string;
     evidenceStandards: string[];
     benchmarkingNotes: string;
     benchmarkCourseRef: string;
     auditEvidence?: string;
+    learnerProfile?: LearnerProfileEnvironment;
   };
 
   // Section 03 - Course Structure
@@ -201,6 +252,7 @@ export interface Course {
     title: string;
     code: string;
     industryDomain: string;
+    industryContext?: string;
     targetRoles: string;
     targetAudience?: string;
     deliveryModality?: string;
@@ -238,7 +290,8 @@ export interface Course {
     jobRoles: string;
     departments: string;
     experienceLevel: string;
-    aiFamiliarityBaseline: '' | 'None' | 'Basic' | 'Intermediate';
+    aiFamiliarityBaseline: '' | 'None' | 'Basic' | 'Intermediate' | 'Advanced';
+    aiFamiliarityExplanation?: string;
     
     // Prerequisites
     prerequisiteKnowledge: string;
@@ -272,6 +325,8 @@ export interface Course {
     reflectionPrompts: string;
     learnerEngagementTypes: string[];
     assessments: AssessmentItem[];
+    practicalTaskWeighting?: string;
+    finalAssessmentPassMark?: string;
     guidedPracticeDescription?: string;
     summativeAssessmentDescription?: string;
   };
@@ -279,7 +334,9 @@ export interface Course {
   // Section 06 - Ethics, Compliance & AI Responsibility
   ethics: {
     confidentialityRequirements: string;
+    dataPrivacySafeguards?: string;
     dataPrivacyFramework: string;
+    biasMitigationPlan?: string;
     ethicsStandards: string;
     psychologicalSafetyNotes: string;
     decisionMakingFramework: string;
@@ -294,7 +351,7 @@ export interface Course {
     humanOversightNotes?: string;
   };
 
-  // Section 07 - Output Format Rules
+  // Section 07 - Output Format Rules & Accreditation (7.5)
   outputRequirements: {
     outputFormat: string;
     requiredSectionsNote: string;
@@ -310,6 +367,16 @@ export interface Course {
     languageTone?: string;
     nonTruncationRule?: string;
     formattingRules?: string;
+    accreditationBody?: string;
+    qualificationOrUnitStandard?: string;
+    nqfLevel?: string;
+    accreditationRequirements?: string;
+    requiredLearningStructure?: string;
+    accreditationAssessmentRequirements?: string;
+    accreditationAlignment?: string;
+    notionalHoursCredits?: string;
+    qualificationUnitStandardId?: string;
+    moderationRequirements?: string;
   };
 
   // Section 08 - Quality Assurance
@@ -317,6 +384,7 @@ export interface Course {
     benchmarkReviewed: boolean;
     benchmarkReviewNotes: string;
     qaChecklistConfirmed: boolean;
+    checklistItems?: Record<string, boolean>;
   };
 
   // Section 09 - Customisation

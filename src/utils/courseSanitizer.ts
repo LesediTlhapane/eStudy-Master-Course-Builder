@@ -1,28 +1,53 @@
 import { Course, CourseModule, ResearchSource, DiagnosticQuestion, AssessmentItem, EthicsCardData } from '../types';
 import { createScratchCourse } from '../data/initialCourseData';
-import { toSafeString, toSafeArray } from './promptGenerator';
+import { toSafeArray } from './promptGenerator';
 
 /**
- * Ensures any course object (from localStorage, DeepSeek, or partial AI generation)
- * is fully populated with safe defaults and valid array structures.
- * Prevents runtime null-pointer and undefined errors across all app views.
++ * Preserves user string values WITHOUT calling .trim(), so typing spaces
++ * in Course Title or any other input field is never interrupted.
++ */
+function preserveStr(v: any, fallback: string = ''): string {
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) {
+    return v.map(item => preserveStr(item)).filter(Boolean).join(', ');
+  }
+  if (typeof v === 'object') {
+    if (v.text) return preserveStr(v.text);
+    if (v.title) return preserveStr(v.title);
+    if (v.name) return preserveStr(v.name);
+    if (v.content) return preserveStr(v.content);
+    if (v.description) return preserveStr(v.description);
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(v);
+}
+
+/**
+ * Ensures any course object (from localStorage, uploaded template, or partial AI generation)
+ * is safely populated with valid array structures without overwriting empty user fields
+ * or trimming spaces while typing.
  */
 export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course'): Course {
   if (!raw || typeof raw !== 'object') {
-    return createScratchCourse(fallbackName);
+    return createScratchCourse(fallbackName === 'Untitled Course' ? '' : fallbackName);
   }
 
-  const baseTitle = toSafeString(raw.name || raw.structure?.title || fallbackName);
+  const baseTitle = preserveStr(raw.structure?.title ?? (raw.name === 'Untitled Course' ? '' : raw.name), '');
   const scratch = createScratchCourse(baseTitle);
 
-  // Parse raw modules safely
   const rawModulesList = toSafeArray(raw.modules);
   const safeModules: CourseModule[] = rawModulesList.length > 0
     ? rawModulesList.map((m: any, idx: number): CourseModule => {
         const defaultMod = scratch.modules[0] || {
           id: `module-${idx + 1}`,
           moduleNumber: idx + 1,
-          title: `Module ${idx + 1}`,
+          title: '',
           subtitle: '',
           purpose: '',
           keySkills: [],
@@ -36,61 +61,62 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
         const req = m.requirements && typeof m.requirements === 'object' ? m.requirements : {};
 
         return {
-          id: toSafeString(m.id, `module-${idx + 1}`),
+          id: preserveStr(m.id, `module-${idx + 1}`),
           moduleNumber: typeof m.moduleNumber === 'number' ? m.moduleNumber : (typeof m.number === 'number' ? m.number : idx + 1),
-          title: toSafeString(m.title, `Module ${idx + 1}`),
-          subtitle: toSafeString(m.subtitle),
-          purpose: toSafeString(m.purpose),
-          keySkills: toSafeArray(m.keySkills).map(k => toSafeString(k)).filter(Boolean),
-          learningObjectives: toSafeArray(m.learningObjectives).map(lo => toSafeString(lo)).filter(Boolean),
+          title: preserveStr(m.title, ''),
+          subtitle: preserveStr(m.subtitle, ''),
+          purpose: preserveStr(m.purpose, ''),
+          duration: preserveStr(m.duration, ''),
+          keySkills: toSafeArray(m.keySkills).map(k => preserveStr(k)),
+          learningObjectives: toSafeArray(m.learningObjectives).map(lo => preserveStr(lo)),
           status: m.status === 'Complete' || m.status === 'In progress' ? m.status : 'Not started',
           requirements: {
             ...scratch.modules[0]?.requirements,
-            problemDefinition: toSafeString(req.problemDefinition || req.workplaceContext),
-            workplaceContext: toSafeString(req.workplaceContext || req.problemDefinition),
-            keyTerms: toSafeString(req.keyTerms),
-            causes: toSafeString(req.causes),
-            warningSigns: toSafeString(req.warningSigns),
-            impactStatement: toSafeString(req.impactStatement),
-            aiDemystification: toSafeString(req.aiDemystification || req.aiInThisDomain),
-            aiInThisDomain: toSafeString(req.aiInThisDomain || req.aiDemystification),
-            aiToolsOverview: toSafeString(req.aiToolsOverview),
-            responsibleAiPrinciples: toSafeString(req.responsibleAiPrinciples),
-            toolsAndTechniques: toSafeString(req.toolsAndTechniques || req.procedureSteps),
-            procedureSteps: toSafeString(req.procedureSteps || req.toolsAndTechniques),
-            roleResponsibilities: toSafeString(req.roleResponsibilities),
-            communicationApproach: toSafeString(req.communicationApproach),
-            supportMechanisms: toSafeString(req.supportMechanisms),
+            problemDefinition: preserveStr(req.problemDefinition),
+            workplaceContext: preserveStr(req.workplaceContext),
+            keyTerms: preserveStr(req.keyTerms),
+            causes: preserveStr(req.causes),
+            warningSigns: preserveStr(req.warningSigns),
+            impactStatement: preserveStr(req.impactStatement),
+            aiDemystification: preserveStr(req.aiDemystification),
+            aiInThisDomain: preserveStr(req.aiInThisDomain),
+            aiToolsOverview: preserveStr(req.aiToolsOverview),
+            responsibleAiPrinciples: preserveStr(req.responsibleAiPrinciples),
+            toolsAndTechniques: preserveStr(req.toolsAndTechniques),
+            procedureSteps: preserveStr(req.procedureSteps),
+            roleResponsibilities: preserveStr(req.roleResponsibilities),
+            communicationApproach: preserveStr(req.communicationApproach),
+            supportMechanisms: preserveStr(req.supportMechanisms),
             scenarios: toSafeArray(req.scenarios).map((sc: any, sIdx: number) => ({
-              id: toSafeString(sc?.id, `sc-${sIdx + 1}`),
-              title: toSafeString(sc?.title, `Scenario ${sIdx + 1}`),
-              situation: toSafeString(sc?.situation),
-              challenge: toSafeString(sc?.challenge),
-              decisionPoint: toSafeString(sc?.decisionPoint),
-              debrief: toSafeString(sc?.debrief || sc?.reflection),
-              moduleRef: toSafeString(sc?.moduleRef),
+              id: preserveStr(sc?.id, `sc-${sIdx + 1}`),
+              title: preserveStr(sc?.title, ''),
+              situation: preserveStr(sc?.situation),
+              challenge: preserveStr(sc?.challenge),
+              decisionPoint: preserveStr(sc?.decisionPoint),
+              debrief: preserveStr(sc?.debrief || sc?.reflection),
+              moduleRef: preserveStr(sc?.moduleRef),
               status: sc?.status === 'Complete' || sc?.status === 'In progress' ? sc.status : 'Not started'
             })),
             aiScenarios: toSafeArray(req.aiScenarios).map((sc: any, sIdx: number) => ({
-              id: toSafeString(sc?.id, `ai-sc-${sIdx + 1}`),
-              title: toSafeString(sc?.title, `AI Scenario ${sIdx + 1}`),
-              situation: toSafeString(sc?.situation),
-              challenge: toSafeString(sc?.challenge),
-              decisionPoint: toSafeString(sc?.decisionPoint),
-              debrief: toSafeString(sc?.debrief || sc?.reflection),
-              moduleRef: toSafeString(sc?.moduleRef),
+              id: preserveStr(sc?.id, `ai-sc-${sIdx + 1}`),
+              title: preserveStr(sc?.title, ''),
+              situation: preserveStr(sc?.situation),
+              challenge: preserveStr(sc?.challenge),
+              decisionPoint: preserveStr(sc?.decisionPoint),
+              debrief: preserveStr(sc?.debrief || sc?.reflection),
+              moduleRef: preserveStr(sc?.moduleRef),
               status: sc?.status === 'Complete' || sc?.status === 'In progress' ? sc.status : 'Not started'
             })),
-            implementationStrategy: toSafeString(req.implementationStrategy),
-            rolloutMethod: toSafeString(req.rolloutMethod),
-            meApproach: toSafeString(req.meApproach),
-            improvementCycle: toSafeString(req.improvementCycle),
-            implementationChecklistTitle: toSafeString(req.implementationChecklistTitle, '30-Day Action Plan'),
-            rolloutFrameworkTitle: toSafeString(req.rolloutFrameworkTitle, 'Rollout SOP'),
-            riskComplianceSectionTitle: toSafeString(req.riskComplianceSectionTitle, 'Risk & Compliance Matrix'),
-            continuousAiLearningApproach: toSafeString(req.continuousAiLearningApproach),
-            aiGovernanceFramework: toSafeString(req.aiGovernanceFramework),
-            aiFeedbackReviewMechanism: toSafeString(req.aiFeedbackReviewMechanism)
+            implementationStrategy: preserveStr(req.implementationStrategy),
+            rolloutMethod: preserveStr(req.rolloutMethod),
+            meApproach: preserveStr(req.meApproach),
+            improvementCycle: preserveStr(req.improvementCycle),
+            implementationChecklistTitle: preserveStr(req.implementationChecklistTitle),
+            rolloutFrameworkTitle: preserveStr(req.rolloutFrameworkTitle),
+            riskComplianceSectionTitle: preserveStr(req.riskComplianceSectionTitle),
+            continuousAiLearningApproach: preserveStr(req.continuousAiLearningApproach),
+            aiGovernanceFramework: preserveStr(req.aiGovernanceFramework),
+            aiFeedbackReviewMechanism: preserveStr(req.aiFeedbackReviewMechanism)
           }
         };
       })
@@ -103,133 +129,220 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
   const e = raw.ethics && typeof raw.ethics === 'object' ? raw.ethics : {};
   const out = raw.outputRequirements && typeof raw.outputRequirements === 'object' ? raw.outputRequirements : {};
   const cust = raw.customisation && typeof raw.customisation === 'object' ? raw.customisation : {};
+  const qa = raw.qa && typeof raw.qa === 'object' ? raw.qa : {};
 
   const safeSources: ResearchSource[] = toSafeArray(r.sources).map((src: any, idx: number): ResearchSource => ({
-    id: toSafeString(src?.id, `src-${idx + 1}`),
-    name: toSafeString(src?.name, 'Source'),
+    id: preserveStr(src?.id, `src-${idx + 1}`),
+    name: preserveStr(src?.name),
     type: (src?.type || 'Regulatory framework') as any,
-    reference: toSafeString(src?.reference),
-    relevance: toSafeString(src?.relevance),
-    status: (src?.status || 'Verified') as any
+    reference: preserveStr(src?.reference),
+    relevance: preserveStr(src?.relevance),
+    status: (src?.status || 'Verified') as any,
+    notes: preserveStr(src?.notes),
+    medium: src?.medium,
+    url: preserveStr(src?.url),
+    fileName: preserveStr(src?.fileName),
+    fileSize: preserveStr(src?.fileSize),
+    contentSnippet: preserveStr(src?.contentSnippet),
+    dateAdded: preserveStr(src?.dateAdded)
   }));
 
   const safeDiagnostic: DiagnosticQuestion[] = toSafeArray(s.diagnosticQuestions).map((dq: any, idx: number): DiagnosticQuestion => ({
-    id: toSafeString(dq?.id, `dq-${idx + 1}`),
+    id: preserveStr(dq?.id, `dq-${idx + 1}`),
     category: (dq?.category || 'General domain') as any,
-    question: toSafeString(dq?.question || dq?.title),
-    purpose: toSafeString(dq?.purpose || dq?.explanation)
+    question: preserveStr(dq?.question ?? dq?.title),
+    purpose: preserveStr(dq?.purpose ?? dq?.explanation),
+    options: Array.isArray(dq?.options) ? dq.options.map((o: any) => preserveStr(o)) : undefined,
+    correctAnswerIndex: typeof dq?.correctAnswerIndex === 'number' ? dq.correctAnswerIndex : undefined,
+    explanation: preserveStr(dq?.explanation)
   }));
 
   const safeAssessments: AssessmentItem[] = toSafeArray(ld.assessments).map((a: any, idx: number): AssessmentItem => ({
-    id: toSafeString(a?.id, `ass-${idx + 1}`),
+    id: preserveStr(a?.id, `ass-${idx + 1}`),
     type: (a?.type || 'Practical Application Task') as any,
-    description: toSafeString(a?.description),
-    timing: toSafeString(a?.timing),
-    weighting: toSafeString(a?.weighting),
-    passMark: toSafeString(a?.passMark),
-    notes: toSafeString(a?.notes)
+    description: preserveStr(a?.description),
+    timing: preserveStr(a?.timing),
+    weighting: preserveStr(a?.weighting),
+    passMark: preserveStr(a?.passMark),
+    notes: preserveStr(a?.notes)
   }));
 
   const safeCards: EthicsCardData[] = toSafeArray(e.cards).map((c: any, idx: number): EthicsCardData => ({
-    id: toSafeString(c?.id, `eth-${idx + 1}`),
-    title: toSafeString(c?.title, 'Ethical Safeguard'),
-    subtitle: toSafeString(c?.subtitle, 'Compliance Safeguard'),
-    status: (c?.status || 'Complete') as any,
-    guidingQuestion: toSafeString(c?.guidingQuestion),
-    response: toSafeString(c?.response),
-    exampleText: toSafeString(c?.exampleText),
-    complianceRef: toSafeString(c?.complianceRef, 'POPIA')
+    id: preserveStr(c?.id, `eth-${idx + 1}`),
+    title: preserveStr(c?.title, 'Ethical Safeguard'),
+    subtitle: preserveStr(c?.subtitle, 'Compliance Safeguard'),
+    status: (c?.status || 'Needs input') as any,
+    guidingQuestion: preserveStr(c?.guidingQuestion),
+    response: preserveStr(c?.response),
+    exampleText: preserveStr(c?.exampleText),
+    complianceRef: preserveStr(c?.complianceRef, 'POPIA')
   }));
 
   const validStatus: 'Draft' | 'In Review' | 'Completed' =
     raw.status === 'Completed' || raw.status === 'In Review' ? raw.status : 'Draft';
 
+  const lp = r.learnerProfile && typeof r.learnerProfile === 'object' ? r.learnerProfile : {};
+
   return {
     ...scratch,
-    id: toSafeString(raw.id, `course-${Date.now()}`),
-    name: toSafeString(raw.name || s.title, fallbackName),
-    code: toSafeString(raw.code || s.code, 'EST-COURSE-01'),
+    id: preserveStr(raw.id, `course-${Date.now()}`),
+    name: preserveStr(raw.name || s.title, fallbackName),
+    code: preserveStr(raw.code ?? s.code, ''),
     status: validStatus,
-    lastModified: toSafeString(raw.lastModified, 'Just now'),
+    lastModified: preserveStr(raw.lastModified, 'Just now'),
+    coverLogoUrl: raw.coverLogoUrl,
+    coverVisualUrl: raw.coverVisualUrl,
+    flaggedFields: raw.flaggedFields && typeof raw.flaggedFields === 'object' ? raw.flaggedFields : undefined,
+    uploadedTemplateName: raw.uploadedTemplateName,
     approvalStatus: raw.approvalStatus,
     generatedCourse: raw.generatedCourse,
     problem: {
       ...scratch.problem,
-      targetGroup: toSafeString(p.targetGroup || scratch.problem.targetGroup),
-      taskOrSkill: toSafeString(p.taskOrSkill || scratch.problem.taskOrSkill),
-      operationalImpact: toSafeString(p.operationalImpact || scratch.problem.operationalImpact),
-      rootCauses: toSafeArray(p.rootCauses).length > 0 ? toSafeArray(p.rootCauses).map(rc => toSafeString(rc)) : scratch.problem.rootCauses,
-      processFailures: toSafeString(p.processFailures || scratch.problem.processFailures),
-      skillGaps: toSafeString(p.skillGaps || scratch.problem.skillGaps),
-      constraints: toSafeString(p.constraints || scratch.problem.constraints),
-      aiLiteracyGap: toSafeString(p.aiLiteracyGap || scratch.problem.aiLiteracyGap),
-      digitalReadinessLevel: toSafeString(p.digitalReadinessLevel || scratch.problem.digitalReadinessLevel),
-      aiEthicsComplianceRisk: toSafeString(p.aiEthicsComplianceRisk || scratch.problem.aiEthicsComplianceRisk)
+      targetGroup: preserveStr(p.targetGroup),
+      taskOrSkill: preserveStr(p.taskOrSkill),
+      operationalImpact: preserveStr(p.operationalImpact),
+      rootCauses: toSafeArray(p.rootCauses).length > 0 ? toSafeArray(p.rootCauses).map(rc => preserveStr(rc)) : scratch.problem.rootCauses,
+      processFailures: preserveStr(p.processFailures),
+      skillGaps: preserveStr(p.skillGaps),
+      constraints: preserveStr(p.constraints),
+      aiLiteracyGap: preserveStr(p.aiLiteracyGap),
+      digitalReadinessLevel: preserveStr(p.digitalReadinessLevel),
+      aiEthicsComplianceRisk: preserveStr(p.aiEthicsComplianceRisk)
     },
     research: {
       ...scratch.research,
-      sources: safeSources.length > 0 ? safeSources : scratch.research.sources,
-      regulatoryFramework: toSafeString(r.regulatoryFramework || scratch.research.regulatoryFramework),
-      aiToolsPlatformName: toSafeString(r.aiToolsPlatformName || scratch.research.aiToolsPlatformName),
-      aiEthicsFramework: toSafeString(r.aiEthicsFramework || scratch.research.aiEthicsFramework),
-      caseStudyUseCases: toSafeString(r.caseStudyUseCases || scratch.research.caseStudyUseCases),
-      evidenceStandards: toSafeArray(r.evidenceStandards).length > 0 ? toSafeArray(r.evidenceStandards).map(es => toSafeString(es)) : scratch.research.evidenceStandards,
-      benchmarkingNotes: toSafeString(r.benchmarkingNotes || scratch.research.benchmarkingNotes),
-      benchmarkCourseRef: toSafeString(r.benchmarkCourseRef || scratch.research.benchmarkCourseRef)
+      sources: safeSources,
+      regulatoryFramework: preserveStr(r.regulatoryFramework),
+      aiToolsPlatformName: preserveStr(r.aiToolsPlatformName),
+      aiEthicsFramework: preserveStr(r.aiEthicsFramework),
+      caseStudyUseCases: preserveStr(r.caseStudyUseCases),
+      evidenceStandards: toSafeArray(r.evidenceStandards).map(es => preserveStr(es)),
+      benchmarkingNotes: preserveStr(r.benchmarkingNotes),
+      benchmarkCourseRef: preserveStr(r.benchmarkCourseRef),
+      auditEvidence: preserveStr(r.auditEvidence),
+      learnerProfile: {
+        jobRoles: preserveStr(lp.jobRoles),
+        departments: preserveStr(lp.departments),
+        experienceLevels: preserveStr(lp.experienceLevels),
+        existingKnowledge: preserveStr(lp.existingKnowledge),
+        digitalLiteracy: preserveStr(lp.digitalLiteracy),
+        aiFamiliarity: preserveStr(lp.aiFamiliarity),
+        workplaceEnvironment: preserveStr(lp.workplaceEnvironment),
+        organisationalConstraints: preserveStr(lp.organisationalConstraints),
+        availableToolsAndTechnology: preserveStr(lp.availableToolsAndTechnology)
+      }
     },
     structure: {
       ...scratch.structure,
-      title: toSafeString(s.title || raw.name, fallbackName),
-      code: toSafeString(s.code || raw.code, 'EST-COURSE-01'),
-      industryDomain: toSafeString(s.industryDomain || scratch.structure.industryDomain),
-      targetRoles: toSafeString(s.targetRoles || scratch.structure.targetRoles),
+      title: preserveStr(s.title ?? (raw.name === 'Untitled Course' ? '' : raw.name)),
+      code: preserveStr(s.code ?? raw.code),
+      industryDomain: preserveStr(s.industryDomain),
+      targetRoles: preserveStr(s.targetRoles),
+      targetAudience: preserveStr(s.targetAudience),
+      deliveryModality: preserveStr(s.deliveryModality),
+      assessmentRigour: preserveStr(s.assessmentRigour),
       aiIntegrationLevel: (s.aiIntegrationLevel || 'Applied') as any,
-      setaNqfLevel: toSafeString(s.setaNqfLevel || scratch.structure.setaNqfLevel),
-      deliveryLanguages: toSafeString(s.deliveryLanguages || scratch.structure.deliveryLanguages),
-      estimatedDuration: toSafeString(s.estimatedDuration || scratch.structure.estimatedDuration),
-      deliveryFormat: toSafeString(s.deliveryFormat || scratch.structure.deliveryFormat),
+      setaNqfLevel: preserveStr(s.setaNqfLevel),
+      deliveryLanguages: preserveStr(s.deliveryLanguages),
+      estimatedDuration: preserveStr(s.estimatedDuration),
+      deliveryFormat: preserveStr(s.deliveryFormat),
       difficultyLevel: (s.difficultyLevel || 'Intermediate') as any,
-      purposeStatement: toSafeString(s.purposeStatement || scratch.structure.purposeStatement),
-      workplaceRelevance: toSafeString(s.workplaceRelevance || scratch.structure.workplaceRelevance),
-      performanceImprovement: toSafeString(s.performanceImprovement || scratch.structure.performanceImprovement),
-      aiTechAngle: toSafeString(s.aiTechAngle || scratch.structure.aiTechAngle),
-      scopeSummary: toSafeString(s.scopeSummary || scratch.structure.scopeSummary),
-      aiEraRelevance: toSafeString(s.aiEraRelevance || scratch.structure.aiEraRelevance),
-      performanceLink: toSafeString(s.performanceLink || scratch.structure.performanceLink),
-      organisationalBenefits: toSafeArray(s.organisationalBenefits).length > 0 ? toSafeArray(s.organisationalBenefits).map(b => toSafeString(b)) : scratch.structure.organisationalBenefits,
-      employeeBenefits: toSafeArray(s.employeeBenefits).length > 0 ? toSafeArray(s.employeeBenefits).map(b => toSafeString(b)) : scratch.structure.employeeBenefits,
-      riskReductionOutcomes: toSafeArray(s.riskReductionOutcomes).length > 0 ? toSafeArray(s.riskReductionOutcomes).map(b => toSafeString(b)) : scratch.structure.riskReductionOutcomes,
-      prerequisiteKnowledge: toSafeString(s.prerequisiteKnowledge || scratch.structure.prerequisiteKnowledge),
-      prerequisiteExperience: toSafeString(s.prerequisiteExperience || scratch.structure.prerequisiteExperience),
-      toolsSystems: toSafeString(s.toolsSystems || scratch.structure.toolsSystems),
+      purposeStatement: preserveStr(s.purposeStatement),
+      workplaceRelevance: preserveStr(s.workplaceRelevance),
+      performanceImprovement: preserveStr(s.performanceImprovement),
+      aiTechAngle: preserveStr(s.aiTechAngle),
+      scopeSummary: preserveStr(s.scopeSummary),
+      aiEraRelevance: preserveStr(s.aiEraRelevance),
+      performanceLink: preserveStr(s.performanceLink),
+      organisationalBenefits: toSafeArray(s.organisationalBenefits).length > 0 ? toSafeArray(s.organisationalBenefits).map(b => preserveStr(b)) : scratch.structure.organisationalBenefits,
+      employeeBenefits: toSafeArray(s.employeeBenefits).length > 0 ? toSafeArray(s.employeeBenefits).map(b => preserveStr(b)) : scratch.structure.employeeBenefits,
+      riskReductionOutcomes: toSafeArray(s.riskReductionOutcomes).length > 0 ? toSafeArray(s.riskReductionOutcomes).map(b => preserveStr(b)) : scratch.structure.riskReductionOutcomes,
+      scope: preserveStr(s.scope),
+      keyCompetencies: preserveStr(s.keyCompetencies),
+      realWorldApplication: preserveStr(s.realWorldApplication),
+      aiSkillsDeveloped: preserveStr(s.aiSkillsDeveloped),
+      jobRoles: preserveStr(s.jobRoles),
+      departments: preserveStr(s.departments),
+      experienceLevel: preserveStr(s.experienceLevel),
+      aiFamiliarityBaseline: (s.aiFamiliarityBaseline || 'Basic') as any,
+      aiFamiliarityExplanation: preserveStr(s.aiFamiliarityExplanation),
+      prerequisiteKnowledge: preserveStr(s.prerequisiteKnowledge),
+      prerequisiteExperience: preserveStr(s.prerequisiteExperience),
+      toolsSystems: preserveStr(s.toolsSystems),
+      digitalLiteracyLevel: preserveStr(s.digitalLiteracyLevel),
       diagnosticQuestions: safeDiagnostic.length > 0 ? safeDiagnostic : scratch.structure.diagnosticQuestions
     },
     modules: safeModules,
     learningDesign: {
       ...scratch.learningDesign,
-      instructionalApproach: toSafeString(ld.instructionalApproach || scratch.learningDesign.instructionalApproach),
+      coreStandardsSummary: preserveStr(ld.coreStandardsSummary),
+      instructionalApproach: preserveStr(ld.instructionalApproach),
       assessments: safeAssessments.length > 0 ? safeAssessments : scratch.learningDesign.assessments,
-      aiDemoSimulationDescription: toSafeString(ld.aiDemoSimulationDescription || scratch.learningDesign.aiDemoSimulationDescription),
-      promptExerciseDescription: toSafeString(ld.promptExerciseDescription || scratch.learningDesign.promptExerciseDescription),
-      criticalThinkingDescription: toSafeString(ld.criticalThinkingDescription || scratch.learningDesign.criticalThinkingDescription)
+      aiDemoSimulationDescription: preserveStr(ld.aiDemoSimulationDescription),
+      promptExerciseDescription: preserveStr(ld.promptExerciseDescription),
+      aiEvaluationTask: preserveStr(ld.aiEvaluationTask),
+      collaborationActivity: preserveStr(ld.collaborationActivity),
+      workplaceActivities: toSafeArray(ld.workplaceActivities).map(wa => preserveStr(wa)),
+      examplesAndRelevance: preserveStr(ld.examplesAndRelevance),
+      knowledgeChecksDescription: preserveStr(ld.knowledgeChecksDescription),
+      criticalThinkingDescription: preserveStr(ld.criticalThinkingDescription),
+      reflectionPrompts: preserveStr(ld.reflectionPrompts),
+      practicalTaskWeighting: preserveStr(ld.practicalTaskWeighting),
+      finalAssessmentPassMark: preserveStr(ld.finalAssessmentPassMark)
     },
     ethics: {
       ...scratch.ethics,
-      confidentialityRequirements: toSafeString(e.confidentialityRequirements || scratch.ethics.confidentialityRequirements),
-      psychologicalSafetyNotes: toSafeString(e.psychologicalSafetyNotes || scratch.ethics.psychologicalSafetyNotes),
+      confidentialityRequirements: preserveStr(e.confidentialityRequirements),
+      dataPrivacyFramework: preserveStr(e.dataPrivacyFramework),
+      ethicsStandards: preserveStr(e.ethicsStandards),
+      psychologicalSafetyNotes: preserveStr(e.psychologicalSafetyNotes),
+      decisionMakingFramework: preserveStr(e.decisionMakingFramework),
+      accountabilityMechanism: preserveStr(e.accountabilityMechanism),
+      aiBiasRisk: preserveStr(e.aiBiasRisk),
+      aiDisclosureRequirement: preserveStr(e.aiDisclosureRequirement),
+      humanOverrideScenarios: preserveStr(e.humanOverrideScenarios),
+      dataSovereigntyContext: preserveStr(e.dataSovereigntyContext),
+      aiWorkforceImpactNarrative: preserveStr(e.aiWorkforceImpactNarrative),
+      aiGovernanceReference: preserveStr(e.aiGovernanceReference),
       cards: safeCards.length > 0 ? safeCards : scratch.ethics.cards
     },
     outputRequirements: {
       ...scratch.outputRequirements,
-      outputFormat: toSafeString(out.outputFormat || scratch.outputRequirements.outputFormat),
-      accessibilityTargetReadingLevel: toSafeString(out.accessibilityTargetReadingLevel || scratch.outputRequirements.accessibilityTargetReadingLevel),
-      formattingRequirements: toSafeString(out.formattingRequirements || scratch.outputRequirements.formattingRequirements)
+      outputFormat: preserveStr(out.outputFormat),
+      requiredSectionsNote: preserveStr(out.requiredSectionsNote),
+      moduleRequirementsRule: preserveStr(out.moduleRequirementsRule),
+      assessmentRequirementsRule: preserveStr(out.assessmentRequirementsRule),
+      scenarioRequirementsRule: preserveStr(out.scenarioRequirementsRule),
+      mandatoryDeliverablesRule: preserveStr(out.mandatoryDeliverablesRule),
+      referencesRule: preserveStr(out.referencesRule),
+      accessibilityTargetReadingLevel: preserveStr(out.accessibilityTargetReadingLevel),
+      plainLanguageApplied: typeof out.plainLanguageApplied === 'boolean' ? out.plainLanguageApplied : true,
+      culturalInclusivityNotes: preserveStr(out.culturalInclusivityNotes),
+      formattingRequirements: preserveStr(out.formattingRequirements),
+      accreditationBody: preserveStr(out.accreditationBody),
+      qualificationOrUnitStandard: preserveStr(out.qualificationOrUnitStandard),
+      nqfLevel: preserveStr(out.nqfLevel),
+      accreditationRequirements: preserveStr(out.accreditationRequirements),
+      requiredLearningStructure: preserveStr(out.requiredLearningStructure),
+      accreditationAssessmentRequirements: preserveStr(out.accreditationAssessmentRequirements)
+    },
+    qa: {
+      benchmarkReviewed: Boolean(qa.benchmarkReviewed),
+      benchmarkReviewNotes: preserveStr(qa.benchmarkReviewNotes),
+      qaChecklistConfirmed: Boolean(qa.qaChecklistConfirmed),
+      checklistItems: qa.checklistItems && typeof qa.checklistItems === 'object' ? qa.checklistItems : {}
     },
     customisation: {
       ...scratch.customisation,
-      branding: toSafeString(cust.branding || scratch.customisation.branding),
-      tone: toSafeString(cust.tone || scratch.customisation.tone),
-      deliveryPreferences: toSafeString(cust.deliveryPreferences || scratch.customisation.deliveryPreferences)
+      branding: preserveStr(cust.branding),
+      tone: preserveStr(cust.tone),
+      audienceContext: preserveStr(cust.audienceContext),
+      industryExamples: preserveStr(cust.industryExamples),
+      terminology: preserveStr(cust.terminology),
+      formatting: preserveStr(cust.formatting),
+      deliveryPreferences: preserveStr(cust.deliveryPreferences),
+      planningNotes: Array.isArray(cust.planningNotes) ? cust.planningNotes : [],
+      historicalCourses: Array.isArray(cust.historicalCourses) ? cust.historicalCourses : []
     }
   };
 }

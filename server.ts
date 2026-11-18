@@ -8,15 +8,15 @@ import {
   processAIAssistedCopilotChat,
   getRegisteredModels,
   checkKeysConfigured,
-  queryLiveGroqModels
+  extractCourseFieldsFromDocument,
+  refineProblemStatementWithAI
 } from './src/server/ai';
-import { generateLocalFallbackCourse } from './src/utils/localCourseEngine';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '25mb' }));
 
   // API Health Check
   app.get('/api/health', (req, res) => {
@@ -49,6 +49,50 @@ async function startServer() {
     });
   });
 
+  // POST /api/courses/extract-template - Analyse uploaded PDF/DOCX/TXT and map to eStudy Master Template
+  app.post('/api/courses/extract-template', async (req, res) => {
+    try {
+      const { fileName, mimeType, base64Data, rawText, provider, model } = req.body;
+      if (!fileName || (!base64Data && !rawText)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Please provide a valid document file (PDF, DOCX, or TXT) to analyse.'
+        });
+      }
+
+      const result = await extractCourseFieldsFromDocument({
+        fileName,
+        mimeType: mimeType || 'application/octet-stream',
+        base64Data,
+        rawText,
+        provider,
+        model
+      });
+
+      return res.json(result);
+    } catch (error: any) {
+      console.error('Error extracting template from uploaded document:', error);
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Failed to analyse uploaded document with AI.'
+      });
+    }
+  });
+
+  // POST /api/courses/refine-problem - AI assistance to refine Section 1 wording without inventing facts
+  app.post('/api/courses/refine-problem', async (req, res) => {
+    try {
+      const refined = await refineProblemStatementWithAI(req.body || {});
+      return res.json({ success: true, refined });
+    } catch (error: any) {
+      console.error('Error refining problem statement:', error);
+      return res.status(500).json({
+        success: false,
+        error: error?.message || 'Could not refine wording at this time.'
+      });
+    }
+  });
+
   // POST /api/copilot/chat
   app.post('/api/copilot/chat', async (req, res) => {
     try {
@@ -73,32 +117,21 @@ async function startServer() {
     }
   });
 
-  // POST /api/courses/generate - Provider-agnostic course generation
+  // POST /api/courses/generate - Provider-agnostic course generation (strict error reporting, no silent fallback)
   app.post('/api/courses/generate', async (req, res) => {
     try {
       const { course, provider, model } = req.body;
       if (!course) {
-        return res.status(400).json({ error: 'Missing course data in request body.' });
+        return res.status(400).json({ success: false, error: 'Missing course data in request body.' });
       }
 
       const result = await generateCourseWithAIEngine(course, provider, model);
       return res.json(result);
     } catch (error: any) {
-      console.error('Error generating course:', error);
-      const fallback = req.body?.course ? generateLocalFallbackCourse(req.body.course) : null;
-      if (fallback) {
-        fallback.generationMetadata = {
-          provider: 'local_fallback',
-          providerDisplayName: 'Local Fallback Engine',
-          model: 'local-framework-v9',
-          generatedAt: new Date().toISOString(),
-          fallbackUsed: true,
-          fallbackReason: error?.message || 'Server error generating course'
-        };
-      }
+      console.error('Error generating course with AI:', error);
       return res.status(500).json({
-        error: error?.message || 'Failed to generate course',
-        fallback
+        success: false,
+        error: error?.message || 'AI course generation failed. Please check your connection or selected AI model and try again.'
       });
     }
   });
