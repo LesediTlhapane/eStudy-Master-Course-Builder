@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Course } from '../types';
 import { BrandLogo } from './BrandLogo';
-import { Download, Upload, RotateCcw, X, ShieldCheck, Sparkles, CheckCircle2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Download, Upload, RotateCcw, X, ShieldCheck } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -19,48 +19,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onImportCourses
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [backendStatus, setBackendStatus] = useState<{
-    checked: boolean;
-    online: boolean;
-    hasKey: boolean;
-    platform?: string;
-    message?: string;
-  }>({ checked: false, online: false, hasKey: false });
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let isMounted = true;
-    fetch('/api/health')
-      .then(res => {
-        if (!res.ok) throw new Error('Not OK');
-        return res.json();
-      })
-      .then(data => {
-        if (!isMounted) return;
-        setBackendStatus({
-          checked: true,
-          online: true,
-          hasKey: Boolean(data.hasGroqKey),
-          platform: data.platform || 'API Server',
-          message: data.message
-        });
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setBackendStatus({
-          checked: true,
-          online: false,
-          hasKey: false,
-          platform: 'Client Resilient Engine',
-          message: 'Client-side fallback engine active. All chatbot & course authoring features work directly in the browser.'
-        });
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -193,41 +151,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
             </button>
-          </div>
-        </div>
-
-        {/* AI Backend & Vercel Diagnostics */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#45CC42]" />
-              <h4 className="text-xs font-bold text-[#052B66]">
-                AI Copilot & Vercel Status
-              </h4>
-            </div>
-            {backendStatus.checked && (
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                backendStatus.online && backendStatus.hasKey
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-800'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  backendStatus.online && backendStatus.hasKey ? 'bg-emerald-500' : 'bg-amber-500'
-                }`}></span>
-                {backendStatus.online && backendStatus.hasKey ? 'Live Groq Active' : 'Resilient Engine Active'}
-              </span>
-            )}
-          </div>
-
-          <div className="text-[11px] text-slate-600 space-y-1">
-            <p>
-              {backendStatus.hasKey
-                ? '✓ Groq Cloud API key(s) detected and operational with automatic rate-limit failover.'
-                : '⚡ The AI chatbot has built-in offline intelligence for all 9 course sections, curriculum generation, and QA reviews.'}
-            </p>
-            <p className="text-slate-500">
-              <strong>Hosting on Vercel?</strong> Serverless functions are enabled in <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">/api</code>. To enable live Groq LLM on Vercel, add <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">GROQ_API_KEY</code> (and optional <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">GROQ_API_KEY_2</code>) under <em>Project Settings → Environment Variables</em> and redeploy.
-            </p>
           </div>
         </div>
 
