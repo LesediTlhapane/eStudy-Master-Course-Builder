@@ -35,7 +35,7 @@ export interface LocalCopilotResponse {
   isLocalFallback?: boolean;
 }
 
-// Fallback high-fidelity course generator when Gemini API key is missing or offline
+// Fallback high-fidelity course generator when Groq API is unavailable or offline
 export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
   const p = course.problem;
   const s = course.structure;
@@ -570,8 +570,8 @@ export function generateComprehensiveCoursePatch(
         ? 'ECSA Professional Engineering Standards; OHS Act 85 of 1993 Driven Machinery & Pressure Equipment Regulations; SANS/ISO 9001 Quality Management.'
         : 'POPIA Act No. 4 of 2013; King IV Corporate Governance Code; National Qualifications Framework (NQF) Act 67 of 2008.',
       aiToolsPlatformName: isMechanicalOrEngineering
-        ? 'Autodesk Fusion Generative Design, ANSYS SimAI, Siemens Senseye Predictive Maintenance, MATLAB Predictive Maintenance Toolbox, and Enterprise LLM Assistants (Copilot / Gemini / Claude for Engineering Docs)'
-        : 'Enterprise Generative AI Assistants (Microsoft Copilot, Google Gemini Enterprise) & Domain Workflow Simulators',
+        ? 'Autodesk Fusion Generative Design, ANSYS SimAI, Siemens Senseye Predictive Maintenance, MATLAB Predictive Maintenance Toolbox, and Enterprise LLM Assistants (Groq Cloud / Copilot for Engineering Docs)'
+        : 'Enterprise Generative AI Assistants (Groq Cloud / Microsoft Copilot) & Domain Workflow Simulators',
       aiToolsReferenced: isMechanicalOrEngineering
         ? 'ANSYS SimAI, Autodesk Generative Design, Python/MATLAB anomaly detection, Enterprise AI technical documentation assistants'
         : 'Enterprise LLM workspace assistants, structured prompt templates, and automated quality-check tools',

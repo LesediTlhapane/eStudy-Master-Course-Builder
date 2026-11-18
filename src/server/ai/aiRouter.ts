@@ -1,6 +1,5 @@
 import { AIProvider, AIModelMeta } from '../../types';
 import { AIProviderAdapter, AIRequest, AIResponse } from './types';
-import { geminiProvider } from './geminiProvider';
 import { groqProvider } from './groqProvider';
 import { getDefaultModelForProvider, getModelMeta } from './modelRegistry';
 
@@ -8,7 +7,6 @@ class AIRouter {
   private adapters: Map<AIProvider, AIProviderAdapter> = new Map();
 
   constructor() {
-    this.registerAdapter(geminiProvider);
     this.registerAdapter(groqProvider);
   }
 
@@ -30,7 +28,7 @@ class AIRouter {
   }
 
   public async execute(request: AIRequest): Promise<AIResponse> {
-    const provider = request.provider || 'gemini';
+    const provider: AIProvider = 'groq';
     const adapter = this.getAdapter(provider);
 
     // Resolve model if not provided or empty

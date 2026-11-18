@@ -23,29 +23,27 @@ async function startServer() {
     const keys = checkKeysConfigured();
     res.json({
       status: 'ok',
-      service: 'eStudy Course Builder Provider-Agnostic AI Backend',
+      service: 'eStudy Course Builder Groq AI Backend',
       version: '9.0',
-      hasGeminiKey: keys.gemini,
       hasGroqKey: keys.groq,
-      providers: ['gemini', 'groq']
+      groqKeyCount: keys.groqKeyCount,
+      providers: ['groq']
     });
   });
 
-  // GET /api/ai/models - Returns registry of supported AI models per provider and key status
+  // GET /api/ai/models - Returns registry of supported Groq AI models and key status
   app.get('/api/ai/models', async (req, res) => {
     const keys = checkKeysConfigured();
     const task = (req.query.task as any) || undefined;
-    const provider = (req.query.provider as any) || undefined;
-    const models = getRegisteredModels(provider, task);
+    const models = getRegisteredModels('groq', task);
 
     res.json({
       providers: [
-        { id: 'gemini', name: 'Google Gemini', isConfigured: keys.gemini },
-        { id: 'groq', name: 'Groq Cloud', isConfigured: keys.groq }
+        { id: 'groq', name: 'Groq Cloud', isConfigured: keys.groq, keyCount: keys.groqKeyCount }
       ],
       models,
       keysConfigured: keys,
-      defaultProvider: keys.gemini ? 'gemini' : (keys.groq ? 'groq' : 'gemini')
+      defaultProvider: 'groq'
     });
   });
 

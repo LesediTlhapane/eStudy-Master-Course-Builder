@@ -32,7 +32,7 @@ export const TemplateUploadModal: React.FC<TemplateUploadModalProps> = ({
   isOpen,
   onClose,
   existingCourse,
-  selectedProvider = 'gemini',
+  selectedProvider = 'groq',
   selectedModel,
   onApplyExtractedCourse,
   defaultCreateNew = true

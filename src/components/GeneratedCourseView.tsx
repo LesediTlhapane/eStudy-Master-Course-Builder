@@ -106,8 +106,13 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   const handleRegeneratePart = async (partType: string, targetId: string, moduleId?: string) => {
     setIsRegenerating(targetId);
     try {
-      const activeProvider = selectedProvider || (generatedCourse.generationMetadata?.provider === 'groq' ? 'groq' : 'gemini');
-      const activeModel = selectedModel || generatedCourse.generationMetadata?.model || (activeProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.8-flash');
+      const activeProvider: AIProvider = 'groq';
+      const activeModel =
+        (selectedModel && !selectedModel.toLowerCase().includes('gemini') ? selectedModel : undefined) ||
+        (generatedCourse.generationMetadata?.model && !generatedCourse.generationMetadata.model.toLowerCase().includes('gemini')
+          ? generatedCourse.generationMetadata.model
+          : undefined) ||
+        'openai/gpt-oss-120b';
 
       // Send granular regeneration request to server or run local refinement
       const res = await fetch('/api/courses/regenerate-part', {
@@ -423,7 +428,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">AI Provider & Model</span>
                 <span className="font-extrabold text-[#052B66]">
-                  {generatedCourse.generationMetadata?.providerDisplayName || (generatedCourse.generationMetadata?.provider === 'groq' ? 'Groq Cloud' : 'Google Gemini')} · <span className="font-mono">{generatedCourse.generationMetadata?.modelDisplayName || generatedCourse.generationMetadata?.model || 'gemini-3.8-flash'}</span>
+                  {generatedCourse.generationMetadata?.providerDisplayName || 'Groq Cloud'} · <span className="font-mono">{generatedCourse.generationMetadata?.modelDisplayName || generatedCourse.generationMetadata?.model || 'openai/gpt-oss-120b'}</span>
                 </span>
               </div>
             </div>

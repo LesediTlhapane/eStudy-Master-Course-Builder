@@ -1,61 +1,6 @@
 import { AIProvider, AIModelMeta } from '../types';
 
 export const CLIENT_MODEL_REGISTRY: AIModelMeta[] = [
-  // --- Google Gemini Models ---
-  {
-    id: 'gemini-3.8-flash',
-    provider: 'gemini',
-    displayName: 'Gemini 3.8 Flash',
-    description: 'High-throughput multimodal model optimized for speed, structured JSON generation, and complex instructional design.',
-    contextWindow: 1048576,
-    capabilities: {
-      structuredOutput: true,
-      jsonMode: true,
-      longContext: true,
-      reasoning: true,
-      fastInference: true
-    },
-    enabledForCourseGeneration: true,
-    enabledForCopilot: true,
-    enabledForRegeneration: true,
-    isDefault: true,
-    recommendedBadge: 'Recommended (Gemini Default)'
-  },
-  {
-    id: 'gemini-3.1-flash-lite',
-    provider: 'gemini',
-    displayName: 'Gemini 3.1 Flash Lite',
-    description: 'Ultra-low latency model ideal for rapid inline Copilot feedback and micro-lesson regeneration.',
-    contextWindow: 1048576,
-    capabilities: {
-      structuredOutput: true,
-      jsonMode: true,
-      longContext: true,
-      reasoning: false,
-      fastInference: true
-    },
-    enabledForCourseGeneration: true,
-    enabledForCopilot: true,
-    enabledForRegeneration: true
-  },
-  {
-    id: 'gemini-3.1-pro-preview',
-    provider: 'gemini',
-    displayName: 'Gemini 3.1 Pro Preview',
-    description: 'Advanced reasoning model for complex statutory compliance analysis and advanced technical curricula.',
-    contextWindow: 2097152,
-    capabilities: {
-      structuredOutput: true,
-      jsonMode: true,
-      longContext: true,
-      reasoning: true,
-      fastInference: false
-    },
-    enabledForCourseGeneration: true,
-    enabledForCopilot: true,
-    enabledForRegeneration: true
-  },
-
   // --- Groq Models (OpenAI-compatible low-latency inference on Groq LPUs) ---
   {
     id: 'openai/gpt-oss-120b',
@@ -166,5 +111,5 @@ export function getDefaultModel(
   const models = getClientModels(provider, task);
   const def = models.find(m => m.isDefault);
   if (def) return def.id;
-  return models[0]?.id || (provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-3.8-flash');
+  return models[0]?.id || 'openai/gpt-oss-120b';
 }

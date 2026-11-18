@@ -98,12 +98,12 @@ function deepMergePatch<T extends Record<string, any>>(base: T, override: any): 
 export async function processAIAssistedCopilotChat(
   payload: CopilotChatPayload
 ): Promise<CopilotChatResponse> {
-  const provider: AIProvider = payload.provider === 'groq' ? 'groq' : 'gemini';
+  const provider: AIProvider = 'groq';
   // For Groq Copilot template building, use the fast 20B model bucket so we preserve 120B/70B TPM rate-limit quota for full Course Generation
   const model =
-    provider === 'groq'
-      ? 'openai/gpt-oss-20b'
-      : payload.model || getDefaultModelForProvider(provider, 'copilot');
+    payload.model && !payload.model.toLowerCase().includes('gemini')
+      ? payload.model
+      : 'openai/gpt-oss-20b';
 
   const { messages, currentCourse, activeSection = '01', qaResult } = payload;
   const lastUserMsg = (messages[messages.length - 1]?.content || '').trim();

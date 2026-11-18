@@ -601,7 +601,7 @@ export const Section02Sources: React.FC<Section02SourcesProps> = ({
               label="AI Tools or Platforms Used in This Domain [INSERT]"
               value={research.aiToolsReferenced || ''}
               onChange={val => handleResearchFieldChange('aiToolsReferenced', val)}
-              placeholder="e.g. Microsoft Copilot, ChatGPT Enterprise, Google Gemini Workspace, SAP Business AI"
+              placeholder="e.g. Microsoft Copilot, Groq Cloud, ChatGPT Enterprise, SAP Business AI"
               multiline
               rows={2}
               flaggedNote={flagged['research.aiToolsReferenced']}

@@ -121,8 +121,8 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   activeSection,
   view,
   qaResult,
-  selectedProvider = 'gemini',
-  selectedModel = 'gemini-3.8-flash',
+  selectedProvider = 'groq',
+  selectedModel = 'openai/gpt-oss-120b',
   onSelectProvider,
   onSelectModel,
   onUpdateCourse,
@@ -551,7 +551,7 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
                 <Cpu className="w-3.5 h-3.5 text-[#45CC42]" />
                 <span className="text-slate-400">Engine:</span>
                 <select
-                  value={selectedProvider}
+                  value="groq"
                   onChange={(e) => {
                     const p = e.target.value as AIProvider;
                     if (onSelectProvider) onSelectProvider(p);
@@ -559,7 +559,6 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
                   }}
                   className="bg-transparent text-white font-bold cursor-pointer border-0 p-0 text-[11px] focus:ring-0"
                 >
-                  <option value="gemini" className="bg-slate-900 text-white">Google Gemini</option>
                   <option value="groq" className="bg-slate-900 text-white">Groq Cloud</option>
                 </select>
               </div>

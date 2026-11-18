@@ -47,8 +47,8 @@ export type PreviewDisplayMode = 'document' | 'raw' | 'markdown';
 
 export const PromptPreview: React.FC<PromptPreviewProps> = ({
   course: rawCourse,
-  selectedProvider = 'gemini',
-  selectedModel = 'gemini-3.8-flash',
+  selectedProvider = 'groq',
+  selectedModel = 'openai/gpt-oss-120b',
   onSelectProvider,
   onSelectModel,
   onReturnToBuilder,
@@ -342,7 +342,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                   <Cpu className="w-3.5 h-3.5 text-[#052B66]" />
                   <span className="font-bold text-slate-700">AI Provider:</span>
                   <select
-                    value={selectedProvider}
+                    value="groq"
                     onChange={(e) => {
                       const newP = e.target.value as AIProvider;
                       if (onSelectProvider) onSelectProvider(newP);
@@ -350,7 +350,6 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                     }}
                     className="font-bold text-[#052B66] bg-transparent border-0 cursor-pointer focus:ring-0 text-xs"
                   >
-                    <option value="gemini">Google Gemini</option>
                     <option value="groq">Groq Cloud</option>
                   </select>
                 </div>
@@ -392,7 +391,7 @@ export const PromptPreview: React.FC<PromptPreviewProps> = ({
                   className="px-4 py-2.5 rounded-xl text-xs font-extrabold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-[#052B66]" />
-                  <span>Generate with {selectedProvider === 'groq' ? 'Groq' : 'Gemini'}</span>
+                  <span>Generate with Groq</span>
                 </button>
               )}
 

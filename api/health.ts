@@ -1,3 +1,5 @@
+import { checkKeysConfigured } from '../src/server/ai';
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,21 +14,19 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const hasGeminiKey = Boolean(
-    process.env.GEMINI_API_KEY && 
-    process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY' &&
-    process.env.GEMINI_API_KEY.trim().length > 5
-  );
+  const keys = checkKeysConfigured();
 
   res.status(200).json({
     status: 'ok',
-    service: 'eStudy Course Builder AI Backend',
+    service: 'eStudy Course Builder Groq AI Backend',
     platform: 'Vercel Serverless Function',
     version: '9.0',
-    hasGeminiKey,
+    hasGroqKey: keys.groq,
+    groqKeyCount: keys.groqKeyCount,
+    providers: ['groq'],
     nodeEnv: process.env.NODE_ENV || 'production',
-    message: hasGeminiKey 
-      ? 'Gemini Live API is configured and operational.' 
-      : 'Running in fallback engine mode. Add GEMINI_API_KEY in Vercel Project Settings > Environment Variables for live LLM capabilities.'
+    message: keys.groq
+      ? `Groq Cloud API is configured (${keys.groqKeyCount} key${keys.groqKeyCount === 1 ? '' : 's'}) and operational.`
+      : 'Running in fallback engine mode. Add GROQ_API_KEY in Vercel Project Settings > Environment Variables for live LLM capabilities.'
   });
 }

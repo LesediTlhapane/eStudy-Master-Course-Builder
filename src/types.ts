@@ -533,7 +533,7 @@ export interface GeneratedCourseQA {
   popiaCompliant: boolean;
 }
 
-export type AIProvider = 'gemini' | 'groq';
+export type AIProvider = 'groq';
 
 export interface AIModelCapability {
   structuredOutput: boolean;

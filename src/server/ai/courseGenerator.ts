@@ -18,8 +18,12 @@ export async function generateCourseWithAIEngine(
 ): Promise<CourseGenerationResult> {
   const startTime = Date.now();
   const course = sanitizeCourse(rawCourse);
-  const provider: AIProvider = providerInput === 'groq' ? 'groq' : 'gemini';
-  const model: string = modelInput?.trim() || getDefaultModelForProvider(provider, 'course_generation');
+  const provider: AIProvider = 'groq';
+  const requestedModel = modelInput?.trim();
+  const model: string =
+    requestedModel && !requestedModel.toLowerCase().includes('gemini')
+      ? requestedModel
+      : getDefaultModelForProvider(provider, 'course_generation');
   const modelInfo = getModelMeta(provider, model);
 
   // Validate core compulsory fields before calling the AI service
@@ -75,21 +79,21 @@ STRICT GROUNDING & QUALITY RULES (NON-NEGOTIABLE):
   });
 
   if (!aiResponse.text || aiResponse.text.trim().length < 100) {
-    throw new Error(`The ${provider === 'groq' ? 'Groq' : 'Google Gemini'} API returned an empty or incomplete response.`);
+    throw new Error('The Groq Cloud API returned an empty or incomplete response.');
   }
 
   const parsedJson = extractAndParseJSON(aiResponse.text);
   if (!parsedJson || typeof parsedJson !== 'object') {
     throw new Error(
-      `The AI provider (${provider === 'groq' ? 'Groq' : 'Google Gemini'} - ${model}) returned invalid JSON that could not be parsed. Please retry generation or select another model.`
+      `The AI provider (Groq Cloud - ${model}) returned invalid JSON that could not be parsed. Please retry generation or select another Groq model.`
     );
   }
 
   const metadata: GenerationMetadata = {
     provider,
-    providerDisplayName: provider === 'groq' ? 'Groq Cloud' : 'Google Gemini',
-    model,
-    modelDisplayName: modelInfo?.displayName || model,
+    providerDisplayName: 'Groq Cloud',
+    model: aiResponse.model || model,
+    modelDisplayName: modelInfo?.displayName || aiResponse.model || model,
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
     fallbackUsed: false,

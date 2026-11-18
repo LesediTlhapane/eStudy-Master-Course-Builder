@@ -41,7 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setBackendStatus({
           checked: true,
           online: true,
-          hasKey: Boolean(data.hasGeminiKey),
+          hasKey: Boolean(data.hasGroqKey),
           platform: data.platform || 'API Server',
           message: data.message
         });
@@ -214,7 +214,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className={`w-1.5 h-1.5 rounded-full ${
                   backendStatus.online && backendStatus.hasKey ? 'bg-emerald-500' : 'bg-amber-500'
                 }`}></span>
-                {backendStatus.online && backendStatus.hasKey ? 'Live Gemini Active' : 'Resilient Engine Active'}
+                {backendStatus.online && backendStatus.hasKey ? 'Live Groq Active' : 'Resilient Engine Active'}
               </span>
             )}
           </div>
@@ -222,11 +222,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="text-[11px] text-slate-600 space-y-1">
             <p>
               {backendStatus.hasKey
-                ? '✓ Gemini 3.8 Flash API key detected and functional.'
+                ? '✓ Groq Cloud API key(s) detected and operational with automatic rate-limit failover.'
                 : '⚡ The AI chatbot has built-in offline intelligence for all 9 course sections, curriculum generation, and QA reviews.'}
             </p>
             <p className="text-slate-500">
-              <strong>Hosting on Vercel?</strong> Serverless functions are enabled in <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">/api</code>. To enable live Gemini LLM on Vercel, add <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">GEMINI_API_KEY</code> under <em>Project Settings → Environment Variables</em> and redeploy.
+              <strong>Hosting on Vercel?</strong> Serverless functions are enabled in <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">/api</code>. To enable live Groq LLM on Vercel, add <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">GROQ_API_KEY</code> (and optional <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono text-[10px]">GROQ_API_KEY_2</code>) under <em>Project Settings → Environment Variables</em> and redeploy.
             </p>
           </div>
         </div>

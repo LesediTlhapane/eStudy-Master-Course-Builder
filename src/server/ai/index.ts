@@ -1,7 +1,6 @@
 export * from './types';
 export * from './modelRegistry';
 export * from './aiRouter';
-export * from './geminiProvider';
 export * from './groqProvider';
 export * from './courseValidator';
 export * from './granularRegenerator';

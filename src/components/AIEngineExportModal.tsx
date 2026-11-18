@@ -258,7 +258,7 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
             }`}
           >
             <Zap className="w-4 h-4 text-[#45CC42]" />
-            <span>1. Direct AI Generation (Gemini & Groq)</span>
+            <span>1. Direct AI Generation (Groq Cloud)</span>
           </button>
 
           <button
@@ -309,7 +309,7 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                 <div className="text-right">
                   <span className="text-[11px] text-slate-300 block">Selected Engine:</span>
                   <span className="text-xs font-bold text-[#45CC42]">
-                    {selectedProvider === 'groq' ? 'Groq Cloud' : 'Google Gemini'} · {currentModelMeta?.displayName || selectedModel}
+                    Groq Cloud · {currentModelMeta?.displayName || selectedModel}
                   </span>
                 </div>
               </div>
@@ -317,7 +317,7 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-5">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#052B66]">
                   <Sliders className="w-4 h-4 text-[#45CC42]" />
-                  <span>AI Engine & Model Configuration</span>
+                  <span>Groq Cloud Engine & Model Configuration</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -325,44 +325,18 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                     <label className="text-xs font-bold text-slate-700 block">
                       AI Provider:
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleProviderChange('gemini')}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          selectedProvider === 'gemini'
-                            ? 'border-[#052B66] bg-blue-50/80 ring-2 ring-[#052B66]/20'
-                            : 'border-slate-200 bg-white hover:bg-slate-100/60'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-extrabold text-[#052B66]">Google Gemini</span>
-                          {selectedProvider === 'gemini' && <Check className="w-3.5 h-3.5 text-[#052B66] stroke-[3]" />}
-                        </div>
-                        <span className="text-[10px] text-slate-500">1M Token Context, Fast</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleProviderChange('groq')}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          selectedProvider === 'groq'
-                            ? 'border-[#052B66] bg-orange-50/80 ring-2 ring-[#052B66]/20'
-                            : 'border-slate-200 bg-white hover:bg-slate-100/60'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-extrabold text-[#EA580C]">Groq Cloud</span>
-                          {selectedProvider === 'groq' && <Check className="w-3.5 h-3.5 text-[#EA580C] stroke-[3]" />}
-                        </div>
-                        <span className="text-[10px] text-slate-500">LPU Ultra-Low Latency</span>
-                      </button>
+                    <div className="p-3 rounded-xl border border-[#052B66] bg-orange-50/80 ring-2 ring-[#052B66]/20 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-[#EA580C]">Groq Cloud</span>
+                        <Check className="w-3.5 h-3.5 text-[#EA580C] stroke-[3]" />
+                      </div>
+                      <span className="text-[10px] text-slate-500">LPU Ultra-Low Latency · Auto Key Failover</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-700 block">
-                      AI Model ({selectedProvider === 'groq' ? 'Groq Models' : 'Gemini Models'}):
+                      AI Model (Groq Models):
                     </label>
                     <select
                       value={selectedModel}

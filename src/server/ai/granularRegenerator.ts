@@ -20,7 +20,7 @@ export async function executeGranularRegeneration(
   partType: string,
   targetId: string,
   currentGeneratedCourse?: GeneratedCourse,
-  provider: AIProvider = 'gemini',
+  provider: AIProvider = 'groq',
   model?: string
 ): Promise<GranularRegenerationResult> {
   const startTime = Date.now();
@@ -463,9 +463,9 @@ Return a JSON object matching this schema:
 
   // Update generation metadata to record the granular change
   updatedCourse.generationMetadata = {
-    provider: fallbackUsed ? 'local_fallback' : provider,
-    providerDisplayName: fallbackUsed ? 'Local Fallback Engine' : (provider === 'groq' ? 'Groq Cloud' : 'Google Gemini'),
-    model: model || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.8-flash'),
+    provider: fallbackUsed ? 'local_fallback' : 'groq',
+    providerDisplayName: fallbackUsed ? 'Local Fallback Engine' : 'Groq Cloud',
+    model: model && !model.toLowerCase().includes('gemini') ? model : 'llama-3.3-70b-versatile',
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
     fallbackUsed,

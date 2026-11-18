@@ -156,29 +156,30 @@ export function useCourseStore(): UseCourseStoreReturn {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
 
-  // Provider-agnostic AI engine selection state
+  // Groq Cloud AI engine selection state
   const [selectedAIProvider, setSelectedAIProviderState] = useState<AIProvider>(() => {
     try {
-      const saved = localStorage.getItem(AI_PROVIDER_KEY);
-      if (saved === 'groq' || saved === 'gemini') return saved;
+      localStorage.setItem(AI_PROVIDER_KEY, 'groq');
     } catch (e) {}
-    return 'gemini';
+    return 'groq';
   });
 
   const [selectedAIModel, setSelectedAIModelState] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(AI_MODEL_KEY);
-      if (saved && saved.trim()) return saved;
+      if (saved && saved.trim() && !saved.toLowerCase().includes('gemini')) {
+        return saved;
+      }
     } catch (e) {}
-    return 'gemini-3.8-flash';
+    return 'openai/gpt-oss-120b';
   });
 
-  const setAIProvider = useCallback((provider: AIProvider) => {
-    setSelectedAIProviderState(provider);
-    const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-3.8-flash';
+  const setAIProvider = useCallback((_provider: AIProvider) => {
+    setSelectedAIProviderState('groq');
+    const defaultModel = 'openai/gpt-oss-120b';
     setSelectedAIModelState(defaultModel);
     try {
-      localStorage.setItem(AI_PROVIDER_KEY, provider);
+      localStorage.setItem(AI_PROVIDER_KEY, 'groq');
       localStorage.setItem(AI_MODEL_KEY, defaultModel);
     } catch (e) {}
   }, []);
@@ -454,20 +455,18 @@ export function useCourseStore(): UseCourseStoreReturn {
     }
   }, []);
 
-  const startAIGeneration = useCallback((provider?: AIProvider, model?: string) => {
-    if (provider) {
-      setSelectedAIProviderState(provider);
-      try {
-        localStorage.setItem(AI_PROVIDER_KEY, provider);
-      } catch (e) {}
-    }
-    if (model) {
+  const startAIGeneration = useCallback((_provider?: AIProvider, model?: string) => {
+    setSelectedAIProviderState('groq');
+    try {
+      localStorage.setItem(AI_PROVIDER_KEY, 'groq');
+    } catch (e) {}
+    if (model && !model.toLowerCase().includes('gemini')) {
       setSelectedAIModelState(model);
       try {
         localStorage.setItem(AI_MODEL_KEY, model);
       } catch (e) {}
-    } else if (provider) {
-      const defaultModel = provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-3.8-flash';
+    } else {
+      const defaultModel = 'openai/gpt-oss-120b';
       setSelectedAIModelState(defaultModel);
       try {
         localStorage.setItem(AI_MODEL_KEY, defaultModel);

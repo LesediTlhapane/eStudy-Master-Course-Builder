@@ -1,5 +1,4 @@
 import zlib from 'zlib';
-import { GoogleGenAI } from '@google/genai';
 import { AIProvider, Course } from '../../types';
 import { aiRouter } from './aiRouter';
 import { extractAndParseJSON } from './courseValidator';
@@ -332,7 +331,7 @@ function countPopulatedStrings(obj: any): number {
 export async function extractCourseFieldsFromDocument(
   req: TemplateExtractionRequest
 ): Promise<TemplateExtractionResult> {
-  const { fileName, mimeType, base64Data, rawText, provider = 'gemini', model } = req;
+  const { fileName, mimeType, base64Data, rawText, model } = req;
 
   let extractedDocumentText = (rawText || '').trim();
   const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
@@ -351,59 +350,30 @@ export async function extractCourseFieldsFromDocument(
     }
   }
 
-  let aiJsonText = '';
-
-  // If PDF and Gemini key is available, use Gemini multimodal native PDF understanding for highest accuracy
-  if (isPdf && base64Data && process.env.GEMINI_API_KEY && (provider === 'gemini' || !extractedDocumentText)) {
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const targetModel = model && model.startsWith('gemini') ? model : 'gemini-2.5-flash';
-    const response = await ai.models.generateContent({
-      model: targetModel,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'application/pdf',
-                data: base64Data
-              }
-            },
-            {
-              text: `Read the attached PDF document ("${fileName}") and extract only explicitly stated course information into the eStudy Master Course Template v9.0 JSON structure. Leave any unestablished fields empty ("").`
-            }
-          ]
-        }
-      ],
-      config: {
-        systemInstruction: EXTRACTION_SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        temperature: 0.1
-      }
-    });
-    aiJsonText = response.text || '';
-  } else {
-    if (!extractedDocumentText || extractedDocumentText.length < 15) {
-      throw new Error(
-        `Could not extract readable text from "${fileName}". Please upload a text-based PDF, DOCX, TXT, or Markdown document.`
-      );
-    }
-
-    const activeProvider: AIProvider = provider === 'groq' ? 'groq' : 'gemini';
-    const activeModel = model?.trim() || getDefaultModelForProvider(activeProvider, 'copilot');
-
-    const aiResponse = await aiRouter.execute({
-      provider: activeProvider,
-      model: activeModel,
-      systemInstruction: EXTRACTION_SYSTEM_PROMPT,
-      prompt: `Uploaded Document Filename: "${fileName}"\n\nDocument Content:\n"""\n${extractedDocumentText.slice(0, 45000)}\n"""\n\nExtract only explicitly supported fields into the JSON structure.`,
-      responseFormat: 'json',
-      temperature: 0.1,
-      maxTokens: 4096,
-      timeoutMs: 45000
-    });
-    aiJsonText = aiResponse.text;
+  if (!extractedDocumentText || extractedDocumentText.length < 15) {
+    throw new Error(
+      `Could not extract readable text from "${fileName}". Please upload a text-based PDF, DOCX, TXT, or Markdown document.`
+    );
   }
+
+  const activeProvider: AIProvider = 'groq';
+  const requestedModel = model?.trim();
+  const activeModel =
+    requestedModel && !requestedModel.toLowerCase().includes('gemini')
+      ? requestedModel
+      : getDefaultModelForProvider(activeProvider, 'copilot');
+
+  const aiResponse = await aiRouter.execute({
+    provider: activeProvider,
+    model: activeModel,
+    systemInstruction: EXTRACTION_SYSTEM_PROMPT,
+    prompt: `Uploaded Document Filename: "${fileName}"\n\nDocument Content:\n"""\n${extractedDocumentText.slice(0, 45000)}\n"""\n\nExtract only explicitly supported fields into the JSON structure.`,
+    responseFormat: 'json',
+    temperature: 0.1,
+    maxTokens: 4096,
+    timeoutMs: 45000
+  });
+  const aiJsonText = aiResponse.text;
 
   const parsed = extractAndParseJSON(aiJsonText);
   if (!parsed || typeof parsed !== 'object') {
@@ -449,8 +419,12 @@ export async function refineProblemStatementWithAI(params: {
   skillGaps?: string;
   constraints?: string;
 }> {
-  const provider: AIProvider = params.provider === 'groq' ? 'groq' : 'gemini';
-  const model = params.model?.trim() || getDefaultModelForProvider(provider, 'copilot');
+  const provider: AIProvider = 'groq';
+  const requestedModel = params.model?.trim();
+  const model =
+    requestedModel && !requestedModel.toLowerCase().includes('gemini')
+      ? requestedModel
+      : getDefaultModelForProvider(provider, 'copilot');
 
   const systemInstruction = `You are eStudy South Africa's Senior Instructional Designer.
 Improve the clarity, grammar, and professional South African English phrasing of the user's Problem Statement inputs so they fit cleanly into the official eStudy formula:

@@ -16,16 +16,14 @@ export default async function handler(req: any, res: any) {
 
   const keys = checkKeysConfigured();
   const task = (req.query?.task as any) || undefined;
-  const provider = (req.query?.provider as any) || undefined;
-  const models = getRegisteredModels(provider, task);
+  const models = getRegisteredModels('groq', task);
 
   res.status(200).json({
     providers: [
-      { id: 'gemini', name: 'Google Gemini', isConfigured: keys.gemini },
-      { id: 'groq', name: 'Groq Cloud', isConfigured: keys.groq }
+      { id: 'groq', name: 'Groq Cloud', isConfigured: keys.groq, keyCount: keys.groqKeyCount }
     ],
     models,
     keysConfigured: keys,
-    defaultProvider: keys.gemini ? 'gemini' : (keys.groq ? 'groq' : 'gemini')
+    defaultProvider: 'groq'
   });
 }
