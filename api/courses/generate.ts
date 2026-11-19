@@ -1,5 +1,5 @@
-import { generateCourseWithAIEngine } from '../../src/server/ai';
-import { generateLocalFallbackCourse } from '../../src/utils/localCourseEngine';
+import { generateCourseWithAIEngine } from '../../src/server/ai/index.js';
+import { generateLocalFallbackCourse } from '../../src/utils/localCourseEngine.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');

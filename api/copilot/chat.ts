@@ -1,5 +1,5 @@
-import { processAIAssistedCopilotChat } from '../../src/server/ai';
-import { processLocalCopilotChat } from '../../src/utils/localCourseEngine';
+import { processAIAssistedCopilotChat } from '../../src/server/ai/index.js';
+import { processLocalCopilotChat } from '../../src/utils/localCourseEngine.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');

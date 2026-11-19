@@ -1,4 +1,4 @@
-import { checkKeysConfigured } from '../src/server/ai';
+import { checkKeysConfigured } from '../src/server/ai/index.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');

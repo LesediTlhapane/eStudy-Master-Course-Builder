@@ -1,4 +1,4 @@
-import { executeGranularRegeneration } from '../../src/server/ai';
+import { executeGranularRegeneration } from '../../src/server/ai/index.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
