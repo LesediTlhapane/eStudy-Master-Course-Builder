@@ -94,7 +94,9 @@ export function generateMasterPrompt(course: Course | undefined | null): string 
             (src: any, i: number) => {
               let line = `${i + 1}. ${toSafeString(src.name, 'Source')} | Type: ${toSafeString(src.type, 'Standard')}${
                 toSafeString(src.reference) ? ` | Ref: ${toSafeString(src.reference)}` : ''
-              }${toSafeString(src.fileName) ? ` | File: ${toSafeString(src.fileName)}` : ''}${
+              } | User verification status: ${toSafeString(src.status, 'Not verified')}${
+                toSafeString(src.fileName) ? ` | File: ${toSafeString(src.fileName)}` : ''
+              }${
                 toSafeString(src.relevance) ? `\n   Relevance / Application: ${toSafeString(src.relevance)}` : ''
               }`;
               if (toSafeString(src.contentSnippet).length > 0) {
@@ -147,6 +149,7 @@ export function generateMasterPrompt(course: Course | undefined | null): string 
             const req: any = m.requirements || {};
             const scList = toSafeArray(req.scenarios).filter(Boolean);
             const aiScList = toSafeArray(req.aiScenarios).filter(Boolean);
+            const lessonPlan = toSafeArray(m.lessons).filter(Boolean);
 
             const scenariosText = scList.length > 0
               ? scList
@@ -176,6 +179,13 @@ export function generateMasterPrompt(course: Course | undefined | null): string 
 
             const keySkills = toSafeArray(m.keySkills).map(k => toSafeString(k)).filter(Boolean);
             const learningObjectives = toSafeArray(m.learningObjectives).map(lo => toSafeString(lo)).filter(Boolean);
+            const lessonPlanText = lessonPlan.length > 0
+              ? lessonPlan.map((lesson: any, lessonIdx: number) =>
+                  `   ${lessonIdx + 1}. ${toSafeString(lesson.title, 'Untitled lesson')}${
+                    toSafeString(lesson.concepts) ? ` — Concepts: ${toSafeString(lesson.concepts)}` : ''
+                  }`
+                ).join('\n')
+              : '   [No lesson count or title plan specified; design only what is needed for the objectives]';
 
             return `MODULE ${i + 1}: ${val(m.title, `Module ${i + 1}`)}
 Subtitle: ${val(m.subtitle, 'Competency & Practical Application')}
@@ -183,6 +193,8 @@ Purpose: ${val(m.purpose, 'Define module objective')}
 Key Skills Developed: ${keySkills.length > 0 ? keySkills.join(', ') : '[Not specified]'}
 Learning Objectives:
 ${learningObjectives.length > 0 ? learningObjectives.map((lo: string) => `• ${lo}`).join('\n') : '• [Learning objectives pending]'}
+Configured Lesson Plan (preserve titles and count where provided):
+${lessonPlanText}
 
 Requirements & Workplace Context:
 • Context & Problem: ${val(req.problemDefinition || req.workplaceContext, '[Context not specified]')}
@@ -249,21 +261,21 @@ COURSE METADATA:
 • Difficulty Level: ${val(s.difficultyLevel, 'Intermediate')}
 • AI Integration Level: ${val(s.aiIntegrationLevel, 'Applied')}
 • Delivery Format: ${val(s.deliveryFormat, 'Blended Digital Courseware with Interactive Scenarios')}
-• Applicable Standards: ${val(s.setaNqfLevel || r.regulatoryFramework, 'POPIA Act No. 4 of 2013 / NQF Aligned')}
+• Applicable Standards: ${val(s.setaNqfLevel || r.regulatoryFramework, '[Not specified; do not infer]')}
 
 ================================================================================
 EXECUTIVE INSTRUCTION FOR AI GENERATION ENGINE
 ================================================================================
-You are an expert instructional designer, curriculum developer, and AI learning architect for eStudy South Africa.
+You are an expert subject educator, curriculum developer, and instructional designer for eStudy South Africa.
 
-Generate a complete, structured, industry-ready training programme tailored specifically to the validated specifications below for:
+Generate a structured learning programme tailored specifically to the validated specifications below for:
 ${courseTitle}
 
-Ensure the generated course adheres to eStudy South Africa's instructional design standards (using South African English throughout):
-1. Scenario-driven and performance-focused (anchored in daily workplace realities).
-2. Fully compliant with South African regulatory frameworks (specifically POPIA data privacy and industry conduct standards).
-3. Structured with clear human oversight on all AI-augmented tasks.
-4. Directly deployable to an enterprise LMS (SCORM/xAPI compliant) with zero placeholders.
+Use South African English. Teach the actual subject, including foundational concepts, understandable definitions, relevant mechanisms, limitations, and progression to application. Make each lesson distinct, explain why and when knowledge is useful, and use specific examples relevant to the learners. Avoid generic corporate language, invented statistics, and repeated explanations.
+
+Use only user-provided module plans and verified source material as evidence. Apply legal, regulatory, privacy, and AI-governance material only when relevant to the subject and supported by an identified source. Do not invent legal duties, interpretations, citations, technical claims, accreditation, or outcomes. Mark claims requiring expert/source verification and do not present generated text as legal advice.
+
+Keep the configured course structure and fields. Prioritise educational value, source-grounded accuracy, usable activities, and objective-aligned assessments over length or page count.
 
 ================================================================================
 1. IDENTIFY PROBLEM / CHALLENGE / DEVELOPMENT AREA (SECTION 01)
@@ -284,7 +296,7 @@ ${rootCausesFormatted}
 1.3 AI-Specific Considerations:
 • AI Literacy Gap: ${val(p.aiLiteracyGap, 'Baseline AI literacy and understanding of automated tools in this domain')}
 • Data and Digital Readiness Level: ${val(p.digitalReadinessLevel, 'General enterprise productivity tools and digital literacy')}
-• Ethical or Compliance Risks Introduced by AI Use: ${val(p.aiEthicsComplianceRisk, 'Zero tolerance for PII leaks under South African POPIA Act 4 of 2013 and mandatory transparency')}
+• Ethical or Compliance Risks Introduced by AI Use: ${val(p.aiEthicsComplianceRisk, '[Not specified; assess only where relevant and source-supported]')}
 
 ================================================================================
 2. SOURCES OF INFORMATION (RESEARCH LAYER) (SECTION 02)
@@ -293,12 +305,12 @@ ${rootCausesFormatted}
 ${sourcesFormatted}
 
 2.2 Industry / Regulatory Sources:
-• Regulatory Framework: ${val(r.regulatoryFramework, 'POPIA Act No. 4 of 2013 / South African statutory workplace compliance')}
-• Benchmark Course / Standard: ${val(r.benchmarkCourseRef, 'eStudy South Africa Master Curriculum Benchmark Standard v9.0')}
+• Regulatory Framework: ${val(r.regulatoryFramework, '[Not specified; do not infer applicable legislation]')}
+• Benchmark Course / Standard: ${val(r.benchmarkCourseRef, '[Not specified]')}
 
 2.3 AI & Technology Sources:
 • AI Tools or Platforms Used in This Domain: ${val(r.aiToolsPlatformName, 'Standard enterprise generative AI and analytics platforms')}
-• Relevant AI Ethics Framework: ${val(r.aiEthicsFramework, 'King IV Principle 12 & POPIA Section 71 Automated Decision-Making Standards')}
+• Relevant AI Ethics Framework: ${val(r.aiEthicsFramework, '[Not specified]')}
 • Industry Case Studies or Use Cases: ${val(r.industryCaseStudies, '[Industry case studies not specified]')}
 
 Learner Profile and Environment:
@@ -372,9 +384,9 @@ ${assessmentsFormatted}
 6. ETHICAL AI, GOVERNANCE & HUMAN FACTORS (SECTION 06)
 ================================================================================
 6.1 Responsible AI Principles:
-• Data Protection & Privacy Safeguard (POPIA Act 4 of 2013): ${val(e.dataPrivacySafeguards, 'Strict prohibition of personal, proprietary, or customer PII in cloud AI prompts')}
-• Algorithmic Bias Mitigation & Fairness: ${val(e.biasMitigationPlan, 'Cross-demographic validation of AI decisions and explicit fairness auditing')}
-• Mandatory Human Oversight & Override Protocols: ${val(e.humanOversightNotes, 'Human-in-the-loop sign-off required for all final operational decisions and escalations')}
+• Data Protection & Privacy Safeguard (where applicable): ${val(e.dataPrivacySafeguards, '[Not specified; do not infer legal requirements]')}
+• Algorithmic Bias Mitigation & Fairness: ${val(e.biasMitigationPlan, '[Not specified]')}
+• Human Oversight & Override Protocols: ${val(e.humanOversightNotes, '[Not specified]')}
 
 6.2 Human Factors & Workplace Safety:
 • Confidentiality & Proprietary Information Safeguards: ${val(e.confidentialityRequirements, 'Synthetic test data utilised for all learning exercises; enterprise confidentiality rules enforced')}
@@ -386,9 +398,9 @@ ${ethicsCardsFormatted}
 ================================================================================
 7. COURSE OUTPUT REQUIREMENTS & ACCREDITATION (SECTION 07)
 ================================================================================
-• LMS Output Format: ${val(out.outputFormat, 'LMS-Ready SCORM / xAPI compliant digital courseware')}
-• Target Document Volume: 22 Pages Minimum to 30 Pages Maximum (~8,500 to 12,000 words of comprehensive textbook-grade instructional content; strictly never a brief 2-page summary)
-• Target Reading Level: ${val(out.accessibilityTargetReadingLevel, 'Plain language · NQF Level 4 / Grade 12 equivalent')}
+• LMS Output Format: ${val(out.outputFormat, 'Structured course content; confirm packaging and LMS compatibility before deployment')}
+• Preferred Course Length / Required Sections: ${val(out.requiredSectionsNote, '[No word-count target specified; use the scope, learner needs, and configured duration]')}
+• Target Reading Level: ${val(out.accessibilityTargetReadingLevel, 'Plain language appropriate to the configured learner level')}
 • 7.5 Accreditation & Standards Alignment:
   - SETA / QCTO Alignment: ${val(out.accreditationAlignment || s.setaNqfLevel, '[Not specified]')}
   - NQF Level: ${val(out.nqfLevel, '[Not specified]')}
@@ -396,25 +408,20 @@ ${ethicsCardsFormatted}
   - Qualification / Unit Standard ID: ${val(out.qualificationUnitStandardId, '[Not specified]')}
   - Assessment Moderation Requirements: ${val(out.moderationRequirements, '[Not specified]')}
 • Mandatory Structural Depth Per Course:
-  - 4 to 5 Complete Curriculum Modules
-  - 3 to 4 Multi-Section Lessons per Module (600–800 words per lesson covering: Theoretical & Operational Context, Core Principles, Step-by-Step Standard Operating Procedures, South African Statutory & POPIA Compliance, Worked Case Examples, and Quality Checklists)
-  - 4 Detailed Scenarios per Module (3 Realistic South African Workplace Scenarios + 1 AI Governance & Human-in-the-Loop Scenario)
-  - 5 Scenario-Based Knowledge Check MCQs per Module with comprehensive rationales
-  - 1 Practical Workplace Application Task per Module with weighted Evaluation Rubric
-  - 5 Pre-Course Diagnostic Questions + 10 Summative Final Exam Questions + Multi-Part Capstone Case Study
-• Mandatory Courseware Deliverables:
-  1. Complete 22–30 Page Participant & Facilitator Course Manual with scenario decision branches.
-  2. Printable 30-60-90 Day Workplace Action Plan.
-  3. Operational Rollout SOP Framework.
-  4. Statutory Risk & Compliance Matrix.
-  5. Facilitator & Mentor Implementation Guide.
+  - Preserve the number, order, titles, and requirements of the user-defined modules.
+  - Preserve user-defined lesson counts and lesson titles where provided; do not invent modules to meet page targets.
+  - Give each lesson a distinct teaching purpose, concept explanation, suitable example, and learner application.
+  - Use scenarios and AI-governance content only where relevant; vary settings, decisions, and examples across modules.
+  - Include configured knowledge checks, practical tasks, diagnostics, and final assessments; link questions to the relevant learning objective.
+  - Make every practical task actionable, with objective, scenario, resources, sequential steps, deliverable, success criteria, and reflection.
+• Include only the courseware deliverables requested in the configured course requirements. Do not claim accreditation, legal compliance, or LMS compatibility without evidence.
 
 ================================================================================
 9. CUSTOMISATION & BRANDING (SECTION 09)
 ================================================================================
 • Brand Authority: ${val(cust.branding, 'eStudy South Africa')}
 • Voice & Tone: ${val(cust.tone, 'Professional, supportive, action-oriented, and accessible (South African English)')}
-• Delivery Channels: ${val(cust.deliveryPreferences, 'Enterprise LMS + Facilitator Guide + Participant Action Plan')}
+• Delivery Channels: ${val(cust.deliveryPreferences, 'Use only configured channels; confirm technical compatibility before deployment')}
 
 END OF MASTER INSTRUCTIONAL PROMPT
 ================================================================================
@@ -429,7 +436,7 @@ Status: Recovered Prompt (Course data safely restored)
 
 Executive Instruction:
 Generate a complete, structured, industry-ready training programme for "${toSafeString(course?.name, 'eStudy Course')}".
-Ensure compliance with South African regulatory standards (POPIA Act 4 of 2013) and eStudy v9.0 instructional design guidelines.
+Follow the configured course scope and eStudy v9.0 instructional design framework. Do not infer applicable legislation or present unverified claims as fact.
 
 ================================================================================
 `;

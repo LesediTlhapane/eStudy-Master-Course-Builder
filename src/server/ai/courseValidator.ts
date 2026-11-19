@@ -1,10 +1,381 @@
-import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GenerationMetadata } from '../../types.js';
-import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from '../../utils/courseVolumeEngine.js';
+import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GeneratedCourseQA, GenerationMetadata } from '../../types.js';
+import { countWordsInText, enforceComprehensiveCourseVolume } from '../../utils/courseVolumeEngine.js';
 
 export interface ValidationResult {
   success: boolean;
   course?: GeneratedCourse;
   errors: string[];
+}
+
+export interface CourseQualityRepairTarget {
+  moduleId: string;
+  moduleTitle: string;
+  lessonId?: string;
+  lessonTitle?: string;
+  questionId?: string;
+  questionLocation?: 'module' | 'final';
+  currentQuestion?: GeneratedQuestion;
+  availableObjectives?: Array<{ code: string; statement: string }>;
+  concepts?: string[];
+  contentBody?: string;
+  workplaceApplication?: string;
+  aiApplication?: string;
+  taskInstructions?: string;
+  taskDeliverable?: string;
+  taskRubric?: string[];
+  issues: string[];
+}
+
+export interface CourseQualityReview {
+  qa: GeneratedCourseQA;
+  repairTargets: CourseQualityRepairTarget[];
+}
+
+const PRACTICAL_TASK_SECTIONS: Array<{ label: string; pattern: RegExp }> = [
+  { label: 'Objective', pattern: /objective\s*:/i },
+  { label: 'Scenario', pattern: /scenario\s*:/i },
+  { label: 'Resources', pattern: /resources?\s*:/i },
+  { label: 'Numbered steps', pattern: /steps?\s*:\s*(?:\d+[.)]|\n\s*\d+[.)])/i },
+  { label: 'Deliverable', pattern: /deliverable\s*:/i },
+  { label: 'Success criteria', pattern: /success\s+criteria\s*:/i },
+  { label: 'Reflection', pattern: /reflection\s*:/i }
+];
+
+function contentNgrams(text: string): Set<string> {
+  const words = text.toLowerCase().match(/[a-z0-9']+/g) || [];
+  const shingles = new Set<string>();
+  for (let i = 0; i <= words.length - 4; i++) {
+    shingles.add(words.slice(i, i + 4).join(' '));
+  }
+  return shingles;
+}
+
+function contentOverlap(left: string, right: string): number {
+  const leftShingles = contentNgrams(left);
+  const rightShingles = contentNgrams(right);
+  if (!leftShingles.size || !rightShingles.size) return 0;
+  let shared = 0;
+  for (const shingle of leftShingles) {
+    if (rightShingles.has(shingle)) shared++;
+  }
+  return shared / Math.min(leftShingles.size, rightShingles.size);
+}
+
+export function reviewGeneratedCourseQuality(
+  course: GeneratedCourse,
+  sourceCourse: Course
+): CourseQualityReview {
+  const lessonEntries = course.modules.flatMap(module =>
+    module.lessons.map(lesson => ({ module, lesson }))
+  );
+  const repairTargets: CourseQualityRepairTarget[] = [];
+  const taskRepairTargets: CourseQualityRepairTarget[] = [];
+  const questionRepairTargets: CourseQualityRepairTarget[] = [];
+  const duplicatedLessons = new Set<string>();
+  const contentTargets = new Map<string, CourseQualityRepairTarget>();
+
+  for (const { module, lesson } of lessonEntries) {
+    const issues: string[] = [];
+    if (countWordsInText(lesson.contentBody) < 120) {
+      issues.push('The lesson is too brief to explain its stated concepts and provide a worked example.');
+    }
+    if (lesson.concepts.length < 2) {
+      issues.push('Identify at least two specific concepts taught in the lesson.');
+    }
+    if (countWordsInText(lesson.workplaceApplication) < 8) {
+      issues.push('Provide a concrete workplace application relevant to the lesson subject.');
+    }
+
+    for (const other of lessonEntries) {
+      if (other.lesson.id === lesson.id) continue;
+      if (contentOverlap(lesson.contentBody, other.lesson.contentBody) >= 0.72) {
+        issues.push(`The lesson substantially repeats "${other.lesson.title}".`);
+        duplicatedLessons.add(lesson.id);
+        break;
+      }
+    }
+
+    if (issues.length) {
+      contentTargets.set(lesson.id, {
+        moduleId: module.id,
+        moduleTitle: module.title,
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        contentBody: lesson.contentBody,
+        workplaceApplication: lesson.workplaceApplication,
+        aiApplication: lesson.aiApplication,
+        concepts: lesson.concepts,
+        issues
+      });
+    }
+  }
+
+  repairTargets.push(...Array.from(contentTargets.values()).slice(0, 3));
+
+  let completedTaskSections = 0;
+  let possibleTaskSections = 0;
+  for (const module of course.modules) {
+    if (!module.practicalTask) continue;
+    const task = module.practicalTask;
+    const instructions = task.instructions || '';
+    const missingSections = PRACTICAL_TASK_SECTIONS.filter(section => !section.pattern.test(instructions));
+    const weights = (task.evaluationRubric || [])
+      .map(criterion => criterion.match(/(\d+(?:\.\d+)?)\s*%/))
+      .filter((match): match is RegExpMatchArray => Boolean(match))
+      .map(match => Number(match[1]));
+    const rubricComplete =
+      (task.evaluationRubric?.length || 0) >= 2 &&
+      weights.length === (task.evaluationRubric?.length || 0) &&
+      Math.abs(weights.reduce((total, weight) => total + weight, 0) - 100) <= 1;
+    possibleTaskSections += PRACTICAL_TASK_SECTIONS.length;
+    completedTaskSections += PRACTICAL_TASK_SECTIONS.length - missingSections.length;
+    possibleTaskSections++;
+    if (rubricComplete) completedTaskSections++;
+
+    if (missingSections.length || !rubricComplete) {
+      taskRepairTargets.push({
+        moduleId: module.id,
+        moduleTitle: module.title,
+        taskInstructions: instructions,
+        taskDeliverable: task.deliverable,
+        taskRubric: task.evaluationRubric,
+        issues: [
+          ...(missingSections.length
+            ? [`The practical task is missing these learner guidance sections: ${missingSections
+                .map(section => section.label)
+                .join(', ')}.`]
+            : []),
+          ...(!rubricComplete ? ['Provide a weighted evaluation rubric with at least two criteria totaling 100%.'] : [])
+        ]
+      });
+    }
+  }
+
+  const objectiveCodes = new Set(
+    course.modules.flatMap(module => module.learningObjectives.map(objective => objective.code))
+  );
+  const questionEntries = [
+    ...course.modules.flatMap(module =>
+      module.knowledgeChecks.map(question => ({ question, module, location: 'module' as const }))
+    ),
+    ...course.assessments.finalAssessment.questions.map(question => ({
+      question,
+      module: course.modules[0],
+      location: 'final' as const
+    }))
+  ];
+  const questionKeys = questionEntries.map(({ question }) =>
+    question.question.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  );
+  const duplicateQuestionIds = new Set<string>();
+  const encounteredQuestions = new Set<string>();
+  for (const [index, questionKey] of questionKeys.entries()) {
+    if (encounteredQuestions.has(questionKey)) {
+      duplicateQuestionIds.add(questionEntries[index].question.id);
+    }
+    encounteredQuestions.add(questionKey);
+  }
+  const alignedQuestions = questionEntries.filter(({ question }) =>
+    Boolean(question.learningObjectiveRef && objectiveCodes.has(question.learningObjectiveRef))
+  ).length;
+  const completeQuestions = questionEntries.filter(({ question }) =>
+    Boolean(
+      question.question.trim() &&
+        question.options.length >= 2 &&
+        question.correctAnswer >= 0 &&
+        question.correctAnswer < question.options.length &&
+        question.rationale.trim()
+    )
+  ).length;
+  const referenceScore = questionEntries.length
+    ? alignedQuestions / questionEntries.length
+    : 0;
+  const uniquenessScore = questionEntries.length
+    ? (questionEntries.length - duplicateQuestionIds.size) / questionEntries.length
+    : 0;
+  const completenessScore = questionEntries.length
+    ? completeQuestions / questionEntries.length
+    : 0;
+  const alignmentScore = Math.round(
+    (referenceScore * 0.55 + uniquenessScore * 0.2 + completenessScore * 0.25) * 100
+  );
+  for (const entry of questionEntries) {
+    const hasObjectiveRef = Boolean(
+      entry.question.learningObjectiveRef && objectiveCodes.has(entry.question.learningObjectiveRef)
+    );
+    const isComplete = Boolean(
+      entry.question.question.trim() &&
+        entry.question.options.length >= 2 &&
+        entry.question.correctAnswer >= 0 &&
+        entry.question.correctAnswer < entry.question.options.length &&
+        entry.question.rationale.trim()
+    );
+    if (!hasObjectiveRef || duplicateQuestionIds.has(entry.question.id) || !isComplete) {
+      questionRepairTargets.push({
+        moduleId: entry.module?.id || '',
+        moduleTitle: entry.module?.title || 'Final assessment',
+        questionId: entry.question.id,
+        questionLocation: entry.location,
+        currentQuestion: entry.question,
+        availableObjectives: (entry.location === 'final'
+          ? course.modules.flatMap(module => module.learningObjectives)
+          : entry.module?.learningObjectives || []
+        ).map(objective => ({ code: objective.code, statement: objective.statement })),
+        issues: [
+          ...(!hasObjectiveRef ? ['Reference a learning objective actually taught in the course.'] : []),
+          ...(duplicateQuestionIds.has(entry.question.id) ? ['Replace this duplicate question with a distinct assessment item.'] : []),
+          ...(!isComplete ? ['Provide a complete question, at least two answer options, a valid correct-answer index, and a rationale.'] : [])
+        ]
+      });
+    }
+  }
+
+  const lessonDepthScore = lessonEntries.length
+    ? Math.round(
+        (lessonEntries.filter(({ lesson }) =>
+          countWordsInText(lesson.contentBody) >= 120 &&
+          lesson.concepts.length >= 2 &&
+          countWordsInText(lesson.workplaceApplication) >= 8
+        ).length /
+          lessonEntries.length) *
+          100
+      )
+    : 0;
+  const scenarioEntries = course.modules.flatMap(module =>
+    module.scenarios.map(scenario => ({ module, scenario }))
+  );
+  const duplicatedScenarios = new Set<string>();
+  for (const { scenario } of scenarioEntries) {
+    const scenarioText = [
+      scenario.title,
+      scenario.situation,
+      scenario.challenge,
+      scenario.decisionPoint,
+      scenario.debrief
+    ].join(' ');
+    for (const other of scenarioEntries) {
+      if (other.scenario.id === scenario.id) continue;
+      const otherText = [
+        other.scenario.title,
+        other.scenario.situation,
+        other.scenario.challenge,
+        other.scenario.decisionPoint,
+        other.scenario.debrief
+      ].join(' ');
+      if (contentOverlap(scenarioText, otherText) >= 0.72) {
+        duplicatedScenarios.add(scenario.id);
+        break;
+      }
+    }
+  }
+  const distinctContentCount = lessonEntries.length + scenarioEntries.length;
+  const repeatedContentCount = duplicatedLessons.size + duplicatedScenarios.size;
+  const distinctnessScore = distinctContentCount
+    ? Math.max(0, Math.round(100 - (repeatedContentCount / distinctContentCount) * 100))
+    : 0;
+  const taskScore = possibleTaskSections
+    ? Math.round((completedTaskSections / possibleTaskSections) * 100)
+    : 0;
+  const verifiedSourceCount = (sourceCourse.research?.sources || []).filter(
+    source => source.status === 'Verified'
+  ).length;
+  const evidenceScore = Math.min(100, verifiedSourceCount * 25);
+  const score = Math.min(
+    80,
+    Math.round(
+      lessonDepthScore * 0.2 +
+        distinctnessScore * 0.2 +
+        taskScore * 0.25 +
+        alignmentScore * 0.2 +
+        evidenceScore * 0.15
+    )
+  );
+
+  const warnings: string[] = [];
+  if (lessonDepthScore < 100) {
+    warnings.push('Some lessons may lack sufficient teaching text, distinct concepts, or a concrete workplace application.');
+  }
+  if (duplicatedLessons.size) {
+    warnings.push(`${duplicatedLessons.size} lesson(s) substantially overlap with another lesson.`);
+  }
+  if (duplicatedScenarios.size) {
+    warnings.push(`${duplicatedScenarios.size} workplace scenario(s) substantially overlap with another scenario.`);
+  }
+  if (taskScore < 100) {
+    warnings.push('One or more practical tasks are missing explicit learner guidance sections.');
+  }
+  if (questionEntries.length === 0) {
+    warnings.push('No module knowledge-check or final-assessment questions were returned.');
+  } else if (referenceScore < 1) {
+    warnings.push('Some knowledge-check or final-assessment questions do not reference a valid learning objective.');
+  }
+  if (completenessScore < 1) {
+    warnings.push('Some assessment questions are missing a question, answer options, a valid answer, or a rationale.');
+  }
+  if (duplicateQuestionIds.size) {
+    warnings.push(`${duplicateQuestionIds.size} assessment question(s) repeat another question.`);
+  }
+  if (verifiedSourceCount === 0) {
+    warnings.push('No user-marked verified sources were supplied; technical, factual, and legal claims require source or SME review.');
+  }
+  if (!course.assessments.finalAssessment.capstoneCaseStudy) {
+    warnings.push('The final assessment has no configured capstone case study.');
+  }
+  if (
+    course.assessments.preCourseDiagnostic.questions.length < 5 ||
+    course.assessments.preCourseDiagnostic.questions.length > 10
+  ) {
+    warnings.push('The pre-course diagnostic does not contain the configured 5–10 question range.');
+  }
+  if (!course.learningOutcomes.length) {
+    warnings.push('No course-level learning outcomes were returned.');
+  }
+  const sourceModuleCount = sourceCourse.modules?.length || 0;
+  if (sourceModuleCount && sourceModuleCount !== course.modules.length) {
+    warnings.push(
+      `The generated ${course.modules.length}-module course does not match the ${sourceModuleCount}-module user plan.`
+    );
+  }
+  warnings.push('Automated checks cannot verify factual accuracy, legal interpretation, or subject-matter correctness; human review is required.');
+
+  const criticalIssues = lessonEntries.length === 0
+    ? ['The generated course contains no lessons.']
+    : [];
+  const passedChecks = [
+    'Generated response was parsed and mapped to the existing course schema.',
+    ...(sourceModuleCount && sourceModuleCount === course.modules.length
+      ? [`Preserved all ${sourceModuleCount} user-defined modules.`]
+      : [])
+  ];
+  if (lessonDepthScore === 100) passedChecks.push('Every lesson passes the minimum content-presence check.');
+  if (distinctnessScore === 100) passedChecks.push('No substantial overlap among lesson or scenario text was detected.');
+  if (taskScore === 100 && possibleTaskSections > 0) passedChecks.push('Practical task guidance includes all required sections and weighted rubrics.');
+  if (alignmentScore === 100 && questionEntries.length > 0) passedChecks.push('Knowledge checks and final questions reference configured learning objectives without duplicate stems.');
+  const selectedRepairTargets = [
+    ...repairTargets.slice(0, 2),
+    ...taskRepairTargets.slice(0, 2),
+    ...questionRepairTargets.slice(0, 1)
+  ].slice(0, 5);
+
+  return {
+    qa: {
+      score,
+      status: criticalIssues.length ? 'critical_issues' : 'review_required',
+      passedChecks,
+      warnings,
+      criticalIssues,
+      recommendations: [
+        ...(repairTargets.length + taskRepairTargets.length + questionRepairTargets.length
+          ? ['Review the flagged lesson, practical-task, or assessment improvements before delivery.']
+          : []),
+        'Verify technical, factual, and legal claims against authoritative sources and subject-matter experts.',
+        'Review assessment answers and objective alignment before learner use.'
+      ],
+      southAfricanContextVerified: false,
+      popiaCompliant: false
+    },
+    repairTargets: selectedRepairTargets
+  };
 }
 
 /**
@@ -83,7 +454,7 @@ export function validateAndSanitizeGeneratedCourse(
 
   const targetAudience = typeof raw.targetAudience === 'string' && raw.targetAudience.trim().length > 0
     ? raw.targetAudience.trim()
-    : (s.targetRoles || p.targetGroup || 'Operational professionals and team leads.');
+    : (s.targetRoles || p.targetGroup || '');
 
   const estimatedDuration = typeof raw.estimatedDuration === 'string' && raw.estimatedDuration.trim().length > 0
     ? raw.estimatedDuration.trim()
@@ -94,14 +465,6 @@ export function validateAndSanitizeGeneratedCourse(
   if (Array.isArray(raw.learningOutcomes) && raw.learningOutcomes.length > 0) {
     learningOutcomes = raw.learningOutcomes.map((lo: any) => String(lo).trim()).filter(Boolean);
   }
-  if (learningOutcomes.length === 0) {
-    learningOutcomes = [
-      `Analyze and remediate core root causes relating to ${p.taskOrSkill || 'workplace procedures'}.`,
-      `Apply approved standard operating procedures and verified tools with precision.`,
-      `Enforce South African regulatory and POPIA compliance across workflows.`
-    ];
-  }
-
   // 3. Modules Validation
   if (!Array.isArray(raw.modules) || raw.modules.length === 0) {
     errors.push('Course must contain at least one module.');
@@ -114,7 +477,7 @@ export function validateAndSanitizeGeneratedCourse(
     const modNumber = typeof m.moduleNumber === 'number' ? m.moduleNumber : mIdx + 1;
     const modTitle = typeof m.title === 'string' && m.title.trim().length > 0
       ? m.title.trim()
-      : `Module ${modNumber}: Core Competencies`;
+      : '';
 
     // Lessons validation
     const lessons: GeneratedLesson[] = [];
@@ -124,39 +487,18 @@ export function validateAndSanitizeGeneratedCourse(
           id: l.id || `lesson-${modNumber}-${lIdx + 1}`,
           title: typeof l.title === 'string' && l.title.trim().length > 0
             ? l.title.trim()
-            : `Lesson ${lIdx + 1}: Practical Application`,
+            : '',
           durationMinutes: typeof l.durationMinutes === 'number' ? l.durationMinutes : 30,
-          concepts: Array.isArray(l.concepts) ? l.concepts.map(String) : ['Core Workplace Application'],
-          contentBody: typeof l.contentBody === 'string' && l.contentBody.trim().length > 0
-            ? l.contentBody
-            : `### Overview\nThis lesson establishes standard operating practices for ${modTitle}.`,
-          callouts: Array.isArray(l.callouts) ? l.callouts : [
-            {
-              type: 'Tip',
-              title: 'Workplace Execution Note',
-              content: 'Follow standard verification procedures before operational sign-off.'
-            }
-          ],
+          concepts: Array.isArray(l.concepts) ? l.concepts.map(String) : [],
+          contentBody: typeof l.contentBody === 'string' ? l.contentBody : '',
+          callouts: Array.isArray(l.callouts) ? l.callouts : [],
           workplaceApplication: typeof l.workplaceApplication === 'string'
             ? l.workplaceApplication
-            : 'Directly applied to daily workflow checklists and quality audits.',
+            : '',
           aiApplication: typeof l.aiApplication === 'string'
             ? l.aiApplication
-            : 'Utilize AI productivity assistants with mandatory human verification protocols.'
+            : ''
         });
-      });
-    }
-
-    if (lessons.length === 0) {
-      lessons.push({
-        id: `lesson-${modNumber}-1`,
-        title: `${modTitle}: Operational Foundations`,
-        durationMinutes: 30,
-        concepts: ['Core Standards', 'Procedural Execution'],
-        contentBody: `### Purpose\nEstablishes foundational operational standards for ${modTitle}.`,
-        callouts: [],
-        workplaceApplication: 'Standard operating checklist audit.',
-        aiApplication: 'Automated synthesis with human sign-off.'
       });
     }
 
@@ -166,13 +508,13 @@ export function validateAndSanitizeGeneratedCourse(
       m.scenarios.forEach((sc: any, scIdx: number) => {
         scenarios.push({
           id: sc.id || `scenario-${modNumber}-${scIdx + 1}`,
-          title: sc.title || `Workplace Scenario ${scIdx + 1}`,
+          title: sc.title || '',
           type: sc.type === 'AI Specific' ? 'AI Specific' : 'Workplace',
-          situation: sc.situation || `An employee encounters procedural friction while implementing ${modTitle}.`,
-          challenge: sc.challenge || `Balancing timeline pressure with strict compliance requirements.`,
-          decisionPoint: sc.decisionPoint || `Should the employee follow the escalation protocol or shortcut the quality gate?`,
-          debrief: sc.debrief || `Bypassing controls introduces compliance liabilities. Structured escalation ensures accountability.`,
-          keyTakeaway: sc.keyTakeaway || `Compliance standards must be maintained during operational stress.`
+          situation: sc.situation || '',
+          challenge: sc.challenge || '',
+          decisionPoint: sc.decisionPoint || '',
+          debrief: sc.debrief || '',
+          keyTakeaway: sc.keyTakeaway || ''
         });
       });
     }
@@ -183,17 +525,18 @@ export function validateAndSanitizeGeneratedCourse(
       m.knowledgeChecks.forEach((q: any, qIdx: number) => {
         const options = Array.isArray(q.options) && q.options.length >= 2
           ? q.options.map(String)
-          : ['Incorrect approach', 'Standard operating procedure', 'Unverified shortcut', 'Incomplete review'];
+          : [];
         const correctAnswer = typeof q.correctAnswer === 'number' && q.correctAnswer >= 0 && q.correctAnswer < options.length
           ? q.correctAnswer
-          : 1;
+          : 0;
 
         knowledgeChecks.push({
           id: q.id || `kc-${modNumber}-${qIdx + 1}`,
-          question: q.question || `What is the primary operational rule for ${modTitle}?`,
+          question: q.question || '',
           options,
           correctAnswer,
-          rationale: q.rationale || 'Adherence to approved standards ensures audit defensibility and consistent quality.'
+          rationale: q.rationale || '',
+          learningObjectiveRef: typeof q.learningObjectiveRef === 'string' ? q.learningObjectiveRef : undefined
         });
       });
     }
@@ -202,38 +545,28 @@ export function validateAndSanitizeGeneratedCourse(
       id: m.id || `module-${modNumber}`,
       moduleNumber: modNumber,
       title: modTitle,
-      subtitle: m.subtitle || 'Operational Integration & Practice',
-      purpose: m.purpose || `Equip participants with verifiable proficiency in ${modTitle}.`,
+      subtitle: m.subtitle || '',
+      purpose: m.purpose || '',
       learningObjectives: Array.isArray(m.learningObjectives) && m.learningObjectives.length > 0
         ? m.learningObjectives.map((lo: any, oIdx: number) => ({
             id: lo.id || `lo-${modNumber}-${oIdx + 1}`,
             code: lo.code || `LO ${modNumber}.${oIdx + 1}`,
-            statement: typeof lo === 'string' ? lo : (lo.statement || 'Master procedural requirements'),
+            statement: typeof lo === 'string' ? lo : (lo.statement || ''),
             bloomLevel: lo.bloomLevel || (oIdx === 0 ? 'Understand' : oIdx === 1 ? 'Apply' : 'Evaluate')
           }))
-        : [
-            { id: `lo-${modNumber}-1`, code: `LO ${modNumber}.1`, statement: `Understand foundational principles of ${modTitle}`, bloomLevel: 'Understand' },
-            { id: `lo-${modNumber}-2`, code: `LO ${modNumber}.2`, statement: `Execute approved workplace procedures with fidelity`, bloomLevel: 'Apply' }
-          ],
+        : [],
       lessons,
       scenarios,
       knowledgeChecks,
       practicalTask: m.practicalTask || {
         id: `task-${modNumber}`,
-        title: `${modTitle} Workplace Application Task`,
-        instructions: `Conduct an operational gap assessment of your departmental workflow against the criteria taught in this module.`,
-        deliverable: `Completed Workplace Assessment Matrix with actionable mitigation plan.`,
-        evaluationRubric: [
-          'Accuracy of gap identification (40%)',
-          'Alignment with regulatory standards (30%)',
-          'Actionability of remediation steps (30%)'
-        ]
+        title: '',
+        instructions: '',
+        deliverable: '',
+        evaluationRubric: []
       },
-      reflection: Array.isArray(m.reflection) ? m.reflection.map(String) : [
-        `How does ${modTitle} directly relate to your operational role?`,
-        `What immediate process improvement will you introduce this week?`
-      ],
-      summary: m.summary || `${modTitle} delivers the structured principles and techniques necessary to ensure compliant workplace execution.`
+      reflection: Array.isArray(m.reflection) ? m.reflection.map(String) : [],
+      summary: m.summary || ''
     });
   });
 
@@ -242,43 +575,24 @@ export function validateAndSanitizeGeneratedCourse(
   const preCourseQuestions: GeneratedQuestion[] = Array.isArray(rawAssessments.preCourseDiagnostic?.questions)
     ? rawAssessments.preCourseDiagnostic.questions.map((q: any, i: number) => ({
         id: q.id || `diag-${i + 1}`,
-        question: q.question || `Baseline assessment question ${i + 1}`,
-        options: Array.isArray(q.options) && q.options.length >= 2 ? q.options.map(String) : ['Novice', 'Practitioner', 'Proficient', 'Expert'],
-        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 1,
-        rationale: q.rationale || 'Establishes baseline capability across cohort.'
+        question: q.question || '',
+        options: Array.isArray(q.options) && q.options.length >= 2 ? q.options.map(String) : [],
+        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+        rationale: q.rationale || '',
+        learningObjectiveRef: typeof q.learningObjectiveRef === 'string' ? q.learningObjectiveRef : undefined
       }))
-    : [
-        {
-          id: 'diag-1',
-          question: `How frequently do you currently apply structured verification protocols in ${title}?`,
-          options: ['Rarely or never', 'Ad-hoc basis', 'Regularly with oversight', 'Consistently as lead practitioner'],
-          correctAnswer: 2,
-          rationale: 'Identifies cohort entry-level baseline.'
-        }
-      ];
+    : [];
 
   const finalQuestions: GeneratedQuestion[] = Array.isArray(rawAssessments.finalAssessment?.questions)
     ? rawAssessments.finalAssessment.questions.map((q: any, i: number) => ({
         id: q.id || `final-q${i + 1}`,
-        question: q.question || `Summative assessment question ${i + 1}`,
-        options: Array.isArray(q.options) && q.options.length >= 2 ? q.options.map(String) : ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 1,
-        rationale: q.rationale || 'Evaluates holistic competency.'
+        question: q.question || '',
+        options: Array.isArray(q.options) && q.options.length >= 2 ? q.options.map(String) : [],
+        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0,
+        rationale: q.rationale || '',
+        learningObjectiveRef: typeof q.learningObjectiveRef === 'string' ? q.learningObjectiveRef : undefined
       }))
-    : [
-        {
-          id: 'final-q1',
-          question: `In regulated South African workplace operations, what is the primary risk of adopting unmonitored automated tools?`,
-          options: [
-            'Minor font formatting inconsistencies',
-            'Severe breach of POPIA conditions and statutory governance exposure',
-            'Slight delay in document export speed',
-            'Increased local network bandwidth consumption'
-          ],
-          correctAnswer: 1,
-          rationale: 'Unvetted tools can expose personally identifiable data, directly contravening statutory safeguards.'
-        }
-      ];
+    : [];
 
   const assessments: GeneratedAssessmentSet = {
     preCourseDiagnostic: {
@@ -293,16 +607,7 @@ export function validateAndSanitizeGeneratedCourse(
       passMark: rawAssessments.finalAssessment?.passMark || '80%',
       instructions: rawAssessments.finalAssessment?.instructions || 'Demonstrate comprehensive mastery across all modules through scenario-based evaluation.',
       questions: finalQuestions,
-      capstoneCaseStudy: rawAssessments.finalAssessment?.capstoneCaseStudy || {
-        title: `${title} Capstone Case Analysis`,
-        scenario: `A department is deploying new automated workflows under timeline pressure while bypassing compliance reviews.`,
-        tasks: [
-          '1. Audit the procedural vulnerabilities against regulatory guidelines.',
-          '2. Formulate a 3-step remediation strategy maintaining throughput without sacrificing compliance.',
-          '3. Compile an executive summary report for management review.'
-        ],
-        deliverable: `A 3-page Operational Remediation Plan submitted for facilitator review.`
-      }
+      capstoneCaseStudy: rawAssessments.finalAssessment?.capstoneCaseStudy
     },
     postCourseReflection: {
       prompts: [
@@ -323,28 +628,19 @@ export function validateAndSanitizeGeneratedCourse(
     contentSnippet: src.contentSnippet,
     fileName: src.fileName,
     url: src.url,
-    verified: true
+    verified: src.status === 'Verified'
   }));
 
   // 6. QA scorecard
-  const qa = {
-    score: 96,
+  const qa: GeneratedCourseQA = {
+    score: 0,
     status: 'review_required' as const,
-    passedChecks: [
-      'Master Prompt v9.0 specifications verified',
-      `Complete ${sanitizedModules.length}-module curriculum aligned with Bloom's Taxonomy`,
-      'Workplace and AI-specific scenarios validated',
-      'POPIA and South African regulatory standards verified',
-      'Pre-course diagnostic and summative capstone configured'
-    ],
+    passedChecks: [],
     warnings: [],
     criticalIssues: [],
-    recommendations: [
-      'Conduct human instructional sign-off before exporting to LMS production.',
-      'Review organization-specific scenario parameters prior to learner rollout.'
-    ],
-    southAfricanContextVerified: true,
-    popiaCompliant: true
+    recommendations: [],
+    southAfricanContextVerified: false,
+    popiaCompliant: false
   };
 
   const baseCourse: GeneratedCourse = {
@@ -366,18 +662,9 @@ export function validateAndSanitizeGeneratedCourse(
     generationMetadata: metadata
   };
 
-  // Enforce comprehensive 22 to 30 page textbook volume across modules, lessons, scenarios, and assessments
+  // Preserve the local fallback volume behaviour; Groq-generated courses are not padded.
   const finalCourse = enforceComprehensiveCourseVolume(baseCourse, sourceCourse);
-  const volume = calculateGeneratedCourseVolume(finalCourse);
-
-  finalCourse.qa.passedChecks = [
-    'Master Prompt v9.0 specifications verified',
-    `Comprehensive ${volume.estimatedPages}-page course manual (${volume.totalWords.toLocaleString()} words — meets 22–30 page standard)`,
-    `Complete ${finalCourse.modules.length}-module curriculum (${volume.lessonCount} in-depth lessons) aligned with Bloom's Taxonomy`,
-    `${volume.scenarioCount} Workplace and AI-specific scenarios validated`,
-    'POPIA and South African regulatory standards verified',
-    `Pre-course diagnostic (5 items) and summative capstone exam (10 items + case study) configured`
-  ];
+  finalCourse.qa = reviewGeneratedCourseQuality(finalCourse, sourceCourse).qa;
 
   return {
     success: errors.length === 0,

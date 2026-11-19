@@ -3,7 +3,6 @@ import { aiRouter } from './aiRouter.js';
 import { extractAndParseJSON } from './courseValidator.js';
 import { generateLocalFallbackCourse } from '../../utils/localCourseEngine.js';
 import { sanitizeCourse } from '../../utils/courseSanitizer.js';
-import { enrichLessonToTextbookStandard, enforceComprehensiveCourseVolume } from '../../utils/courseVolumeEngine.js';
 
 export interface GranularRegenerationResult {
   success: boolean;
@@ -28,10 +27,8 @@ export async function executeGranularRegeneration(
   const s = course.structure || ({} as any);
   const p = course.problem || ({} as any);
 
-  let systemInstruction = `You are eStudy South Africa's Senior Instructional Designer.
-Your task is to regenerate ONLY the requested course component in valid JSON format.
-Adhere strictly to eStudy pedagogical standards: performance-driven, POPIA and South African workplace compliant.
-Return ONLY valid JSON matching the requested component schema.`;
+  const systemInstruction = `You are a subject-matter educator and instructional designer. Regenerate only the requested component in valid JSON.
+Teach the actual subject with accurate, understandable explanations, appropriate examples, and useful learner application. Avoid generic business/compliance filler, repeated procedures, and content already taught elsewhere in the course. Use legal or technical claims only when supported by the course's supplied verified sources; otherwise flag them for review instead of inventing facts. Align assessments to the existing learning objectives. Preserve all IDs, titles, configured structure, and component fields unless explicitly asked to change them. Return only JSON matching the requested schema.`;
 
   let prompt = '';
   let updatedCourse: GeneratedCourse = currentGeneratedCourse
@@ -51,8 +48,15 @@ Return ONLY valid JSON matching the requested component schema.`;
 Target Audience: ${s.targetRoles || p.targetGroup || 'Professionals'}
 Regenerate Module Number ${targetMod.moduleNumber}: "${targetMod.title}"
 Purpose: ${sourceMod?.purpose || targetMod.purpose}
+Existing learning objectives: ${JSON.stringify(targetMod.learningObjectives)}
+Existing lesson plan to preserve: ${JSON.stringify(targetMod.lessons.map((lesson: GeneratedLesson) => ({
+  id: lesson.id,
+  title: lesson.title,
+  concepts: lesson.concepts
+})))}
 
 Requirements:
+Keep the same lesson count and titles/IDs. Give each lesson a distinct teaching purpose, explain its core concepts and limitations, and include a subject-specific worked example. Avoid repeating content from the other lessons.
 Return a single JSON object matching this schema:
 {
   "id": "${targetMod.id}",
@@ -69,10 +73,10 @@ Return a single JSON object matching this schema:
       "title": "Lesson Title",
       "durationMinutes": 30,
       "concepts": ["Concept 1", "Concept 2"],
-      "contentBody": "Comprehensive instructional markdown content with workplace guidelines",
+      "contentBody": "Subject-specific teaching text that explains concepts, mechanisms, limitations and a worked example",
       "callouts": [{ "type": "Tip", "title": "Execution Standard", "content": "Practical guidance" }],
-      "workplaceApplication": "How learners apply this in their role",
-      "aiApplication": "How to leverage AI with human verification"
+      "workplaceApplication": "Specific application to this learner's role",
+      "aiApplication": "Relevant AI application, or state that AI is not applicable"
     }
   ],
   "scenarios": [
@@ -90,10 +94,11 @@ Return a single JSON object matching this schema:
   "knowledgeChecks": [
     {
       "id": "kc-1",
-      "question": "Scenario-based question testing application",
+      "question": "Distinct question assessing a taught concept or objective",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 1,
-      "rationale": "Why option B is correct"
+      "rationale": "Why the correct answer is correct",
+      "learningObjectiveRef": "Exact code of the relevant module objective"
     }
   ],
   "practicalTask": {
@@ -119,16 +124,12 @@ Return a single JSON object matching this schema:
       if (parsedMod && parsedMod.title && Array.isArray(parsedMod.lessons)) {
         parsedMod.id = targetMod.id;
         parsedMod.moduleNumber = targetMod.moduleNumber;
-        parsedMod.lessons = parsedMod.lessons.map((l: GeneratedLesson, lIdx: number) =>
-          enrichLessonToTextbookStandard(l, lIdx, parsedMod.title, parsedMod.purpose || '', course)
-        );
-        if (modIndex !== -1) {
-          updatedCourse.modules[modIndex] = parsedMod;
-        } else {
-          updatedCourse.modules.push(parsedMod);
-        }
-        updatedCourse = enforceComprehensiveCourseVolume(updatedCourse, course);
-        updatedPart = updatedCourse.modules[modIndex !== -1 ? modIndex : updatedCourse.modules.length - 1];
+            if (modIndex !== -1) {
+              updatedCourse.modules[modIndex] = parsedMod;
+            } else {
+              updatedCourse.modules.push(parsedMod);
+            }
+            updatedPart = updatedCourse.modules[modIndex !== -1 ? modIndex : updatedCourse.modules.length - 1];
       } else {
         throw new Error('Regenerated module JSON missing required lessons array or title.');
       }
@@ -153,19 +154,26 @@ Return a single JSON object matching this schema:
       prompt = `Course: "${s.title || course.name}"
 Parent Module: "${modTitle}"
 Regenerate single lesson: "${lessonTitle}" (ID: "${targetId}")
+Module learning objectives: ${JSON.stringify(foundMod?.learningObjectives || [])}
+Other lesson titles and concepts to avoid repeating: ${JSON.stringify(
+  (foundMod?.lessons || []).filter(lesson => lesson.id !== targetId).map(lesson => ({
+    title: lesson.title,
+    concepts: lesson.concepts
+  }))
+)}
 
 Return a single JSON object matching this schema:
 {
   "id": "${targetId}",
   "title": "${lessonTitle}",
   "durationMinutes": 35,
-  "concepts": ["Applied Practice", "Error Prevention", "POPIA & Policy Compliance"],
-  "contentBody": "### Operational Execution\\n\\nDetailed step-by-step guidance, procedural standards, and real-world implementation rules...",
+  "concepts": ["Subject-specific concepts taught in this lesson"],
+  "contentBody": "Markdown lesson teaching that explains concepts, how or why they work, when they apply, limitations, and a distinct worked example.",
   "callouts": [
     { "type": "Good/Bad Example", "title": "Implementation Standard", "content": "Good: Following formal channels.\\nBad: Skipping safeguards." }
   ],
-  "workplaceApplication": "Concrete application in learner role.",
-  "aiApplication": "Responsible AI tool assistance with human-in-the-loop sign-off."
+  "workplaceApplication": "Concrete subject-specific application in the learner role.",
+  "aiApplication": "Relevant AI application, or state that AI is not applicable."
 }`;
 
       const aiResponse = await aiRouter.execute({
@@ -179,18 +187,11 @@ Return a single JSON object matching this schema:
       const parsedLesson = extractAndParseJSON(aiResponse.text);
       if (parsedLesson && parsedLesson.title && parsedLesson.contentBody) {
         parsedLesson.id = targetId;
-        const enrichedLesson = enrichLessonToTextbookStandard(
-          parsedLesson,
-          0,
-          modTitle,
-          foundMod?.purpose || '',
-          course
-        );
         updatedCourse.modules = updatedCourse.modules.map(m => ({
           ...m,
-          lessons: m.lessons.map(l => l.id === targetId ? { ...l, ...enrichedLesson } : l)
+          lessons: m.lessons.map(l => l.id === targetId ? { ...l, ...parsedLesson } : l)
         }));
-        updatedPart = enrichedLesson;
+        updatedPart = parsedLesson;
       } else {
         throw new Error('Regenerated lesson JSON missing required contentBody or title.');
       }
@@ -213,17 +214,23 @@ Return a single JSON object matching this schema:
 Parent Module: "${foundMod?.title || 'Core Operations'}"
 Regenerate single workplace decision scenario (ID: "${targetId}")
 Scenario Type: ${foundScenario?.type || 'Workplace'}
+Other scenarios to avoid repeating: ${JSON.stringify(
+  updatedCourse.modules.flatMap(module => module.scenarios)
+    .filter(scenario => scenario.id !== targetId)
+    .map(scenario => ({ title: scenario.title, situation: scenario.situation }))
+)}
+Use a context that demonstrates the subject matter. Do not force legal or compliance content into an unrelated scenario.
 
 Return a single JSON object matching this schema:
 {
   "id": "${targetId}",
   "title": "Fresh Realistic Workplace Scenario",
   "type": "${foundScenario?.type || 'Workplace'}",
-  "situation": "A realistic high-stakes workplace dilemma in a South African corporate setting",
-  "challenge": "Competing pressures between operational speed and compliance requirements",
-  "decisionPoint": "Crucial choice between cutting corners vs following established quality controls",
-  "debrief": "In-depth rationale of why compliance and psychological safety prevail",
-  "keyTakeaway": "Concise operational takeaway rule"
+  "situation": "A specific, realistic workplace situation relevant to the lesson subject and target audience",
+  "challenge": "A subject-specific problem or decision",
+  "decisionPoint": "A clear choice the learner must make",
+  "debrief": "Explain the relevant concept and reason through the decision",
+  "keyTakeaway": "A concise, subject-specific learning point"
 }`;
 
       const aiResponse = await aiRouter.execute({
@@ -247,21 +254,28 @@ Return a single JSON object matching this schema:
       }
 
     } else if (partType === 'knowledge_check') {
+      const parentModule = updatedCourse.modules.find(m =>
+        m.knowledgeChecks.some(question => question.id === targetId)
+      );
+      const currentQuestion = parentModule?.knowledgeChecks.find(question => question.id === targetId);
       prompt = `Course: "${s.title || course.name}"
-Regenerate a single challenging scenario-based knowledge check question (ID: "${targetId}").
+Module: "${parentModule?.title || 'Course'}"
+Existing learning objectives: ${JSON.stringify(parentModule?.learningObjectives || [])}
+Regenerate a single distinct question (ID: "${targetId}") that tests a concept actually taught in this module.
 
 Return a single JSON object matching this schema:
 {
   "id": "${targetId}",
-  "question": "Realistic scenario-based question evaluating practitioner judgment",
+  "question": "A clear question testing a taught concept, with application where appropriate",
   "options": [
-    "Plausible but flawed shortcut",
-    "Correct standard operating procedure adhering to regulatory safeguards",
-    "Unverified automated assumption",
-    "Passive escalation without documentation"
+    "Plausible option",
+    "Correct answer",
+    "Plausible misconception",
+    "Another plausible option"
   ],
   "correctAnswer": 1,
-  "rationale": "Comprehensive explanation of why option 2 is correct and others fail compliance."
+  "rationale": "Explain why the correct answer is right and why the strongest distractor is wrong.",
+  "learningObjectiveRef": "${currentQuestion?.learningObjectiveRef || parentModule?.learningObjectives[0]?.code || ''}"
 }`;
 
       const aiResponse = await aiRouter.execute({
@@ -322,26 +336,28 @@ Return a JSON object:
     } else if (partType === 'capstone') {
       prompt = `Course: "${s.title || course.name}"
 Regenerate the Summative Capstone Assessment and Case Study.
+Base every question and task on the course's taught concepts and learning objectives. Do not assume a compliance or AI-governance topic unless it appears in the course.
 
 Return a JSON object:
 {
   "title": "Summative Capstone Assessment & Final Evaluation",
   "passMark": "80%",
-  "instructions": "Demonstrate complete procedural and regulatory mastery across all course modules.",
+  "instructions": "Demonstrate mastery of the concepts and skills taught in the course.",
   "questions": [
     {
       "id": "final-q1",
-      "question": "Complex case-based capstone question",
+      "question": "Distinct case-based question testing a taught objective",
       "options": ["Option A", "Option B (Correct)", "Option C", "Option D"],
       "correctAnswer": 1,
-      "rationale": "Clear rationale linking to POPIA and operational standards."
+      "rationale": "Accurate rationale tied to a taught concept.",
+      "learningObjectiveRef": "Exact code of a relevant course objective"
     }
   ],
   "capstoneCaseStudy": {
     "title": "${s.title || course.name} Strategic Operational Audit",
-    "scenario": "A comprehensive multi-departmental challenge involving risk remediation and AI tool governance.",
-    "tasks": ["1. Audit workflow controls.", "2. Formulate 3-pillar remediation.", "3. Executive presentation."],
-    "deliverable": "A 3-page Operational Remediation Plan."
+    "scenario": "A realistic, subject-specific case for the target audience.",
+    "tasks": ["1. Apply a taught concept.", "2. Explain the decision using evidence.", "3. Produce the required artefact."],
+    "deliverable": "A clearly specified learner artefact aligned to the objectives."
   }
 }`;
 
@@ -376,18 +392,18 @@ Return a JSON object:
 
       prompt = `Course: "${s.title || course.name}"
 Parent Module: "${modTitle}"
-Regenerate a realistic workplace Practical Task.
+Module learning objectives: ${JSON.stringify(foundMod?.learningObjectives || [])}
+Regenerate a practical task that tests subject-specific skills without generic compliance filler.
 
 Return a JSON object matching this schema:
 {
   "id": "${targetId}",
-  "title": "${modTitle} Workplace Application & Audit Task",
-  "instructions": "Step-by-step practical workplace instructions adhering to eStudy and regulatory criteria.",
-  "deliverable": "Tangible professional deliverable produced by learner (e.g. Audit matrix, Action Plan)",
+  "title": "Specific task title",
+  "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nSteps: 1. ... 2. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...",
+  "deliverable": "A specific learner artefact aligned with the module objectives",
   "evaluationRubric": [
-    "Criteria 1: Thoroughness and procedural fidelity (40%)",
-    "Criteria 2: Statutory and POPIA compliance (30%)",
-    "Criteria 3: Feasibility of remediation timeline (30%)"
+    "Subject accuracy and application (50%)",
+    "Reasoning and completeness (50%)"
   ]
 }`;
 

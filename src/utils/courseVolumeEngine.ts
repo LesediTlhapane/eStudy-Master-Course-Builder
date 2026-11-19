@@ -141,7 +141,7 @@ export function calculateGeneratedCourseVolume(generated: GeneratedCourse): Cour
   // In formatted corporate A4 manuals (with cover page, section headers, callout boxes,
   // scenario cards, MCQ blocks, and assessment tables), 1 page ≈ 420 words.
   const rawPages = Math.round(totalWords / 420) + 1;
-  const estimatedPages = Math.max(22, Math.min(30, rawPages));
+  const estimatedPages = Math.max(1, rawPages);
 
   return {
     totalWords,
@@ -150,8 +150,8 @@ export function calculateGeneratedCourseVolume(generated: GeneratedCourse): Cour
     lessonCount,
     scenarioCount,
     questionCount,
-    meetsPageStandard: estimatedPages >= 22 && estimatedPages <= 30,
-    pageRangeLabel: '22–30 Pages Standard'
+    meetsPageStandard: rawPages >= 22 && rawPages <= 30,
+    pageRangeLabel: 'Estimated page count; not a learning-quality score'
   };
 }
 
@@ -258,6 +258,10 @@ export function enforceComprehensiveCourseVolume(
   course: GeneratedCourse,
   sourceCourse: Course
 ): GeneratedCourse {
+  if (course.generationMetadata?.provider === 'groq') {
+    return course;
+  }
+
   const s = sourceCourse.structure || ({} as any);
   const p = sourceCourse.problem || ({} as any);
   const r = sourceCourse.research || ({} as any);

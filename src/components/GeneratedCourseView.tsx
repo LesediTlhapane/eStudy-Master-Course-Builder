@@ -342,7 +342,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                 {generatedCourse.code}
               </span>
               <span className="text-xs font-mono font-bold text-white bg-white/15 px-2.5 py-0.5 rounded border border-white/20">
-                {volumeMetrics.estimatedPages} Pages · {volumeMetrics.totalWords.toLocaleString()} Words (22–30 Page Standard)
+                {volumeMetrics.estimatedPages} Estimated Pages · {volumeMetrics.totalWords.toLocaleString()} Words
               </span>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white w-full sm:w-auto">
                 {generatedCourse.title}
@@ -451,7 +451,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#052B66]" />
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Manual Volume (22–30p Target)</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Estimated Manual Volume</span>
                 <span className="font-extrabold text-[#052B66]">
                   {volumeMetrics.estimatedPages} Pages · {volumeMetrics.totalWords.toLocaleString()} Words ({volumeMetrics.moduleCount} Modules, {volumeMetrics.lessonCount} Lessons)
                 </span>
@@ -970,19 +970,19 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                   <span className="text-3xl font-extrabold font-mono text-[#45CC42]">
                     {generatedCourse.qa.score}%
                   </span>
-                  <span className="text-[10px] font-bold text-slate-300 uppercase">AI QA Score</span>
+                  <span className="text-[10px] font-bold text-slate-300 uppercase">Automated Review</span>
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-[#052B66]">Pedagogical & Compliance Verification</h3>
+                  <h3 className="text-xl font-bold text-[#052B66]">Pedagogical & Content Review</h3>
                   <p className="text-xs text-slate-600">
-                    Evaluated against the eStudy Financial Literacy Benchmark Course and POPIA statutory guidelines.
+                    Heuristic checks cover lesson depth, repetition, task guidance, objective references, and supplied sources. They do not verify factual accuracy or legal compliance.
                   </p>
                   <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-[#45CC42]/20 text-[#052B66]">
-                      ✓ POPIA Compliant
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${generatedCourse.qa.popiaCompliant ? 'bg-[#45CC42]/20 text-[#052B66]' : 'bg-amber-100 text-amber-900'}`}>
+                      {generatedCourse.qa.popiaCompliant ? '✓ Privacy review complete' : 'Privacy/legal review required'}
                     </span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-[#052B66]">
-                      ✓ South African Context Verified
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${generatedCourse.qa.southAfricanContextVerified ? 'bg-blue-100 text-[#052B66]' : 'bg-amber-100 text-amber-900'}`}>
+                      {generatedCourse.qa.southAfricanContextVerified ? '✓ Context verified' : 'Context/source review required'}
                     </span>
                   </div>
                 </div>
