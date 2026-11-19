@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk';
-import { AIProviderAdapter, AIRequest, AIResponse } from './types';
+import type { AIProviderAdapter, AIRequest, AIResponse } from './types.js';
 
 // Default primary key supplied by the user as baseline fallback if env is reset
 const DEFAULT_USER_GROQ_KEY = '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';

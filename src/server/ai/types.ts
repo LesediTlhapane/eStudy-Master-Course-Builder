@@ -1,4 +1,4 @@
-import { AIProvider, AIModelMeta } from '../../types';
+import type { AIProvider, AIModelMeta } from '../../types.js';
 
 export interface AIRequest {
   provider: AIProvider;

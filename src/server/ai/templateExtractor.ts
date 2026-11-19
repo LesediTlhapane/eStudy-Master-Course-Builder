@@ -1,8 +1,8 @@
 import zlib from 'zlib';
-import { AIProvider, Course } from '../../types';
-import { aiRouter } from './aiRouter';
-import { extractAndParseJSON } from './courseValidator';
-import { getDefaultModelForProvider } from './modelRegistry';
+import type { AIProvider, Course } from '../../types.js';
+import { aiRouter } from './aiRouter.js';
+import { extractAndParseJSON } from './courseValidator.js';
+import { getDefaultModelForProvider } from './modelRegistry.js';
 
 export interface TemplateExtractionRequest {
   fileName: string;

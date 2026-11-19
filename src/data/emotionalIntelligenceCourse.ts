@@ -1,4 +1,4 @@
-import { Course } from '../types';
+import type { Course } from '../types.js';
 
 /**
  * Master Template Course: Emotional Intelligence in the AI-Augmented Workplace

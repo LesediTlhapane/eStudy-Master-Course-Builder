@@ -1,4 +1,4 @@
-import { Course } from '../types';
+import type { Course } from '../types.js';
 
 /**
  * Safely extract a string representation from any unknown value

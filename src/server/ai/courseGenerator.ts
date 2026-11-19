@@ -1,9 +1,9 @@
-import { Course, GeneratedCourse, AIProvider, GenerationMetadata } from '../../types';
-import { generateMasterPrompt } from '../../utils/promptGenerator';
-import { sanitizeCourse } from '../../utils/courseSanitizer';
-import { aiRouter } from './aiRouter';
-import { extractAndParseJSON, validateAndSanitizeGeneratedCourse } from './courseValidator';
-import { getDefaultModelForProvider, getModelMeta } from './modelRegistry';
+import type { Course, GeneratedCourse, AIProvider, GenerationMetadata } from '../../types.js';
+import { generateMasterPrompt } from '../../utils/promptGenerator.js';
+import { sanitizeCourse } from '../../utils/courseSanitizer.js';
+import { aiRouter } from './aiRouter.js';
+import { extractAndParseJSON, validateAndSanitizeGeneratedCourse } from './courseValidator.js';
+import { getDefaultModelForProvider, getModelMeta } from './modelRegistry.js';
 
 export interface CourseGenerationResult {
   success: boolean;

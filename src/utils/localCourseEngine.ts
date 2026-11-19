@@ -1,5 +1,5 @@
-import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GeneratedPracticalTask, GeneratedCourseQA, GeneratedSource } from '../types';
-import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from './courseVolumeEngine';
+import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GeneratedPracticalTask, GeneratedCourseQA, GeneratedSource } from '../types.js';
+import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from './courseVolumeEngine.js';
 
 export interface LocalCopilotMessage {
   role: 'user' | 'assistant';

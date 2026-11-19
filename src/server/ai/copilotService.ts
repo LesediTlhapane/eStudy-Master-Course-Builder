@@ -1,12 +1,12 @@
-import { Course, AIProvider } from '../../types';
-import { aiRouter } from './aiRouter';
-import { getDefaultModelForProvider } from './modelRegistry';
-import { extractAndParseJSON } from './courseValidator';
+import type { Course, AIProvider } from '../../types.js';
+import { aiRouter } from './aiRouter.js';
+import { getDefaultModelForProvider } from './modelRegistry.js';
+import { extractAndParseJSON } from './courseValidator.js';
 import {
   processLocalCopilotChat,
   extractCourseTopicFromMessage,
   generateComprehensiveCoursePatch
-} from '../../utils/localCourseEngine';
+} from '../../utils/localCourseEngine.js';
 
 export interface CopilotMessage {
   role: 'user' | 'assistant';

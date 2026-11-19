@@ -1,5 +1,5 @@
-import { Course } from '../types';
-import { emotionalIntelligenceTemplateCourse } from './emotionalIntelligenceCourse';
+import type { Course } from '../types.js';
+import { emotionalIntelligenceTemplateCourse } from './emotionalIntelligenceCourse.js';
 
 export { emotionalIntelligenceTemplateCourse };
 
@@ -1148,4 +1148,3 @@ export const sampleCourses: Course[] = [
   financialLiteracyBenchmarkCourse,
   emotionalIntelligenceTemplateCourse
 ];
-

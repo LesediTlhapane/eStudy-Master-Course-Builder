@@ -1,5 +1,5 @@
-import { AIProvider, AIModelMeta } from '../../types';
-import { getGroqApiKeys } from './groqProvider';
+import type { AIProvider, AIModelMeta } from '../../types.js';
+import { getGroqApiKeys } from './groqProvider.js';
 
 export const STATIC_MODEL_REGISTRY: AIModelMeta[] = [
   // --- Groq Models (OpenAI-compatible low-latency inference on Groq LPUs) ---

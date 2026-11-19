@@ -1,7 +1,7 @@
-import { AIProvider, AIModelMeta } from '../../types';
-import { AIProviderAdapter, AIRequest, AIResponse } from './types';
-import { groqProvider } from './groqProvider';
-import { getDefaultModelForProvider, getModelMeta } from './modelRegistry';
+import type { AIProvider } from '../../types.js';
+import type { AIProviderAdapter, AIRequest, AIResponse } from './types.js';
+import { groqProvider } from './groqProvider.js';
+import { getDefaultModelForProvider } from './modelRegistry.js';
 
 class AIRouter {
   private adapters: Map<AIProvider, AIProviderAdapter> = new Map();

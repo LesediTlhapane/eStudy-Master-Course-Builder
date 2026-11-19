@@ -1,9 +1,9 @@
-import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedPracticalTask, AIProvider } from '../../types';
-import { aiRouter } from './aiRouter';
-import { extractAndParseJSON } from './courseValidator';
-import { generateLocalFallbackCourse } from '../../utils/localCourseEngine';
-import { sanitizeCourse } from '../../utils/courseSanitizer';
-import { enrichLessonToTextbookStandard, enforceComprehensiveCourseVolume } from '../../utils/courseVolumeEngine';
+import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedPracticalTask, AIProvider } from '../../types.js';
+import { aiRouter } from './aiRouter.js';
+import { extractAndParseJSON } from './courseValidator.js';
+import { generateLocalFallbackCourse } from '../../utils/localCourseEngine.js';
+import { sanitizeCourse } from '../../utils/courseSanitizer.js';
+import { enrichLessonToTextbookStandard, enforceComprehensiveCourseVolume } from '../../utils/courseVolumeEngine.js';
 
 export interface GranularRegenerationResult {
   success: boolean;

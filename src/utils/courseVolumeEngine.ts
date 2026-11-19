@@ -1,4 +1,4 @@
-import {
+import type {
   Course,
   GeneratedCourse,
   GeneratedModule,
@@ -6,7 +6,7 @@ import {
   GeneratedScenario,
   GeneratedQuestion,
   GeneratedPracticalTask
-} from '../types';
+} from '../types.js';
 
 export interface CourseVolumeMetrics {
   totalWords: number;

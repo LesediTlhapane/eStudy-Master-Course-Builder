@@ -1,6 +1,6 @@
-import { Course, CourseModule, ResearchSource, DiagnosticQuestion, AssessmentItem, EthicsCardData } from '../types';
-import { createScratchCourse } from '../data/initialCourseData';
-import { toSafeArray } from './promptGenerator';
+import type { Course, CourseModule, ResearchSource, DiagnosticQuestion, AssessmentItem, EthicsCardData } from '../types.js';
+import { createScratchCourse } from '../data/initialCourseData.js';
+import { toSafeArray } from './promptGenerator.js';
 
 /**
 + * Preserves user string values WITHOUT calling .trim(), so typing spaces

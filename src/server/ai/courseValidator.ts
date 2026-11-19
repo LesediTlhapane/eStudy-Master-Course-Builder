@@ -1,5 +1,5 @@
-import { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GenerationMetadata } from '../../types';
-import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from '../../utils/courseVolumeEngine';
+import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GenerationMetadata } from '../../types.js';
+import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from '../../utils/courseVolumeEngine.js';
 
 export interface ValidationResult {
   success: boolean;
