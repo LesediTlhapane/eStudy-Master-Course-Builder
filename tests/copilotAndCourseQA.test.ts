@@ -79,15 +79,25 @@ function createDomainCourseAIMock(subjectFacts: {
               title: `${term}: Architecture & Mechanisms`,
               purpose: `How ${term} works under real operational constraints.`,
               progressionStage: 'Foundation & Mental Model',
-              conceptsToTeach: [term, 'Trust Boundaries', 'Failure Mode Isolation'],
-              workedExampleTopic: `Baseline architecture audit for ${term}`
+              knowledgeToAcquire: `Core principles and operational boundaries governing ${term}.`,
+              conceptsToExplain: [term, 'Trust Boundaries', 'Failure Mode Isolation'],
+              keyTerminology: [term, 'Trust Boundary', 'Failure Isolation'],
+              subjectExamples: [`Baseline architecture review for ${term}`],
+              practicalSkills: [`Map ${term} dependencies and failure boundaries`],
+              commonMisconceptions: [`Treating ${term} as static configuration rather than living operational boundaries`],
+              demonstrationMethod: 'Worked enterprise case walkthrough'
             },
             {
               title: `${secTerm}: Verification & Applied Practice`,
-              purpose: `Implementing, auditing, and troubleshooting ${secTerm}.`,
+              purpose: `Implementing, testing, and troubleshooting ${secTerm}.`,
               progressionStage: 'Verification & Governance',
-              conceptsToTeach: [secTerm, 'Acceptance Thresholds', 'Escalation Paths'],
-              workedExampleTopic: `Peer verification review for ${secTerm}`
+              knowledgeToAcquire: `Hands-on troubleshooting and acceptance testing methods for ${secTerm}.`,
+              conceptsToExplain: [secTerm, 'Acceptance Thresholds', 'Escalation Paths'],
+              keyTerminology: [secTerm, 'Acceptance Threshold', 'Escalation Path'],
+              subjectExamples: [`Peer design review for ${secTerm}`],
+              practicalSkills: [`Validate ${secTerm} outputs against acceptance criteria`],
+              commonMisconceptions: [`Skipping quantitative checks on ${secTerm} edge cases`],
+              demonstrationMethod: 'Step-by-step live troubleshooting walkthrough'
             }
           ],
           scenarioContexts: [
@@ -110,22 +120,30 @@ function createDomainCourseAIMock(subjectFacts: {
               type: 'Workplace',
               organisationType: subjectFacts.orgs[(idx + 2) % subjectFacts.orgs.length],
               cityOrSetting: subjectFacts.cities[(idx + 2) % subjectFacts.cities.length],
-              coreDilemma: `Cross-team escalation and governance audit for ${term}`
+              coreDilemma: `Cross-team escalation and governance review for ${term}`
             }
           ],
           practicalTaskSpec: {
-            title: `Module ${modNum} Applied ${term} Verification Task`,
-            objective: `Apply ${term} controls to diagnose and fix an imperfect workflow.`,
-            realisticScenario: `In a ${subjectFacts.cities[idx % subjectFacts.cities.length]} ${subjectFacts.orgs[idx % subjectFacts.orgs.length]}, audit a live ${term} workflow.`,
-            deliverable: `Signed Module ${modNum} ${term} Audit & Remediation Brief`,
-            resourcesRequired: ['Module checklist', 'Domain specification sheet', 'Verification rubric'],
-            rubricCriteria: [`${term} technical accuracy (40%)`, 'Verification & governance rigour (30%)', 'Feasibility of corrective plan (30%)']
+            title: `Module ${modNum} Applied ${term} Design & Validation Lab`,
+            learningObjective: `Design, validate, and remediate a live ${term} deliverable against authentic criteria.`,
+            scenarioOrTask: `In a ${subjectFacts.cities[idx % subjectFacts.cities.length]} ${subjectFacts.orgs[idx % subjectFacts.orgs.length]}, evaluate and fix a flawed ${term} artifact.`,
+            requiredResources: ['Domain reference brief', 'Sample dataset/configuration', 'Acceptance scoring guide'],
+            clearInstructions: `Review the supplied ${term} artifact step by step and produce an improved, validated solution.`,
+            sequentialSteps: [
+              `1. Inspect ${term} inputs against module technical principles.`,
+              `2. Test ${secTerm} edge cases and explain trade-offs.`,
+              `3. Submit revised ${term} solution and acceptance notes.`
+            ],
+            expectedDeliverable: `Module ${modNum} ${term} Applied Solution & Validation Brief`,
+            successCriteria: 'All flaws resolved accurately with clear trade-off rationale.',
+            rubricCriteria: [`${term} technical accuracy (40%)`, `${secTerm} verification depth (30%)`, 'Clarity and feasibility of design notes (30%)'],
+            reflectionPrompt: `Which misconception in ${term} could cause the highest downstream risk in your day-to-day role?`
           }
         };
       });
 
       return {
-        provider: 'groq',
+        provider: req.provider || 'groq',
         model: req.model || 'openai/gpt-oss-120b',
         text: JSON.stringify({
           requiredDomainConcepts: subjectFacts.domainTerms,
@@ -204,21 +222,21 @@ By day sixty, leads consolidate findings into lightweight standard operating tem
             id: `lesson-${modNum}-1`,
             title: `${term}: Architecture & Mechanisms`,
             durationMinutes: 35,
-            concepts: [term, 'Trust Boundaries', 'Failure Mode Isolation'],
-            contentBody: lesson1Body,
-            callouts: [{ type: 'Tip', title: `${term} Verification Tip`, content: `Always inspect primary logs before approving changes to ${term} in Module ${modNum}.` }],
-            workplaceApplication: `Review active ${term} configurations inside your ${city} ${org} team and document core operational assumptions.`,
-            aiApplication: `Use enterprise assistants to draft ${term} checklists for Module ${modNum}, then verify every rule manually.`
+            concepts: [term, 'Architecture Mechanics', 'Failure Mode Isolation'],
+            contentBody: `${lesson1Body}\n\nKey mechanism & limitation note: Because ${term} architecture works by isolating state boundaries before runtime execution, a frequent misconception is treating default settings as resilient; teams must evaluate trade-offs using a concrete baseline example.`,
+            callouts: [{ type: 'Tip', title: `${term} Mechanism Tip`, content: `Inspect architecture dependencies and failure limitations carefully before promoting changes to ${term} in Module ${modNum}.` }],
+            workplaceApplication: `Map active ${term} architecture mechanisms inside your ${city} ${org} team and document core boundary trade-offs.`,
+            aiApplication: `Use enterprise assistants to explore alternative ${term} mechanisms for Module ${modNum}, then validate assumptions independently.`
           },
           {
             id: `lesson-${modNum}-2`,
             title: `${secondaryTerm}: Verification & Applied Practice`,
             durationMinutes: 40,
-            concepts: [secondaryTerm, 'Acceptance Thresholds', 'Escalation Paths'],
-            contentBody: lesson2Body,
-            callouts: [{ type: 'Good/Bad Example', title: `${secondaryTerm} Standard`, content: `Good: Verifying ${secondaryTerm} controls prior to sign-off. Bad: Bypassing Module ${modNum} checks under rush pressure.` }],
-            workplaceApplication: `Run peer QA reviews on ${secondaryTerm} deliverables across weekly sprints inside your ${org} unit.`,
-            aiApplication: `Compare AI summary drafts against live ${secondaryTerm} evidence before Module ${modNum} sign-off.`
+            concepts: [secondaryTerm, 'Applied Testing', 'Escalation Paths'],
+            contentBody: `${lesson2Body}\n\nApplied verification & edge-case trade-off: Verification works by testing reproducible ${secondaryTerm} behaviour against acceptance thresholds; a common misconception is assuming fast green checks eliminate downstream edge-case risks, illustrated cleanly by the walkthrough example above.`,
+            callouts: [{ type: 'Good/Bad Example', title: `${secondaryTerm} Practice Standard`, content: `Good: Testing ${secondaryTerm} limits against reproducible evidence. Bad: Assuming defaults work in Module ${modNum} without applied verification.` }],
+            workplaceApplication: `Execute applied verification practice on ${secondaryTerm} outputs across weekly sprints inside your ${org} unit.`,
+            aiApplication: `Compare AI-generated summaries against live ${secondaryTerm} test evidence before Module ${modNum} completion.`
           }
         ],
         scenarios: ([
@@ -433,26 +451,61 @@ By day sixty, leads consolidate findings into lightweight standard operating tem
             learningObjectiveRef: `LO ${modNum}.3`
           }
         ],
-        practicalTask: {
-          id: `task-${modNum}`,
-          title: `Module ${modNum} Applied ${term} Verification Task`,
-          instructions: `Objective: Apply ${term} and ${secondaryTerm} verification gates to diagnose and fix a realistic workplace flaw.\n\nScenario: Inside a ${city} ${org}, audit the Phase ${modNum} ${term} package exhibiting unverified configuration shortcuts and incomplete documentation.\n\nResources: Module ${modNum} ${term} checklist, ${subjectFacts.laws} summary guide, and sample audit log.\n\nSteps: 1. Inspect the ${term} inputs for at least two high-impact defects. 2. Cross-check ${secondaryTerm} controls against Module ${modNum} thresholds. 3. Draft a concise corrective action plan with named owners and verification criteria.\n\nDeliverable: Signed Module ${modNum} ${term} Audit & Remediation Brief.\n\nSuccess criteria: Root-cause accuracy (40%), Governance alignment (30%), Remediation clarity (30%).\n\nReflection: Which verification step from this ${term} exercise would catch the costliest mistake in your real role?`,
-          deliverable: `Signed Module ${modNum} ${term} Audit & Remediation Brief`,
-          evaluationRubric: [
-            `${term} technical gap identification (40%)`,
-            `Compliance with ${secondaryTerm} & ${subjectFacts.laws} governance controls (30%)`,
-            `Actionability and clarity of Module ${modNum} remediation steps (30%)`
-          ]
-        },
+        practicalTask: ([
+          {
+            id: `task-1`,
+            title: `Module 1 Architecture Mapping & Trust-Boundary Exercise (${term})`,
+            instructions: `Objective: Sketch the foundational ${term} component flow and isolate high-risk failure boundaries before deployment.\n\nScenario: A ${city} ${org} has suffered repeat outages after linking external vendor feeds directly into internal ${term} records.\n\nResources: Topology worksheet, baseline SLA targets matrix, and ${subjectFacts.laws} boundary brief.\n\nInstructions: Draw the current integration map, highlight unguarded hand-offs, and redesign explicit boundary controls.\n\nSteps: 1. Trace every data entry and exit point across ${term}. 2. Mark two critical trust boundaries where unvalidated inputs enter. 3. Specify fallback isolation timeouts and ownership boundaries.\n\nDeliverable: Annotated ${term} Architecture & Trust-Boundary Diagram.\n\nSuccess criteria: Boundary identification accuracy (40%), Resilience trade-off rationale (30%), Clarity of component flow (30%).\n\nReflection: Where do implicit assumptions hide inside your own team's ${term} architecture?`,
+            deliverable: `Annotated ${term} Architecture & Trust-Boundary Diagram`,
+            evaluationRubric: [
+              `${term} topology & boundary accuracy (40%)`,
+              `Isolation & failover trade-off rationale (30%)`,
+              `Clarity and completeness of annotated diagram (30%)`
+            ]
+          },
+          {
+            id: `task-2`,
+            title: `Module 2 Hands-On Build & Acceptance Testing Lab (${secondaryTerm})`,
+            instructions: `Objective: Build and test a reproducible ${secondaryTerm} template enforcing repeatable quality gates across sprints.\n\nScenario: Rapid quarterly demand inside a ${city} ${org} pushed contributors toward undocumented manual adjustments that broke release consistency.\n\nResources: Starter configuration repository, sample test cases, and ${subjectFacts.laws} redaction guide.\n\nInstructions: Author a parameterised ${secondaryTerm} configuration and prove via dry-run evidence that automated gates reject bad inputs.\n\nSteps: 1. Parameterise reusable ${secondaryTerm} settings cleanly. 2. Inject an invalid test case and capture automated gate rejection. 3. Document safe rollback commands for on-call peers.\n\nDeliverable: Parameterised ${secondaryTerm} Build Pack & Test Output Log.\n\nSuccess criteria: Template reproducibility (40%), Automated test coverage (30%), Safe rollback documentation (30%).\n\nReflection: Which repetitive manual step in your ${secondaryTerm} workflow should be parameterised first?`,
+            deliverable: `Parameterised ${secondaryTerm} Build Pack & Test Output Log`,
+            evaluationRubric: [
+              `Reproducibility of ${secondaryTerm} template (40%)`,
+              `Negative-case gate testing evidence (30%)`,
+              `Practicality of on-call rollback instructions (30%)`
+            ]
+          },
+          {
+            id: `task-3`,
+            title: `Module 3 Edge-Case & Anomaly Triage Simulation (${term})`,
+            instructions: `Objective: Diagnose subtle adversarial defects and calibrate escalation thresholds across live ${term} operations.\n\nScenario: Anomalies surfaced inside exception queues at a ${city} ${org}, threatening sensitive client data governed by ${subjectFacts.laws}.\n\nResources: Incident exception extract, redacted sample transcript, and risk impact matrix.\n\nInstructions: Classify incident severity rigorously, contain immediate exposure, and justify long-term structural fixes.\n\nSteps: 1. Separate symptomatic noise from the primary trigger inside the ${term} exception extract. 2. Containment: propose instant blast-radius controls. 3. Draft calibrated alert thresholds eliminating false positives.\n\nDeliverable: Module 3 ${term} Edge-Case Triage Dossier.\n\nSuccess criteria: Root-trigger diagnosis (40%), Containment & ${subjectFacts.laws} alignment (30%), Alert calibration precision (30%).\n\nReflection: How will your team resist shortcut pressure during high-urgency incidents affecting ${term}?`,
+            deliverable: `Module 3 ${term} Edge-Case Triage Dossier`,
+            evaluationRubric: [
+              `Root-trigger diagnostic precision for ${term} (40%)`,
+              `Containment & ${subjectFacts.laws} privacy alignment (30%)`,
+              `Threshold calibration practicality (30%)`
+            ]
+          },
+          {
+            id: `task-4`,
+            title: `Module 4 Commercial ROI & 90-Day Adoption Charter (${secondaryTerm})`,
+            instructions: `Objective: Quantify operational waste, define measurable KPI baselines, and sequence a realistic 90-day ${secondaryTerm} rollout.\n\nScenario: Executive sponsors at a ${city} ${org} demand measurable spend and quality improvements ninety days after programme completion.\n\nResources: Historical monthly cost/defect ledger, departmental capacity summary, and KPI scorecard canvas.\n\nInstructions: Build a prioritised 30-60-90 day capability roadmap linking ${secondaryTerm} metrics straight to commercial outcomes.\n\nSteps: 1. Calculate baseline cost per unit and top waste drivers across ${secondaryTerm}. 2. Set realistic 30-, 60-, and 90-day improvement milestones. 3. Assign lightweight peer feedback cadences sustaining gains.\n\nDeliverable: 90-Day ${secondaryTerm} Value & Capability Roadmap.\n\nSuccess criteria: Quantitative baseline rigour (40%), Realistic sequencing (30%), Sustainability cadence (30%).\n\nReflection: Which habit from this ${secondaryTerm} charter will stay easiest to keep at Day 90?`,
+            deliverable: `90-Day ${secondaryTerm} Value & Capability Roadmap`,
+            evaluationRubric: [
+              `Baseline metric & waste analysis for ${secondaryTerm} (40%)`,
+              `Feasibility of 30-60-90 day milestones (30%)`,
+              `Clarity of team sustainability cadence (30%)`
+            ]
+          }
+        ])[(modNum - 1) % 4],
         reflection: [
-          `Where could ${term} verification gaps currently exist in your Module ${modNum} workflow?`,
-          `Which check from ${secondaryTerm} will you adopt in your team this week?`
+          `Where could ${term} misconceptions currently introduce risk in your Module ${modNum} work?`,
+          `Which validation technique from ${secondaryTerm} will you apply in your team this week?`
         ],
-        summary: `Module ${modNum} equips learners to apply, audit, and govern ${term} and ${secondaryTerm} reliably.`
+        summary: `Module ${modNum} equips learners to apply, test, and refine ${term} and ${secondaryTerm} reliably.`
       };
 
       return {
-        provider: 'groq',
+        provider: req.provider || 'groq',
         model: req.model || 'openai/gpt-oss-120b',
         text: JSON.stringify(modulePayload),
         usage: { inputTokens: 400, outputTokens: 1200 },
@@ -468,13 +521,13 @@ By day sixty, leads consolidate findings into lightweight standard operating tem
     const term1 = subjectFacts.domainTerms[1 % subjectFacts.domainTerms.length];
 
     const wrapperPayload = {
-      overview: `This programme equips practitioners with practical mastery across ${subjectFacts.domainTerms.join(', ')} using authentic South African workplace scenarios and verification checklists.\n\nLearners progress systematically from foundational architecture to applied verification and 90-day governance rollout aligned with ${subjectFacts.laws}.`,
+      overview: `This programme equips practitioners with practical mastery across ${subjectFacts.domainTerms.join(', ')} using authentic South African workplace scenarios and applied exercises.\n\nLearners progress systematically from foundational architecture to applied verification and 90-day rollout aligned with ${subjectFacts.laws}.`,
       purpose: `Develop verifiable capability in ${subjectFacts.domainTerms.slice(0, 3).join(', ')} with clear human accountability.`,
       targetAudience: `South African practitioners working across ${subjectFacts.orgs[0]} environments`,
-      estimatedDuration: '16 Hours / 2 CPD Credits',
+      estimatedDuration: '16 Hours (Estimated Guided Learning)',
       learningOutcomes: [
         `Design and validate core ${term0} workflows`,
-        `Audit ${term1} outputs against objective criteria`,
+        `Evaluate ${term1} outputs against objective criteria`,
         `Uphold applicable governance including ${subjectFacts.laws}`
       ],
       assessments: {
@@ -483,9 +536,9 @@ By day sixty, leads consolidate findings into lightweight standard operating tem
           instructions: 'Answer all 5 baseline questions.',
           questions: [
             { id: 'diag-1', question: `How familiar are you with ${term0} principles?`, options: ['None', 'Basic', 'Regular', 'Advanced'], correctAnswer: 1, rationale: 'Assesses baseline.' },
-            { id: 'diag-2', question: `What triggers common errors in ${term1}?`, options: ['Too many audits', 'Missing verification gates', 'Strong SOPs', 'Clear roles'], correctAnswer: 1, rationale: 'Measures problem awareness.' },
-            { id: 'diag-3', question: `How do you validate ${term0} outputs before release?`, options: ['Guessing', 'Peer checklist review', 'Skipping review', 'Auto-approve'], correctAnswer: 1, rationale: 'Checks workflow habits.' },
-            { id: 'diag-4', question: `How should AI-assisted drafts in ${term1} be treated?`, options: ['Final truth', 'Draft requiring verification', 'Secret logs', 'Error-free'], correctAnswer: 1, rationale: 'Measures AI literacy.' },
+            { id: 'diag-2', question: `What triggers common errors in ${term1}?`, options: ['Too many audits', 'Missing validation gates', 'Clear criteria', 'Clear roles'], correctAnswer: 1, rationale: 'Measures problem awareness.' },
+            { id: 'diag-3', question: `How do you validate ${term0} outputs before release?`, options: ['Guessing', 'Peer technical review against criteria', 'Skipping review', 'Auto-approve'], correctAnswer: 1, rationale: 'Checks workflow habits.' },
+            { id: 'diag-4', question: `How should AI-assisted drafts in ${term1} be treated?`, options: ['Final truth', 'Draft requiring independent testing', 'Secret logs', 'Error-free'], correctAnswer: 1, rationale: 'Measures AI literacy.' },
             { id: 'diag-5', question: `Which governance standard applies to ${term0} records?`, options: ['None', subjectFacts.laws, 'Ad-hoc rules', 'Public posting'], correctAnswer: 1, rationale: 'Assesses compliance baseline.' }
           ]
         },
@@ -513,7 +566,7 @@ By day sixty, leads consolidate findings into lightweight standard operating tem
     };
 
     return {
-      provider: 'groq',
+      provider: req.provider || 'groq',
       model: req.model || 'openai/gpt-oss-120b',
       text: JSON.stringify(wrapperPayload),
       usage: { inputTokens: 350, outputTokens: 800 },
@@ -841,13 +894,182 @@ test('QA Negative Control: Cross-domain Mechanical bleed + Boilerplate in Cloud 
     'Subject alignment check must verdict FAIL on mechanical CAD/FEA bleed inside Cloud Engineering'
   );
   assert.ok(
-    review.qa.qaChecks?.some(c => c.id === 'repetition_boilerplate' && c.status === 'FAIL'),
-    'Repetition/boilerplate check must detect five-stage operational protocol filler'
+    review.qa.qaChecks?.some(c => c.id === 'repetition' && c.status === 'FAIL'),
+    'Repetition/paraphrase check must detect five-stage operational protocol filler'
   );
   assert.ok(
-    review.qa.qaChecks?.some(c => c.id === 'practical_tasks' && (c.status === 'FAIL' || c.status === 'WARNING')),
+    review.qa.qaChecks?.some(c => c.id === 'practical_application' && (c.status === 'FAIL' || c.status === 'WARNING')),
     'Practical tasks check must flag incomplete instructions & non-100% rubric'
   );
+});
+
+test('11 QA Dimensions & Dual Provider Unification: Gemini (gemini-4-hydrogen) and Groq share identical instructional rigor', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI for Business');
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI for Business'), patch);
+
+  const groqPrompts: string[] = [];
+  const geminiPrompts: string[] = [];
+
+  const baseMock = createDomainCourseAIMock({
+    domainTerms: ['Business Use-Case Triage', 'Structured Prompting & RAG Grounding', 'Hallucination Auditing & Governance'],
+    cities: ['Sandton', 'Cape Town', 'Pretoria'],
+    orgs: ['Commercial Operations Division', 'Customer Advisory Hub', 'Corporate Finance & Admin Team'],
+    laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+  });
+
+  const groqRes = await generateCourseWithAIEngine(courseInput, 'groq', 'openai/gpt-oss-120b', {
+    aiExecute: async req => {
+      groqPrompts.push(req.systemInstruction || '');
+      return baseMock(req);
+    },
+    skipRepair: true
+  });
+
+  const geminiRes = await generateCourseWithAIEngine(courseInput, 'gemini', 'gemini-4-hydrogen', {
+    aiExecute: async req => {
+      geminiPrompts.push(req.systemInstruction || '');
+      return baseMock(req);
+    },
+    skipRepair: true
+  });
+
+  assert.equal(groqRes.success, true);
+  assert.equal(geminiRes.success, true);
+  assert.equal(geminiRes.course?.generationMetadata?.provider, 'gemini');
+  assert.equal(geminiRes.course?.generationMetadata?.providerDisplayName, 'Google Gemini');
+  assert.equal(geminiRes.course?.generationMetadata?.model, 'gemini-4-hydrogen');
+
+  // Verify Gemini and Groq receive the exact same stage system prompts
+  assert.equal(groqPrompts.length, geminiPrompts.length);
+  assert.deepEqual(groqPrompts, geminiPrompts);
+
+  // Verify all 11 QA dimensions are emitted with scores & statuses
+  const qaIds = new Set((geminiRes.course?.qa.qaChecks || []).map(c => c.id));
+  const expectedIds = [
+    'subject_alignment',
+    'learning_objectives',
+    'educational_depth',
+    'technical_accuracy',
+    'lesson_relevance',
+    'practical_application',
+    'assessment_alignment',
+    'repetition',
+    'progression',
+    'factual_reliability',
+    'document_integrity'
+  ];
+  for (const id of expectedIds) {
+    assert.ok(qaIds.has(id), `Expected QA dimension "${id}" to be present`);
+  }
+  assert.equal(geminiRes.course?.qa.qaChecks?.length, 11);
+  assert.equal(geminiRes.course?.qa.overallVerdict, 'PASS');
+});
+
+test('Semantic Repetition Negative Control vs Domain Noun Positive Control', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Cloud Engineering');
+  const courseInput = applyPatchToCourse(createScratchCourse('Cloud Engineering'), patch);
+
+  const res = await generateCourseWithAIEngine(courseInput, 'gemini', 'gemini-4-hydrogen', {
+    aiExecute: createDomainCourseAIMock({
+      domainTerms: ['VPC & Cloud Infrastructure', 'Terraform CI/CD Deployment', 'IAM Least-Privilege Security'],
+      cities: ['Johannesburg', 'Cape Town', 'Durban'],
+      orgs: ['Fintech Cloud Operations Team', 'Enterprise SaaS Platform Group', 'Logistics Digital Unit'],
+      laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+    }),
+    skipRepair: true
+  });
+
+  assert.ok(res.course);
+  const blueprint = buildDeterministicBlueprint(courseInput);
+
+  // Positive control: distinct lessons sharing legitimate domain nouns pass repetition cleanly
+  const cleanReview = reviewGeneratedCourseQuality(res.course!, courseInput, blueprint);
+  assert.equal(cleanReview.qa.qaChecks?.find(c => c.id === 'repetition')?.status, 'PASS');
+
+  // Negative control: paraphrase Lesson 1 inside Module 2 Lesson 1 with synonym swaps
+  const paraphrasedCourse = structuredClone(res.course!);
+  const sourceBody = paraphrasedCourse.modules[0].lessons[0].contentBody;
+  paraphrasedCourse.modules[1].lessons[0].contentBody = sourceBody
+    .replace(/\bdeployments?\b/gi, 'rollouts')
+    .replace(/\borganisation|enterprise|team\b/gi, 'company')
+    .replace(/\bverify|validate|check\b/gi, 'confirm')
+    .replace(/\bworkflow\b/gi, 'process')
+    .replace(/\bemployees|practitioners\b/gi, 'staff');
+
+  const dupReview = reviewGeneratedCourseQuality(paraphrasedCourse, courseInput, blueprint);
+  const repCheck = dupReview.qa.qaChecks?.find(c => c.id === 'repetition');
+  assert.equal(repCheck?.status, 'FAIL', 'Paraphrased duplicate lesson must trigger repetition FAIL');
+  assert.equal(dupReview.qa.hasBlockingFailures, true);
+});
+
+test('Generic SOP/Checklist Practical Task & Off-Lesson POPIA/SOP MCQs are caught cleanly by Semantic QA', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI for Business');
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI for Business'), patch);
+
+  const res = await generateCourseWithAIEngine(courseInput, 'groq', 'openai/gpt-oss-120b', {
+    aiExecute: createDomainCourseAIMock({
+      domainTerms: ['Business Use-Case Triage', 'Structured Prompting & RAG Grounding', 'Hallucination Auditing & Governance'],
+      cities: ['Sandton', 'Cape Town', 'Pretoria'],
+      orgs: ['Commercial Operations Division', 'Customer Advisory Hub', 'Corporate Finance & Admin Team'],
+      laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+    }),
+    skipRepair: true
+  });
+
+  assert.ok(res.course);
+  const degraded = structuredClone(res.course!);
+
+  // Strip POPIA/SOP from Module 1 lessons so generic POPIA/SOP MCQs are exposed as off-lesson filler
+  for (const l of degraded.modules[0].lessons) {
+    l.contentBody = 'Structured prompts specify Role, Context, Constraints, and Output Format so language models stay grounded. For example, testing few-shot examples prevents drift and addresses prompt ambiguity misconceptions because deterministic templates guide output formatting.';
+    l.workplaceApplication = 'Test a structured prompt rubric across two internal customer service emails.';
+    l.aiApplication = 'Compare zero-shot vs structured prompts on a redacted support ticket.';
+  }
+  degraded.modules[0].practicalTask!.instructions =
+    'Objective: Audit workflow.\nScenario: Workplace.\nResources: SOP checklist.\nInstructions: Identify at least two workflow failures, complete the standard operating procedure verification checklist, obtain supervisory sign-off, and document corrective actions.\nSteps: 1. Audit.\nDeliverable: Checklist.\nSuccess criteria: Done.\nReflection: What failed?';
+
+  degraded.modules[0].knowledgeChecks[0].question = 'What does POPIA Section 71 require for unsigned verification checklist workflows?';
+  degraded.modules[0].knowledgeChecks[1].question = 'Why must Standard Operating Procedures (SOPs) govern King IV Principle 12 sign-off?';
+  degraded.modules[0].knowledgeChecks[2].question = 'When auditing an unsigned verification checklist under POPIA Section 71, what happens first?';
+
+  const blueprint = buildDeterministicBlueprint(courseInput);
+  const review = reviewGeneratedCourseQuality(degraded, courseInput, blueprint);
+
+  const practicalCheck = review.qa.qaChecks?.find(c => c.id === 'practical_application');
+  assert.ok(
+    practicalCheck && (practicalCheck.status === 'WARNING' || practicalCheck.status === 'FAIL'),
+    'Generic SOP checklist practical task must be flagged on non-SOP course'
+  );
+
+  const assessmentCheck = review.qa.qaChecks?.find(c => c.id === 'assessment_alignment');
+  assert.equal(assessmentCheck?.status, 'FAIL', 'Off-lesson generic POPIA/SOP MCQs must trigger assessment_alignment FAIL');
+});
+
+test('Factual & Regulatory Reliability flags unverified NQF/SAQA/Act citations when zero verified sources exist', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Cloud Engineering');
+  const courseInput = applyPatchToCourse(createScratchCourse('Cloud Engineering'), patch);
+  // Zero verified sources
+  courseInput.research.sources = [];
+
+  const res = await generateCourseWithAIEngine(courseInput, 'groq', 'openai/gpt-oss-120b', {
+    aiExecute: createDomainCourseAIMock({
+      domainTerms: ['VPC & Cloud Infrastructure', 'Terraform CI/CD Deployment', 'IAM Least-Privilege Security'],
+      cities: ['Johannesburg', 'Cape Town', 'Durban'],
+      orgs: ['Fintech Cloud Operations Team', 'Enterprise SaaS Platform Group', 'Logistics Digital Unit'],
+      laws: 'Applicable Corporate Governance Standards'
+    }),
+    skipRepair: true
+  });
+
+  assert.ok(res.course);
+  const inventedClaims = structuredClone(res.course!);
+  inventedClaims.overview += ' Formally accredited at NQF Level 5 with SAQA ID 242814 under Act 99 of 2024 and 4 CPD Credits.';
+
+  const blueprint = buildDeterministicBlueprint(courseInput);
+  const review = reviewGeneratedCourseQuality(inventedClaims, courseInput, blueprint);
+  const factualCheck = review.qa.qaChecks?.find(c => c.id === 'factual_reliability');
+  assert.equal(factualCheck?.status, 'FAIL');
+  assert.ok((factualCheck?.affectedItems?.length || 0) >= 3);
 });
 
 test('classifyCopilotIntent never misclassifies questions as course_create', () => {

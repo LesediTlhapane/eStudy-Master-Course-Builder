@@ -2,5 +2,7 @@
   "name": "eStudy Course Builder",
   "description": "Guided desktop authoring platform for eStudy South Africa to build structured, scenario-driven courses powered by the Master Course Generation Prompt v9.0.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

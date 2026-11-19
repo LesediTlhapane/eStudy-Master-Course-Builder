@@ -91,7 +91,7 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
   const [completedStages, setCompletedStages] = useState<Set<RealGenerationStageId>>(new Set());
   const [retryCount, setRetryCount] = useState(0);
 
-  const providerLabel = 'Groq Cloud';
+  const providerLabel = provider === 'gemini' ? 'Google Gemini' : 'Groq Cloud';
 
   // Elapsed timer
   useEffect(() => {

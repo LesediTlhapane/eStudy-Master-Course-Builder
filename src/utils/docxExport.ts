@@ -539,11 +539,12 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
   const s = course.structure || ({} as any);
   const r = course.research || ({} as any);
 
-  // Ensure we always export the full 22–30 page comprehensive generated course manual
+  // Preserve genuine AI-generated modules without synthetic fallback padding
   const rawGen: GeneratedCourse = course.generatedCourse
     ? JSON.parse(JSON.stringify(course.generatedCourse))
     : generateLocalFallbackCourse(course);
-  const gen = enforceComprehensiveCourseVolume(rawGen, course);
+  const isLocalFallback = !rawGen.generationMetadata || rawGen.generationMetadata.provider === 'local_fallback';
+  const gen = isLocalFallback ? enforceComprehensiveCourseVolume(rawGen, course) : rawGen;
   const volume = calculateGeneratedCourseVolume(gen);
 
   const children: Paragraph[] = [];
@@ -575,7 +576,7 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
       spacing: { after: 200 },
       children: [
         new TextRun({
-          text: `Code: ${gen.code || course.code || 'EST-COURSE-01'}  |  Version: ${gen.version || 'v9.0'}  |  ${volume.estimatedPages} Pages (${volume.totalWords.toLocaleString()} Words)`,
+          text: `Code: ${gen.code || course.code || 'EST-COURSE-01'}  |  Version: ${gen.version || 'v9.0'}  |  Estimated ~${volume.estimatedPages} A4 Pages (${volume.totalWords.toLocaleString()} Words)`,
           bold: true,
           size: 22,
           color: '1E701C'
@@ -647,7 +648,7 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
       spacing: { after: 120 },
       children: [
         new TextRun({ text: 'Duration & NQF Level: ', bold: true, size: 21 }),
-        new TextRun({ text: `${gen.estimatedDuration || s.estimatedDuration || '16 Hours / 2 CPD Credits'} | ${s.setaNqfLevel || 'NQF Level 5 Alignment'}`, size: 21 })
+        new TextRun({ text: `${gen.estimatedDuration || s.estimatedDuration || '16 Hours / 2 CPD Credits'} | ${s.setaNqfLevel || 'To Be Confirmed (Requires SME Validation)'}`, size: 21 })
       ]
     }),
 
@@ -709,7 +710,7 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
       spacing: { after: 120 },
       children: [
         new TextRun({ text: 'Governing Statutory Framework: ', bold: true, size: 21 }),
-        new TextRun({ text: r.regulatorySources || r.regulatoryFramework || 'POPIA (Act 4 of 2013), King IV Principle 12, South African National Standards', size: 21 })
+        new TextRun({ text: r.regulatorySources || r.regulatoryFramework || 'To Be Confirmed (Requires SME Validation)', size: 21 })
       ]
     }),
 
@@ -1174,8 +1175,8 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
     new Paragraph({
       spacing: { after: 80 },
       children: [
-        new TextRun({ text: 'Data Privacy & POPIA Safeguards: ', bold: true, size: 21 }),
-        new TextRun({ text: course.ethics?.dataPrivacyFramework || 'Strict adherence to POPIA Act 4 of 2013 Conditions 1–8 and Section 19 security safeguards.', size: 21 })
+        new TextRun({ text: 'Data Privacy & Safeguards: ', bold: true, size: 21 }),
+        new TextRun({ text: course.ethics?.dataPrivacyFramework || 'To Be Confirmed (Requires SME Validation — align data-handling safeguards with applicable privacy policies and statutory requirements).', size: 21 })
       ]
     }),
     new Paragraph({
@@ -1197,7 +1198,7 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
   const doc = new Document({
     creator: 'eStudy South Africa Course Builder',
     title: gen.title || course.name || 'eStudy Master Course Manual',
-    description: `Comprehensive ${volume.estimatedPages}-page training manual generated under eStudy Master Prompt Framework v9.0`,
+    description: `Estimated ~${volume.estimatedPages}-page training manual (${volume.totalWords.toLocaleString()} words) generated under eStudy Master Prompt Framework v9.0`,
     sections: [
       {
         properties: {},

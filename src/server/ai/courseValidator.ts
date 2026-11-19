@@ -53,6 +53,7 @@ const PRACTICAL_TASK_SECTIONS: Array<{ label: string; pattern: RegExp }> = [
   { label: 'Objective', pattern: /objective\s*:/i },
   { label: 'Scenario', pattern: /scenario\s*:/i },
   { label: 'Resources', pattern: /resources?\s*:/i },
+  { label: 'Instructions', pattern: /instructions?\s*:/i },
   { label: 'Numbered steps', pattern: /steps?\s*:\s*(?:\d+[.)]|\n\s*\d+[.)])/i },
   { label: 'Deliverable', pattern: /deliverable\s*:/i },
   { label: 'Success criteria', pattern: /success\s+criteria\s*:/i },
@@ -65,6 +66,72 @@ const BOILERPLATE_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
   { label: 'pre-execution readiness SOP filler', pattern: /stage\s*1\s*[—\-–:]\s*pre-execution readiness\s*&\s*scope verification/i },
   { label: 'placeholder continuation token', pattern: /\[continue\.{0,3}\]|\bTBD\b|\blorem ipsum\b/i }
 ];
+
+const GENERIC_SOP_TASK_PHRASES: RegExp[] = [
+  /standard operating procedure/i,
+  /\bsop checklist\b/i,
+  /verification checklist/i,
+  /supervisory sign-off/i,
+  /document corrective actions?/i,
+  /identify (?:at least two )?(?:workflow|process) failures?/i
+];
+
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'onto', 'your', 'their',
+  'these', 'those', 'about', 'under', 'over', 'when', 'where', 'what', 'which', 'while',
+  'before', 'after', 'must', 'should', 'could', 'would', 'will', 'shall', 'have', 'has',
+  'had', 'are', 'was', 'were', 'been', 'being', 'can', 'not', 'only', 'also', 'more',
+  'most', 'such', 'than', 'then', 'they', 'them', 'each', 'both', 'some', 'many', 'very',
+  'just', 'even', 'within', 'across', 'between', 'through', 'without', 'against', 'during',
+  'including', 'using', 'based', 'ensure', 'module', 'lesson', 'course', 'learners',
+  'learner', 'practitioner', 'practitioners', 'teams', 'team', 'workplace', 'south', 'africa',
+  'african', 'apply', 'explain', 'understand', 'evaluate', 'example', 'section', 'part'
+]);
+
+const SYNONYM_FOLD: Record<string, string> = {
+  optimise: 'optim',
+  optimize: 'optim',
+  optimisation: 'optim',
+  optimization: 'optim',
+  verify: 'verif',
+  validate: 'verif',
+  validation: 'verif',
+  check: 'verif',
+  enterprise: 'org',
+  organisation: 'org',
+  organization: 'org',
+  organisational: 'org',
+  company: 'org',
+  worker: 'staff',
+  employee: 'staff',
+  employees: 'staff',
+  staff: 'staff',
+  execute: 'run',
+  implement: 'run',
+  deploy: 'run',
+  risk: 'risk',
+  hazard: 'risk',
+  failure: 'fail',
+  defect: 'fail',
+  error: 'fail',
+  guideline: 'rule',
+  policy: 'rule',
+  procedure: 'proc',
+  protocol: 'proc',
+  workflow: 'flow',
+  process: 'flow',
+  review: 'audit',
+  inspect: 'audit'
+};
+
+function stemToken(raw: string): string {
+  const lower = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!lower) return '';
+  if (SYNONYM_FOLD[lower]) return SYNONYM_FOLD[lower];
+  return lower
+    .replace(/(isation|ization|ations|ation|ments|ment|ities|ity|ness|ing|ers|ies|ed|es|s)$/i, '')
+    .slice(0, 10);
+}
 
 function contentNgrams(text: string): Set<string> {
   const words = (text || '').toLowerCase().match(/[a-z0-9']+/g) || [];
@@ -84,6 +151,53 @@ function contentOverlap(left: string, right: string): number {
     if (rightShingles.has(shingle)) shared++;
   }
   return shared / Math.min(leftShingles.size, rightShingles.size);
+}
+
+/**
+ * Computes normalized semantic/paraphrase similarity while excluding legitimate
+ * shared core domain nouns (e.g., "cloud", "terraform", "llm", "recruitment")
+ * so teaching the same core subject across lessons is not falsely flagged.
+ */
+function semanticTokenSignature(text: string, domainStopStems: Set<string>): {
+  stems: Set<string>;
+  bigrams: Set<string>;
+} {
+  const tokens = ((text || '').toLowerCase().match(/[a-z][a-z0-9']{2,}/g) || [])
+    .filter(w => !STOP_WORDS.has(w))
+    .map(stemToken)
+    .filter(st => st.length >= 3 && !domainStopStems.has(st));
+
+  const stems = new Set(tokens);
+  const bigrams = new Set<string>();
+  for (let i = 0; i < tokens.length - 1; i++) {
+    bigrams.add(`${tokens[i]}_${tokens[i + 1]}`);
+  }
+  return { stems, bigrams };
+}
+
+function semanticSimilarity(
+  left: string,
+  right: string,
+  domainStopStems: Set<string>
+): number {
+  const sigA = semanticTokenSignature(left, domainStopStems);
+  const sigB = semanticTokenSignature(right, domainStopStems);
+  if (sigA.stems.size < 8 || sigB.stems.size < 8) return 0;
+
+  let sharedStems = 0;
+  for (const s of sigA.stems) {
+    if (sigB.stems.has(s)) sharedStems++;
+  }
+  const stemOverlap = sharedStems / Math.min(sigA.stems.size, sigB.stems.size);
+
+  let sharedBigrams = 0;
+  for (const bg of sigA.bigrams) {
+    if (sigB.bigrams.has(bg)) sharedBigrams++;
+  }
+  const minBg = Math.min(sigA.bigrams.size, sigB.bigrams.size);
+  const bigramOverlap = minBg >= 4 ? sharedBigrams / minBg : stemOverlap;
+
+  return stemOverlap * 0.55 + bigramOverlap * 0.45;
 }
 
 function extractModuleText(mod: GeneratedModule): string {
@@ -124,12 +238,20 @@ export function reviewGeneratedCourseQuality(
   const recommendations: string[] = [];
   const qaChecks: GeneratedQACheckDetail[] = [];
 
-  // ===========================================================================
-  // CHECK 1: SUBJECT & DOMAIN ALIGNMENT (WITH CROSS-DOMAIN BLEED DETECTION)
-  // ===========================================================================
-  const subjectEvidence: string[] = [];
-  const bleedFindings: string[] = [];
-  const unalignedModules: string[] = [];
+  // Build core domain vocabulary stems so legitimate domain-noun recurrence is not flagged as paraphrase repetition
+  const domainStopStems = new Set<string>();
+  const seedVocabText = [
+    blueprint.subjectTitle,
+    blueprint.domainLabel,
+    ...blueprint.requiredDomainConcepts,
+    ...course.modules.map(m => m.title)
+  ].join(' ');
+  for (const w of seedVocabText.toLowerCase().match(/[a-z][a-z0-9]{2,}/g) || []) {
+    if (!STOP_WORDS.has(w)) {
+      const st = stemToken(w);
+      if (st.length >= 3) domainStopStems.add(st);
+    }
+  }
 
   const requiredConcepts = blueprint.requiredDomainConcepts.map(c => c.toLowerCase());
   const fullCourseText = [
@@ -144,11 +266,19 @@ export function reviewGeneratedCourseQuality(
     ...course.assessments.finalAssessment.questions.map(q => `${q.question} ${q.rationale}`)
   ].join(' ');
 
+  // ===========================================================================
+  // 1. SUBJECT ALIGNMENT (INCLUDING CROSS-DOMAIN BLEED DETECTION)
+  // ===========================================================================
+  const subjectAffected: string[] = [];
+  const bleedFindings: string[] = [];
+  const unalignedModules: string[] = [];
+
   const overallBleed = detectCrossDomainBleed(fullCourseText, blueprint.outOfScopeDomains);
   if (overallBleed.length > 0) {
     for (const hit of overallBleed) {
       const msg = `Cross-domain bleed from "${hit.domain}" detected (off-topic terms: ${hit.matchedTerms.slice(0, 6).join(', ')}).`;
       bleedFindings.push(msg);
+      subjectAffected.push(`${hit.domain}: ${hit.matchedTerms.slice(0, 4).join(', ')}`);
       criticalIssues.push(msg);
     }
   }
@@ -165,42 +295,44 @@ export function reviewGeneratedCourseQuality(
     const modText = extractModuleText(mod);
     const modBleed = detectCrossDomainBleed(modText, blueprint.outOfScopeDomains);
     if (modBleed.length > 0) {
-      unalignedModules.push(
-        `Module ${mod.moduleNumber} ("${mod.title}") contains off-topic ${modBleed.map(b => b.domain).join(', ')} terms: ${modBleed
-          .flatMap(b => b.matchedTerms)
-          .slice(0, 5)
-          .join(', ')}.`
-      );
+      const msg = `Module ${mod.moduleNumber} ("${mod.title}") contains off-topic ${modBleed.map(b => b.domain).join(', ')} terms: ${modBleed
+        .flatMap(b => b.matchedTerms)
+        .slice(0, 5)
+        .join(', ')}.`;
+      unalignedModules.push(msg);
+      subjectAffected.push(`Module ${mod.moduleNumber}: ${mod.title}`);
     }
     const modWords = (mod.title || '')
       .toLowerCase()
       .split(/\s+/)
-      .filter(w => w.length > 3 && !/^(module|with|from|into|that|and|the|for)$/.test(w));
+      .filter(w => w.length > 3 && !STOP_WORDS.has(w));
     const titleKeywordsMatched = [...modWords, ...requiredConcepts.slice(0, 6)].filter(k =>
       modText.toLowerCase().includes(k)
     );
     if (modText.trim().length > 0 && titleKeywordsMatched.length === 0) {
       unalignedModules.push(`Module ${mod.moduleNumber} ("${mod.title}") shows minimal subject-concept alignment.`);
+      subjectAffected.push(`Module ${mod.moduleNumber}: ${mod.title}`);
     }
   }
 
-  if (unalignedModules.length > 0) {
-    for (const um of unalignedModules) {
-      if (!criticalIssues.includes(um)) criticalIssues.push(um);
-    }
+  for (const um of unalignedModules) {
+    if (!criticalIssues.includes(um)) criticalIssues.push(um);
   }
 
   const titleLower = (course.title || '').toLowerCase();
   const expectedTitleLower = (blueprint.subjectTitle || '').toLowerCase();
   const expectedTitleWords = expectedTitleLower
     .split(/\s+/)
-    .filter(w => w.length > 3 && !/^(the|and|for|with|course|into)$/.test(w));
+    .filter(w => w.length > 3 && !STOP_WORDS.has(w));
   const titleMatchCount = expectedTitleWords.filter(w => titleLower.includes(w)).length;
-  const titleAligned = expectedTitleWords.length === 0 || titleMatchCount >= Math.max(1, Math.ceil(expectedTitleWords.length * 0.5));
+  const titleAligned =
+    expectedTitleWords.length === 0 ||
+    titleMatchCount >= Math.max(1, Math.ceil(expectedTitleWords.length * 0.5));
   if (!titleAligned) {
     criticalIssues.push(
       `Generated course title ("${course.title}") drifted away from configured subject ("${blueprint.subjectTitle}").`
     );
+    subjectAffected.push(`Course Title: ${course.title}`);
   }
 
   const subjectAlignmentScore = Math.max(
@@ -228,170 +360,128 @@ export function reviewGeneratedCourseQuality(
         : 'PASS';
 
   if (subjectStatus === 'PASS') {
-    subjectEvidence.push(
-      `Course title, overview, modules, and assessments align consistently with "${blueprint.subjectTitle}" (${blueprint.domainLabel}).`
+    passedChecks.push(
+      `Subject alignment verified for "${blueprint.subjectTitle}" (${subjectAlignmentScore}% alignment, zero cross-domain bleed).`
     );
-    passedChecks.push(`Subject alignment verified for "${blueprint.subjectTitle}" (${subjectAlignmentScore}% alignment, zero cross-domain bleed).`);
   } else if (subjectStatus === 'WARNING') {
-    subjectEvidence.push(`Partial subject keyword coverage (${subjectAlignmentScore}%); review domain depth.`);
-    warnings.push(`Subject alignment score is ${subjectAlignmentScore}%; verify terminology depth for "${blueprint.subjectTitle}".`);
-  } else {
-    subjectEvidence.push(...bleedFindings, ...unalignedModules);
+    warnings.push(
+      `Subject alignment score is ${subjectAlignmentScore}%; verify terminology depth for "${blueprint.subjectTitle}".`
+    );
   }
 
   qaChecks.push({
     id: 'subject_alignment',
-    label: 'Subject & Domain Alignment',
+    label: '1. Subject Alignment',
+    category: 'Subject & Curriculum',
     status: subjectStatus,
     score: subjectAlignmentScore,
     summary:
       subjectStatus === 'PASS'
-        ? `Strong alignment with "${blueprint.subjectTitle}" and zero off-topic contamination.`
+        ? `Strong alignment with "${blueprint.subjectTitle}" (${blueprint.domainLabel}) and zero off-topic bleed.`
         : `Detected subject drift or cross-domain bleed impacting "${blueprint.subjectTitle}".`,
-    evidence: subjectEvidence.slice(0, 6)
+    evidence:
+      subjectStatus === 'PASS'
+        ? [`Course title, overview, modules, and assessments consistently teach "${blueprint.subjectTitle}".`]
+        : [...bleedFindings, ...unalignedModules].slice(0, 6),
+    affectedItems: Array.from(new Set(subjectAffected)),
+    recommendations:
+      subjectStatus === 'PASS'
+        ? []
+        : [`Remove off-topic terminology and regenerate affected modules cleanly around "${blueprint.subjectTitle}".`]
   });
 
   // ===========================================================================
-  // CHECK 2: STRUCTURE & METADATA CONSISTENCY
+  // 2. LEARNING OBJECTIVE ALIGNMENT
   // ===========================================================================
-  const structureEvidence: string[] = [];
-  let structureIssuesCount = 0;
-  let structureWarningsCount = 0;
+  const loAffected: string[] = [];
+  const loEvidence: string[] = [];
+  let modulesWithValidLOs = 0;
 
-  if (course.modules.length === 0 || lessonEntries.length === 0) {
-    criticalIssues.push('Generated course contains no modules or lessons.');
-    structureEvidence.push('Missing modules or lessons in generated output.');
-    structureIssuesCount++;
-  }
-
-  const sourceModuleCount = sourceCourse.modules?.length || 0;
-  if (sourceModuleCount > 0 && sourceModuleCount !== course.modules.length) {
-    const msg = `Module count mismatch: template specified ${sourceModuleCount} module(s), generated output has ${course.modules.length}.`;
-    criticalIssues.push(msg);
-    structureEvidence.push(msg);
-    structureIssuesCount++;
-  } else if (sourceModuleCount > 0) {
-    passedChecks.push(`Preserved exact user-defined ${sourceModuleCount}-module structure.`);
-  }
-
-  // Verify module titles and configured lesson titles
-  for (let i = 0; i < Math.min(sourceModuleCount, course.modules.length); i++) {
-    const srcMod = sourceCourse.modules[i] as any;
-    const genMod = course.modules[i];
-    if (srcMod.title?.trim()) {
-      const srcNorm = srcMod.title.toLowerCase().trim();
-      const genNorm = (genMod.title || '').toLowerCase().trim();
-      if (srcNorm !== genNorm && !genNorm.includes(srcNorm) && !srcNorm.includes(genNorm)) {
-        const msg = `Module ${i + 1} title ("${genMod.title}") changed from template title ("${srcMod.title}").`;
-        warnings.push(msg);
-        structureEvidence.push(msg);
-        structureWarningsCount++;
-      }
-    }
-    if (Array.isArray(srcMod.lessons) && srcMod.lessons.length > 0) {
-      if (genMod.lessons.length !== srcMod.lessons.length) {
-        const msg = `Module ${i + 1} lesson count (${genMod.lessons.length}) differs from configured template (${srcMod.lessons.length}).`;
-        warnings.push(msg);
-        structureEvidence.push(msg);
-        structureWarningsCount++;
-      }
+  for (const mod of course.modules) {
+    const validModLOs = (mod.learningObjectives || []).filter(
+      lo => Boolean(lo.code?.trim() && lo.statement?.trim().length >= 12)
+    );
+    if (validModLOs.length >= 2) {
+      modulesWithValidLOs++;
+    } else {
+      loAffected.push(`Module ${mod.moduleNumber}: ${mod.title}`);
+      loEvidence.push(`Module ${mod.moduleNumber} has fewer than 2 complete learning objectives.`);
     }
   }
 
-  const expectedCode = (sourceCourse.structure?.code || sourceCourse.code || '').trim();
-  if (expectedCode && course.code && course.code.trim() !== expectedCode) {
-    const msg = `Course code mismatch: template uses "${expectedCode}", generated output has "${course.code}".`;
-    warnings.push(msg);
-    structureEvidence.push(msg);
-    structureWarningsCount++;
+  const courseOutcomesPresent = (course.learningOutcomes || []).filter(o => o.trim().length >= 12).length >= 3;
+  if (!courseOutcomesPresent) {
+    loAffected.push('Programme-Level Learning Outcomes');
+    loEvidence.push('Fewer than 3 substantive programme-level learningOutcomes returned.');
   }
 
-  if (!course.learningOutcomes?.length) {
-    warnings.push('No course-level learning outcomes were returned.');
-    structureEvidence.push('Missing course-level learningOutcomes.');
-    structureWarningsCount++;
-  }
-  if (
-    course.assessments.preCourseDiagnostic.questions.length < 5 ||
-    course.assessments.preCourseDiagnostic.questions.length > 10
-  ) {
-    warnings.push('The pre-course diagnostic does not contain the configured 5–10 question range.');
-    structureEvidence.push(
-      `Pre-course diagnostic has ${course.assessments.preCourseDiagnostic.questions.length} question(s) (expected 5–10).`
-    );
-    structureWarningsCount++;
-  }
-  if (!course.assessments.finalAssessment.capstoneCaseStudy) {
-    warnings.push('The final assessment has no configured capstone case study.');
-    structureEvidence.push('Missing final capstone case study.');
-    structureWarningsCount++;
-  }
+  const loScore = course.modules.length
+    ? Math.round((modulesWithValidLOs / course.modules.length) * 80 + (courseOutcomesPresent ? 20 : 0))
+    : 0;
+  const loStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    loScore >= 90 ? 'PASS' : loScore >= 60 ? 'WARNING' : 'FAIL';
 
-  const structureScore = Math.max(0, 100 - structureIssuesCount * 40 - structureWarningsCount * 10);
-  const structureStatus: 'PASS' | 'WARNING' | 'FAIL' =
-    structureIssuesCount > 0 ? 'FAIL' : structureWarningsCount > 0 ? 'WARNING' : 'PASS';
-
-  if (structureStatus === 'PASS') {
-    structureEvidence.push(
-      `Title, code (${course.code}), ${course.modules.length} modules, ${lessonEntries.length} lessons, diagnostic, and capstone structure match template.`
-    );
+  if (loStatus === 'PASS') {
+    passedChecks.push('Learning objectives defined cleanly across all modules with course-level outcome alignment.');
+  } else if (loStatus === 'WARNING') {
+    warnings.push('Some modules or programme outcomes lack complete Bloom-aligned learning objectives.');
+  } else {
+    criticalIssues.push('Course is missing structured module/programme learning objectives.');
   }
 
   qaChecks.push({
-    id: 'structure_consistency',
-    label: 'Structure & Metadata Consistency',
-    status: structureStatus,
-    score: structureScore,
+    id: 'learning_objectives',
+    label: '2. Learning Objective Alignment',
+    category: 'Subject & Curriculum',
+    status: loStatus,
+    score: loScore,
     summary:
-      structureStatus === 'PASS'
-        ? `All template structural constraints preserved (${course.modules.length} modules, ${lessonEntries.length} lessons).`
-        : 'Structural or metadata deviations found compared to the user template.',
-    evidence: structureEvidence.slice(0, 6)
+      loStatus === 'PASS'
+        ? `All ${course.modules.length} modules define clear, structured learning objectives linked to programme outcomes.`
+        : 'Missing or underspecified module or programme learning objectives detected.',
+    evidence:
+      loEvidence.length > 0
+        ? loEvidence.slice(0, 6)
+        : [`Verified ${course.learningOutcomes.length} programme outcomes and module LO sets across ${course.modules.length} modules.`],
+    affectedItems: loAffected,
+    recommendations:
+      loStatus === 'PASS'
+        ? []
+        : ['Ensure every module defines 2–4 measurable Bloom-level learning objectives reflected in course outcomes.']
   });
 
   // ===========================================================================
-  // CHECK 3: LESSON DEPTH, REPETITION & BOILERPLATE SCANNER
+  // 3. EDUCATIONAL DEPTH (CONCEPTS, MECHANISMS, TERMINOLOGY, EXAMPLES, LIMITATIONS)
   // ===========================================================================
-  const boilerplateHits: string[] = [];
+  const depthAffected: string[] = [];
+  const depthEvidence: string[] = [];
+  let depthPoints = 0;
+  const maxDepthPoints = Math.max(1, lessonEntries.length * 4);
 
   for (const { module, lesson } of lessonEntries) {
-    const issues: string[] = [];
-    if (countWordsInText(lesson.contentBody) < 120) {
-      issues.push('The lesson is too brief to explain its stated concepts and provide a worked example.');
-    }
-    if (lesson.concepts.length < 2) {
-      issues.push('Identify at least two specific concepts taught in the lesson.');
-    }
-    if (countWordsInText(lesson.workplaceApplication) < 8) {
-      issues.push('Provide a concrete workplace application relevant to the lesson subject.');
-    }
+    const body = lesson.contentBody || '';
+    const words = countWordsInText(body);
+    const hasDepthLength = words >= 130;
+    const hasConceptsAndTerms = (lesson.concepts?.length || 0) >= 2;
+    const hasExampleOrCase = /example|case|walkthrough|illustration|scenario|suppose|consider|when\s+[a-z]+\s+runs/i.test(body);
+    const hasMechanismOrLimitation =
+      /because|works\s+by|mechanism|how\s+it|limitation|misconception|pitfall|trade-off|edge\s+case|fail|risk|constraint/i.test(body);
 
-    for (const bp of BOILERPLATE_PATTERNS) {
-      if (bp.pattern.test(`${lesson.contentBody} ${lesson.workplaceApplication}`)) {
-        const hitMsg = `Module ${module.moduleNumber} "${lesson.title}" contains ${bp.label}.`;
-        boilerplateHits.push(hitMsg);
-        issues.push(`Contains generic ${bp.label}.`);
-      }
-    }
+    let lessonPts = 0;
+    const lessonIssues: string[] = [];
+    if (hasDepthLength) lessonPts++;
+    else lessonIssues.push(`Lesson too brief (${words} words; target >= 140 words for substantial explanation).`);
+    if (hasConceptsAndTerms) lessonPts++;
+    else lessonIssues.push('Identify at least two explicit domain concepts/terms in lesson concepts.');
+    if (hasExampleOrCase) lessonPts++;
+    else lessonIssues.push('Add a concrete subject-specific worked example illustrating how the concept applies.');
+    if (hasMechanismOrLimitation) lessonPts++;
+    else lessonIssues.push('Explain the underlying mechanism and key limitations, edge cases, or misconceptions.');
 
-    for (const other of lessonEntries) {
-      if (other.lesson.id === lesson.id) continue;
-      const overlap = contentOverlap(lesson.contentBody, other.lesson.contentBody);
-      if (overlap >= 0.6) {
-        issues.push(`Substantially repeats "${other.lesson.title}" (${Math.round(overlap * 100)}% overlap).`);
-        duplicatedLessons.add(lesson.id);
-        highOverlapPairs.push(
-          `Lesson "${lesson.title}" overlaps ${Math.round(overlap * 100)}% with "${other.lesson.title}".`
-        );
-        break;
-      } else if (overlap >= 0.42) {
-        highOverlapPairs.push(
-          `Lesson "${lesson.title}" shares moderate phrasing (${Math.round(overlap * 100)}%) with "${other.lesson.title}".`
-        );
-      }
-    }
-
-    if (issues.length) {
+    depthPoints += lessonPts;
+    if (lessonPts < 3) {
+      depthAffected.push(`M${module.moduleNumber}: ${lesson.title}`);
+      depthEvidence.push(`Module ${module.moduleNumber} "${lesson.title}": ${lessonIssues[0]}`);
       contentTargets.set(lesson.id, {
         moduleId: module.id,
         moduleTitle: module.title,
@@ -401,142 +491,211 @@ export function reviewGeneratedCourseQuality(
         workplaceApplication: lesson.workplaceApplication,
         aiApplication: lesson.aiApplication,
         concepts: lesson.concepts,
-        issues
+        issues: lessonIssues
       });
     }
   }
 
-  repairTargets.push(...Array.from(contentTargets.values()).slice(0, 3));
+  const depthScore = lessonEntries.length ? Math.round((depthPoints / maxDepthPoints) * 100) : 0;
+  const depthStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    lessonEntries.length === 0 || depthScore < 55 ? 'FAIL' : depthScore < 80 ? 'WARNING' : 'PASS';
 
-  const scenarioEntries = course.modules.flatMap(module =>
-    module.scenarios.map(scenario => ({ module, scenario }))
-  );
-  const duplicatedScenarios = new Set<string>();
-  for (const { scenario } of scenarioEntries) {
-    const scenarioText = [
-      scenario.title,
-      scenario.situation,
-      scenario.challenge,
-      scenario.decisionPoint,
-      scenario.debrief
-    ].join(' ');
-    for (const other of scenarioEntries) {
-      if (other.scenario.id === scenario.id) continue;
-      const otherText = [
-        other.scenario.title,
-        other.scenario.situation,
-        other.scenario.challenge,
-        other.scenario.decisionPoint,
-        other.scenario.debrief
-      ].join(' ');
-      if (contentOverlap(scenarioText, otherText) >= 0.6) {
-        duplicatedScenarios.add(scenario.id);
-        break;
-      }
-    }
-  }
-
-  // Check practical task duplication across modules
-  const duplicatedTasks: string[] = [];
-  const moduleTasks = course.modules.filter(m => m.practicalTask?.instructions);
-  for (let i = 0; i < moduleTasks.length; i++) {
-    for (let j = i + 1; j < moduleTasks.length; j++) {
-      const tOverlap = contentOverlap(
-        moduleTasks[i].practicalTask!.instructions,
-        moduleTasks[j].practicalTask!.instructions
-      );
-      if (tOverlap >= 0.65) {
-        duplicatedTasks.push(
-          `Module ${moduleTasks[i].moduleNumber} and Module ${moduleTasks[j].moduleNumber} practical tasks are near-identical (${Math.round(tOverlap * 100)}% overlap).`
-        );
-      }
-    }
-  }
-
-  const distinctContentCount = Math.max(1, lessonEntries.length + scenarioEntries.length);
-  const repeatedContentCount = duplicatedLessons.size + duplicatedScenarios.size;
-  const repetitionPenalty =
-    (repeatedContentCount / distinctContentCount) * 85 +
-    boilerplateHits.length * 14 +
-    duplicatedTasks.length * 20;
-  const originalityScore = Math.max(0, Math.min(100, Math.round(100 - repetitionPenalty)));
-
-  const repetitionEvidence = Array.from(
-    new Set([...highOverlapPairs, ...boilerplateHits, ...duplicatedTasks])
-  );
-
-  if (duplicatedLessons.size >= 2 || boilerplateHits.length >= 2 || duplicatedTasks.length > 0) {
-    criticalIssues.push(
-      `Significant content repetition or generic template boilerplate detected (${repetitionEvidence[0] || 'duplicated modules/lessons'}).`
-    );
+  if (depthStatus === 'PASS') {
+    passedChecks.push(`Educational depth verified across ${lessonEntries.length} lessons (mechanisms, examples & misconceptions covered).`);
+  } else if (depthStatus === 'WARNING') {
+    warnings.push('Some lessons would benefit from deeper mechanism explanations, worked examples, or misconception notes.');
   } else {
-    if (duplicatedLessons.size > 0 || highOverlapPairs.length > 0) {
-      warnings.push(`${duplicatedLessons.size || highOverlapPairs.length} lesson pair(s) share high text overlap.`);
-    }
-    if (duplicatedScenarios.size > 0) {
-      warnings.push(`${duplicatedScenarios.size} workplace scenario(s) substantially overlap with another scenario.`);
-    }
-    if (boilerplateHits.length > 0) {
-      warnings.push(boilerplateHits[0]);
-    }
-  }
-
-  const lessonDepthScore = lessonEntries.length
-    ? Math.round(
-        (lessonEntries.filter(({ lesson }) =>
-          countWordsInText(lesson.contentBody) >= 120 &&
-          lesson.concepts.length >= 2 &&
-          countWordsInText(lesson.workplaceApplication) >= 8
-        ).length /
-          lessonEntries.length) *
-          100
-      )
-    : 0;
-  if (lessonEntries.length > 0 && lessonDepthScore < 100) {
-    warnings.push('Some lessons are brief (< 120 words) or lack specific workplace application.');
-  }
-
-  const repetitionStatus: 'PASS' | 'WARNING' | 'FAIL' =
-    duplicatedLessons.size >= 2 || boilerplateHits.length >= 2 || duplicatedTasks.length > 0
-      ? 'FAIL'
-      : duplicatedLessons.size > 0 || duplicatedScenarios.size > 0 || boilerplateHits.length > 0 || lessonDepthScore < 100
-        ? 'WARNING'
-        : 'PASS';
-
-  if (repetitionStatus === 'PASS') {
-    passedChecks.push('All lessons, scenarios, and tasks are original with zero generic SOP boilerplate.');
+    criticalIssues.push('Lessons are too thin or superficial to teach the subject meaningfully.');
   }
 
   qaChecks.push({
-    id: 'repetition_boilerplate',
-    label: 'Originality & Anti-Boilerplate',
-    status: repetitionStatus,
-    score: Math.round(originalityScore * 0.65 + lessonDepthScore * 0.35),
+    id: 'educational_depth',
+    label: '3. Educational Depth',
+    category: 'Pedagogy & Depth',
+    status: depthStatus,
+    score: depthScore,
     summary:
-      repetitionStatus === 'PASS'
-        ? `Lessons, scenarios, and tasks are distinct and domain-specific (${originalityScore}% originality).`
-        : 'Detected repetitive phrasing, duplicated tasks, thin lessons, or generic SOP boilerplate.',
+      depthStatus === 'PASS'
+        ? `Lessons teach concepts with depth, concrete examples, terminology, and edge-case limitations (${depthScore}%).`
+        : 'One or more lessons are overly brief or omit worked examples, mechanisms, or limitations.',
     evidence:
-      repetitionEvidence.length > 0
-        ? repetitionEvidence.slice(0, 6)
-        : [`${lessonEntries.length} lessons and ${scenarioEntries.length} scenarios checked with ${originalityScore}% originality.`]
+      depthEvidence.length > 0
+        ? depthEvidence.slice(0, 6)
+        : [`All ${lessonEntries.length} lessons explain mechanisms, terminology, worked examples, and trade-offs.`],
+    affectedItems: depthAffected,
+    recommendations:
+      depthStatus === 'PASS'
+        ? []
+        : ['Expand flagged lessons to explain how/why the concept works, include a worked example, and address misconceptions.']
   });
 
   // ===========================================================================
-  // CHECK 4: PRACTICAL TASK EXECUTABILITY & RUBRICS
+  // 4. TECHNICAL & CONCEPTUAL ACCURACY
+  // ===========================================================================
+  const techAffected: string[] = [];
+  const techEvidence: string[] = [];
+  const domainKeywordsLower = blueprint.requiredDomainConcepts.map(c => c.toLowerCase());
+  let accurateModules = 0;
+
+  for (const mod of course.modules) {
+    const modTextLower = extractModuleText(mod).toLowerCase();
+    const modBleed = detectCrossDomainBleed(modTextLower, blueprint.outOfScopeDomains);
+    const domainTermMatches = domainKeywordsLower.filter(kw => modTextLower.includes(kw));
+    const hasPlaceholderGarbage = /\bundefined\b|\bnull\b|\[insert\s|\[todo/i.test(modTextLower);
+
+    if (modBleed.length > 0 || hasPlaceholderGarbage || (domainKeywordsLower.length > 0 && domainTermMatches.length === 0)) {
+      techAffected.push(`Module ${mod.moduleNumber}: ${mod.title}`);
+      if (modBleed.length > 0) {
+        techEvidence.push(`Module ${mod.moduleNumber} mixes incompatible terminology (${modBleed[0].matchedTerms.slice(0, 3).join(', ')}).`);
+      } else if (hasPlaceholderGarbage) {
+        techEvidence.push(`Module ${mod.moduleNumber} contains unfinished placeholder/null text.`);
+      } else {
+        techEvidence.push(`Module ${mod.moduleNumber} lacks authentic ${blueprint.domainLabel} terminology.`);
+      }
+    } else {
+      accurateModules++;
+    }
+  }
+
+  const techScore = course.modules.length ? Math.round((accurateModules / course.modules.length) * 100) : 0;
+  const techStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    overallBleed.length > 0 || techScore < 60 ? 'FAIL' : techScore < 90 ? 'WARNING' : 'PASS';
+
+  if (techStatus === 'PASS') {
+    passedChecks.push('Domain terminology and conceptual framing are technically coherent across all modules.');
+  } else if (techStatus === 'WARNING') {
+    warnings.push('Verify technical terminology accuracy in flagged modules.');
+  }
+
+  qaChecks.push({
+    id: 'technical_accuracy',
+    label: '4. Technical & Conceptual Accuracy',
+    category: 'Pedagogy & Depth',
+    status: techStatus,
+    score: techScore,
+    summary:
+      techStatus === 'PASS'
+        ? `Terminology, explanations, and applied advice match ${blueprint.domainLabel} accurately.`
+        : 'Detected missing domain terminology, unfinished tokens, or technically incompatible concepts.',
+    evidence:
+      techEvidence.length > 0
+        ? techEvidence.slice(0, 6)
+        : [`Matched authentic ${blueprint.domainLabel} terminology consistently across all ${course.modules.length} modules.`],
+    affectedItems: techAffected,
+    recommendations:
+      techStatus === 'PASS'
+        ? []
+        : ['Have a domain SME verify technical definitions and replace generic/off-topic vocabulary with accurate domain terms.']
+  });
+
+  // ===========================================================================
+  // 5. LESSON TITLE & CONTENT ALIGNMENT
+  // ===========================================================================
+  const lessonRelAffected: string[] = [];
+  const lessonRelEvidence: string[] = [];
+  let alignedLessonCount = 0;
+
+  for (const { module, lesson } of lessonEntries) {
+    const titleWords = (lesson.title || '')
+      .toLowerCase()
+      .match(/[a-z0-9]{3,}/g)
+      ?.filter(w => !STOP_WORDS.has(w)) || [];
+    const lessonText = `${lesson.concepts.join(' ')} ${lesson.contentBody} ${lesson.workplaceApplication}`.toLowerCase();
+    const stemBodySet = new Set((lessonText.match(/[a-z0-9]{3,}/g) || []).map(stemToken));
+
+    const matchedTitleTokens = titleWords.filter(tw => {
+      const st = stemToken(tw);
+      return lessonText.includes(tw) || (st.length >= 3 && stemBodySet.has(st));
+    });
+
+    const ratio = titleWords.length > 0 ? matchedTitleTokens.length / titleWords.length : 1;
+    const isRelevant = titleWords.length === 0 || matchedTitleTokens.length >= 1 && ratio >= 0.35;
+
+    if (isRelevant && countWordsInText(lesson.workplaceApplication) >= 6) {
+      alignedLessonCount++;
+    } else {
+      lessonRelAffected.push(`M${module.moduleNumber}: ${lesson.title}`);
+      lessonRelEvidence.push(
+        `Lesson "${lesson.title}" body barely develops its stated title concepts (${matchedTitleTokens.length}/${titleWords.length} title terms covered).`
+      );
+      const existing = contentTargets.get(lesson.id);
+      const msg = `Ensure lesson body explicitly teaches "${lesson.title}" rather than unrelated or generic material.`;
+      if (existing) {
+        existing.issues.push(msg);
+      } else {
+        contentTargets.set(lesson.id, {
+          moduleId: module.id,
+          moduleTitle: module.title,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          contentBody: lesson.contentBody,
+          workplaceApplication: lesson.workplaceApplication,
+          aiApplication: lesson.aiApplication,
+          concepts: lesson.concepts,
+          issues: [msg]
+        });
+      }
+    }
+  }
+
+  const lessonRelScore = lessonEntries.length
+    ? Math.round((alignedLessonCount / lessonEntries.length) * 100)
+    : 0;
+  const lessonRelStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    lessonRelScore >= 85 ? 'PASS' : lessonRelScore >= 60 ? 'WARNING' : 'FAIL';
+
+  if (lessonRelStatus === 'PASS') {
+    passedChecks.push('Every lesson teaches content directly matched to its stated title and concept list.');
+  } else if (lessonRelStatus === 'WARNING') {
+    warnings.push('One or more lessons do not sufficiently develop the topic named in their lesson title.');
+  } else {
+    criticalIssues.push('Multiple lessons fail to teach the topics stated in their own lesson titles.');
+  }
+
+  qaChecks.push({
+    id: 'lesson_relevance',
+    label: '5. Lesson Title & Content Alignment',
+    category: 'Pedagogy & Depth',
+    status: lessonRelStatus,
+    score: lessonRelScore,
+    summary:
+      lessonRelStatus === 'PASS'
+        ? `All ${lessonEntries.length} lessons teach substantive content matching their stated titles.`
+        : 'Some lesson bodies drift away from or superficially mention their stated lesson titles.',
+    evidence:
+      lessonRelEvidence.length > 0
+        ? lessonRelEvidence.slice(0, 6)
+        : [`${alignedLessonCount}/${lessonEntries.length} lessons demonstrated strong title-to-content coherence.`],
+    affectedItems: lessonRelAffected,
+    recommendations:
+      lessonRelStatus === 'PASS'
+        ? []
+        : ['Rewrite flagged lessons so their headings, examples, and definitions directly unpack the exact lesson title.']
+  });
+
+  // ===========================================================================
+  // 6. PRACTICAL ACTIVITY QUALITY (10 ELEMENTS + ANTI-GENERIC AUDIT CHECKLIST)
   // ===========================================================================
   let completedTaskSections = 0;
   let possibleTaskSections = 0;
+  let genericTaskOveruseCount = 0;
   const taskEvidence: string[] = [];
+  const taskAffected: string[] = [];
+  const isComplianceOrOpsCourse = /(audit|compliance|sop|governance|safety|quality assurance|operations management)/i.test(
+    `${blueprint.subjectTitle} ${blueprint.domainLabel}`
+  );
 
   for (const module of course.modules) {
     if (!module.practicalTask) {
       taskEvidence.push(`Module ${module.moduleNumber} ("${module.title}") is missing a practical task.`);
-      possibleTaskSections += PRACTICAL_TASK_SECTIONS.length + 1;
+      taskAffected.push(`Module ${module.moduleNumber}: Missing task`);
+      possibleTaskSections += PRACTICAL_TASK_SECTIONS.length + 2;
       continue;
     }
     const task = module.practicalTask;
     const instructions = task.instructions || '';
+    const hasTitle = Boolean(task.title?.trim().length >= 5);
+    const hasDeliverableText = Boolean(task.deliverable?.trim().length >= 6);
     const missingSections = PRACTICAL_TASK_SECTIONS.filter(section => !section.pattern.test(instructions));
     const weights = (task.evaluationRubric || [])
       .map(criterion => criterion.match(/(\d+(?:\.\d+)?)\s*%/))
@@ -547,17 +706,34 @@ export function reviewGeneratedCourseQuality(
       weights.length === (task.evaluationRubric?.length || 0) &&
       Math.abs(weights.reduce((total, weight) => total + weight, 0) - 100) <= 1;
 
-    possibleTaskSections += PRACTICAL_TASK_SECTIONS.length + 1;
-    completedTaskSections += PRACTICAL_TASK_SECTIONS.length - missingSections.length + (rubricComplete ? 1 : 0);
+    // Detect lazy generic SOP/audit/checklist template overuse on non-audit subjects
+    const matchedGenericPhrases = GENERIC_SOP_TASK_PHRASES.filter(rx => rx.test(`${task.title} ${instructions} ${task.deliverable}`));
+    const isGenericAuditCopy = !isComplianceOrOpsCourse && matchedGenericPhrases.length >= 2;
+    if (isGenericAuditCopy) {
+      genericTaskOveruseCount++;
+      taskEvidence.push(
+        `Module ${module.moduleNumber} practical task defaults to generic workflow-audit/SOP-checklist phrasing instead of authentic "${module.title}" practice.`
+      );
+      taskAffected.push(`Module ${module.moduleNumber}: Generic SOP/audit task`);
+    }
 
-    if (missingSections.length || !rubricComplete) {
+    possibleTaskSections += PRACTICAL_TASK_SECTIONS.length + 2;
+    completedTaskSections +=
+      (hasTitle ? 1 : 0) +
+      (hasDeliverableText ? 0.5 : 0) +
+      (rubricComplete ? 0.5 : 0) +
+      (PRACTICAL_TASK_SECTIONS.length - missingSections.length);
+
+    if (missingSections.length || !rubricComplete || !hasTitle || !hasDeliverableText || isGenericAuditCopy) {
       if (missingSections.length) {
         taskEvidence.push(
           `Module ${module.moduleNumber} task missing: ${missingSections.map(s => s.label).join(', ')}.`
         );
+        taskAffected.push(`Module ${module.moduleNumber}: Missing task sections`);
       }
       if (!rubricComplete) {
-        taskEvidence.push(`Module ${module.moduleNumber} task rubric must total 100% across at least 2 weighted criteria.`);
+        taskEvidence.push(`Module ${module.moduleNumber} task rubric must total 100% across >= 2 criteria.`);
+        taskAffected.push(`Module ${module.moduleNumber}: Incomplete rubric`);
       }
       taskRepairTargets.push({
         moduleId: module.id,
@@ -567,40 +743,59 @@ export function reviewGeneratedCourseQuality(
         taskRubric: task.evaluationRubric,
         issues: [
           ...(missingSections.length
-            ? [`Missing practical task sections: ${missingSections.map(s => s.label).join(', ')}.`]
+            ? [`Include all practical task sections: ${missingSections.map(s => s.label).join(', ')}.`]
             : []),
-          ...(!rubricComplete ? ['Provide a weighted evaluation rubric totaling 100%.'] : [])
+          ...(!rubricComplete ? ['Provide a weighted evaluation rubric totaling 100%.'] : []),
+          ...(isGenericAuditCopy
+            ? [`Replace generic workflow-audit/SOP-checklist steps with an authentic "${module.title}" hands-on activity.`]
+            : [])
         ]
       });
     }
   }
 
-  const taskScore = possibleTaskSections
+  const rawTaskScore = possibleTaskSections
     ? Math.round((completedTaskSections / possibleTaskSections) * 100)
     : 0;
-  if (taskScore < 100) {
-    warnings.push('One or more practical tasks are missing required learner sections or 100%-weighted rubric criteria.');
-  } else if (possibleTaskSections > 0) {
-    passedChecks.push('Practical tasks include Objective, Scenario, Resources, Numbered Steps, Deliverable, Success Criteria, Reflection, and 100% rubrics.');
+  const taskScore = Math.max(0, rawTaskScore - genericTaskOveruseCount * 20);
+  const taskStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    genericTaskOveruseCount >= 2 || taskScore < 60
+      ? 'FAIL'
+      : taskScore < 95 || genericTaskOveruseCount > 0
+        ? 'WARNING'
+        : 'PASS';
+
+  if (taskStatus === 'PASS') {
+    passedChecks.push('Practical tasks contain all 10 instructional elements, 100% rubrics, and subject-authentic activities.');
+  } else if (taskStatus === 'WARNING') {
+    warnings.push('One or more practical tasks lack full 10-element structure, 100% rubrics, or subject authenticity.');
+  } else {
+    criticalIssues.push('Practical tasks fail structure, rubric, or authentic subject activity checks.');
   }
 
   qaChecks.push({
-    id: 'practical_tasks',
-    label: 'Practical Task Executability',
-    status: taskScore === 100 ? 'PASS' : taskScore >= 60 ? 'WARNING' : 'FAIL',
+    id: 'practical_application',
+    label: '6. Practical Activity Quality',
+    category: 'Assessments & Practice',
+    status: taskStatus,
     score: taskScore,
     summary:
-      taskScore === 100
-        ? 'All module practical tasks are executable with complete steps and 100%-weighted rubrics.'
-        : 'Some practical tasks lack complete learner guidance or 100% weighted rubrics.',
+      taskStatus === 'PASS'
+        ? `All ${course.modules.length} module practical tasks are complete (10 elements + 100% rubric) and tailored to the subject.`
+        : 'Practical tasks require stronger structure, 100% rubrics, or subject-specific hands-on work instead of generic SOP checklists.',
     evidence:
       taskEvidence.length > 0
         ? taskEvidence.slice(0, 6)
-        : [`Verified ${course.modules.length} module practical task(s) with complete 7-section instructions and rubrics.`]
+        : [`Verified ${course.modules.length} subject-specific practical tasks with complete instructions, numbered steps, deliverables, criteria, reflection, and 100% rubrics.`],
+    affectedItems: Array.from(new Set(taskAffected)),
+    recommendations:
+      taskStatus === 'PASS'
+        ? []
+        : ['Include Title, Objective, Scenario, Resources, Instructions, Steps, Deliverable, Success Criteria, 100% Rubric, and Reflection tailored directly to the module skill.']
   });
 
   // ===========================================================================
-  // CHECK 5: ASSESSMENT & OBJECTIVE ALIGNMENT
+  // 7. ASSESSMENT ALIGNMENT (TAUGHT CONCEPTS + NO GENERIC POPIA/SOP FILLER)
   // ===========================================================================
   const objectiveCodes = new Set(
     course.modules.flatMap(module => module.learningObjectives.map(objective => objective.code))
@@ -626,6 +821,28 @@ export function reviewGeneratedCourseQuality(
     }
     encounteredQuestions.add(questionKey);
   }
+
+  // Flag generic POPIA / King IV / SOP checklist MCQs on modules that don't actually teach them
+  const offLessonQuestions: string[] = [];
+  for (const entry of questionEntries) {
+    const qText = `${entry.question.question} ${entry.question.options.join(' ')}`.toLowerCase();
+    const isGenericComplianceMcq =
+      /\bpopia\s+section\s+71\b|\bking\s+iv\s+principle\s+12\b|\bunsigned\b.*\bverification checklist\b|\bstandard operating procedures?\s*\(sops?\)/i.test(
+        qText
+      );
+    if (isGenericComplianceMcq) {
+      const modLessonText = (entry.location === 'final'
+        ? fullCourseText
+        : entry.module?.lessons.map(l => `${l.title} ${l.concepts.join(' ')} ${l.contentBody}`).join(' ') || ''
+      ).toLowerCase();
+      const taughtInLessons =
+        /popia|king iv|section 71|standard operating procedure/i.test(modLessonText);
+      if (!taughtInLessons) {
+        offLessonQuestions.push(entry.question.id);
+      }
+    }
+  }
+
   const alignedQuestions = questionEntries.filter(({ question }) =>
     Boolean(question.learningObjectiveRef && objectiveCodes.has(question.learningObjectiveRef))
   ).length;
@@ -644,14 +861,20 @@ export function reviewGeneratedCourseQuality(
     ? (questionEntries.length - duplicateQuestionIds.size) / questionEntries.length
     : 0;
   const completenessScore = questionEntries.length ? completeQuestions / questionEntries.length : 0;
+  const taughtConceptPurity = questionEntries.length
+    ? (questionEntries.length - offLessonQuestions.length) / questionEntries.length
+    : 0;
+
   const alignmentScore = Math.round(
-    (referenceScore * 0.5 + uniquenessScore * 0.25 + completenessScore * 0.25) * 100
+    (referenceScore * 0.4 + uniquenessScore * 0.2 + completenessScore * 0.2 + taughtConceptPurity * 0.2) * 100
   );
 
   const assessmentEvidence: string[] = [];
+  const assessmentAffected: string[] = [];
   if (questionEntries.length === 0) {
     criticalIssues.push('No module knowledge-check or final assessment questions were generated.');
     assessmentEvidence.push('Missing knowledge checks and final exam questions.');
+    assessmentAffected.push('All Knowledge Checks & Final Exam');
   } else {
     if (referenceScore < 1) {
       warnings.push(
@@ -667,6 +890,15 @@ export function reviewGeneratedCourseQuality(
       warnings.push(`${duplicateQuestionIds.size} duplicate assessment question(s) detected.`);
       assessmentEvidence.push(`${duplicateQuestionIds.size} duplicate question stem(s) found.`);
     }
+    if (offLessonQuestions.length > 0) {
+      warnings.push(
+        `${offLessonQuestions.length} MCQ(s) test generic POPIA/SOP/King IV trivia that is not taught in the corresponding module lessons.`
+      );
+      assessmentEvidence.push(
+        `${offLessonQuestions.length} generic compliance/SOP question(s) not grounded in module lessons (${offLessonQuestions.slice(0, 4).join(', ')}).`
+      );
+      assessmentAffected.push(...offLessonQuestions);
+    }
   }
 
   for (const entry of questionEntries) {
@@ -680,7 +912,9 @@ export function reviewGeneratedCourseQuality(
         entry.question.correctAnswer < entry.question.options.length &&
         entry.question.rationale.trim()
     );
-    if (!hasObjectiveRef || duplicateQuestionIds.has(entry.question.id) || !isComplete) {
+    const isOffLesson = offLessonQuestions.includes(entry.question.id);
+    if (!hasObjectiveRef || duplicateQuestionIds.has(entry.question.id) || !isComplete || isOffLesson) {
+      assessmentAffected.push(entry.question.id);
       questionRepairTargets.push({
         moduleId: entry.module?.id || '',
         moduleTitle: entry.module?.title || 'Final assessment',
@@ -698,6 +932,9 @@ export function reviewGeneratedCourseQuality(
             : []),
           ...(!isComplete
             ? ['Provide a complete question, answer options, a valid correct-answer index, and a rationale.']
+            : []),
+          ...(isOffLesson
+            ? ['Replace generic POPIA/SOP question with a question directly assessing a taught module concept.']
             : [])
         ]
       });
@@ -705,49 +942,342 @@ export function reviewGeneratedCourseQuality(
   }
 
   const assessmentStatus: 'PASS' | 'WARNING' | 'FAIL' =
-    questionEntries.length === 0 ? 'FAIL' : alignmentScore >= 95 ? 'PASS' : 'WARNING';
+    questionEntries.length === 0 || offLessonQuestions.length >= 3
+      ? 'FAIL'
+      : alignmentScore >= 95 && offLessonQuestions.length === 0
+        ? 'PASS'
+        : 'WARNING';
 
   if (assessmentStatus === 'PASS') {
     passedChecks.push(
-      `All ${questionEntries.length} knowledge check and final exam questions align to taught LO codes without duplicates.`
+      `All ${questionEntries.length} knowledge check and final exam questions align to taught LO codes and lesson concepts without duplicates.`
+    );
+  } else if (assessmentStatus === 'FAIL' && offLessonQuestions.length >= 3) {
+    criticalIssues.push(
+      `Assessments rely on ${offLessonQuestions.length} generic compliance/SOP MCQs disconnected from taught lesson concepts.`
     );
   }
 
   qaChecks.push({
     id: 'assessment_alignment',
-    label: 'Assessment & Objective Alignment',
+    label: '7. Assessment Alignment',
+    category: 'Assessments & Practice',
     status: assessmentStatus,
     score: alignmentScore,
     summary:
       assessmentStatus === 'PASS'
-        ? `All ${questionEntries.length} assessment items trace cleanly to module learning objectives.`
-        : 'One or more assessment items have missing LO links, duplicates, or incomplete fields.',
+        ? `All ${questionEntries.length} assessment items test taught lesson concepts and map cleanly to module LOs.`
+        : 'Assessments show unlinked LO codes, duplicate stems, missing rationales, or generic off-lesson MCQs.',
     evidence:
       assessmentEvidence.length > 0
         ? assessmentEvidence
-        : [`${alignedQuestions}/${questionEntries.length} questions matched LO codes; 0 duplicate stems.`]
+        : [`${alignedQuestions}/${questionEntries.length} questions matched LO codes; 0 duplicates; 0 generic off-lesson MCQs.`],
+    affectedItems: Array.from(new Set(assessmentAffected)),
+    recommendations:
+      assessmentStatus === 'PASS'
+        ? []
+        : ['Rewrite flagged questions to test concepts and misconceptions explicitly taught in their module lessons.']
   });
 
   // ===========================================================================
-  // CHECK 6: SOUTH AFRICAN CONTEXT & SOURCE GROUNDING HONESTY
+  // 8. REPETITION CONTROL (EXACT SHINGLES + SEMANTIC PARAPHRASE + ANTI-BOILERPLATE)
   // ===========================================================================
-  const verifiedSourceCount = (sourceCourse.research?.sources || []).filter(
-    source => source.status === 'Verified'
-  ).length;
-  const mentionsPopia = /popia|protection of personal information/i.test(fullCourseText);
-  const popiaSourceVerified = (sourceCourse.research?.sources || []).some(
-    src => src.status === 'Verified' && /popia|personal information/i.test(`${src.name} ${src.reference}`)
+  const boilerplateHits: string[] = [];
+  const repetitionAffected: string[] = [];
+
+  for (const { module, lesson } of lessonEntries) {
+    const bpIssues: string[] = [];
+    for (const bp of BOILERPLATE_PATTERNS) {
+      if (bp.pattern.test(`${lesson.contentBody} ${lesson.workplaceApplication}`)) {
+        const hitMsg = `Module ${module.moduleNumber} "${lesson.title}" contains ${bp.label}.`;
+        boilerplateHits.push(hitMsg);
+        repetitionAffected.push(`M${module.moduleNumber}: ${lesson.title}`);
+        bpIssues.push(`Remove generic ${bp.label}.`);
+      }
+    }
+    if (bpIssues.length) {
+      const existing = contentTargets.get(lesson.id);
+      if (existing) existing.issues.push(...bpIssues);
+      else {
+        contentTargets.set(lesson.id, {
+          moduleId: module.id,
+          moduleTitle: module.title,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          contentBody: lesson.contentBody,
+          workplaceApplication: lesson.workplaceApplication,
+          aiApplication: lesson.aiApplication,
+          concepts: lesson.concepts,
+          issues: bpIssues
+        });
+      }
+    }
+  }
+
+  // Pairwise exact + semantic comparison across lessons
+  for (let i = 0; i < lessonEntries.length; i++) {
+    const left = lessonEntries[i];
+    for (let j = i + 1; j < lessonEntries.length; j++) {
+      const right = lessonEntries[j];
+      const exactOverlap = contentOverlap(left.lesson.contentBody, right.lesson.contentBody);
+      const semSim = semanticSimilarity(left.lesson.contentBody, right.lesson.contentBody, domainStopStems);
+      const peakSim = Math.max(exactOverlap, semSim);
+
+      if (exactOverlap >= 0.52 || semSim >= 0.62) {
+        duplicatedLessons.add(right.lesson.id);
+        const mode = exactOverlap >= 0.52 ? 'text overlap' : 'paraphrase/semantic similarity';
+        highOverlapPairs.push(
+          `Lesson "${right.lesson.title}" repeats "${left.lesson.title}" (${Math.round(peakSim * 100)}% ${mode}).`
+        );
+        repetitionAffected.push(`M${right.module.moduleNumber}: ${right.lesson.title}`);
+
+        const existing = contentTargets.get(right.lesson.id);
+        const dupMsg = `Substantially repeats or paraphrases "${left.lesson.title}" (${Math.round(peakSim * 100)}% similarity). Teach a distinct concept and worked example.`;
+        if (existing) existing.issues.push(dupMsg);
+        else {
+          contentTargets.set(right.lesson.id, {
+            moduleId: right.module.id,
+            moduleTitle: right.module.title,
+            lessonId: right.lesson.id,
+            lessonTitle: right.lesson.title,
+            contentBody: right.lesson.contentBody,
+            workplaceApplication: right.lesson.workplaceApplication,
+            aiApplication: right.lesson.aiApplication,
+            concepts: right.lesson.concepts,
+            issues: [dupMsg]
+          });
+        }
+      } else if (exactOverlap >= 0.38 || semSim >= 0.5) {
+        highOverlapPairs.push(
+          `Lesson "${right.lesson.title}" shares moderate phrasing (${Math.round(peakSim * 100)}%) with "${left.lesson.title}".`
+        );
+      }
+    }
+  }
+
+  repairTargets.push(...Array.from(contentTargets.values()).slice(0, 3));
+
+  const scenarioEntries = course.modules.flatMap(module =>
+    module.scenarios.map(scenario => ({ module, scenario }))
+  );
+  const duplicatedScenarios = new Set<string>();
+  for (let i = 0; i < scenarioEntries.length; i++) {
+    const left = scenarioEntries[i];
+    const leftText = `${left.scenario.title} ${left.scenario.situation} ${left.scenario.challenge} ${left.scenario.decisionPoint} ${left.scenario.debrief}`;
+    for (let j = i + 1; j < scenarioEntries.length; j++) {
+      const right = scenarioEntries[j];
+      const rightText = `${right.scenario.title} ${right.scenario.situation} ${right.scenario.challenge} ${right.scenario.decisionPoint} ${right.scenario.debrief}`;
+      const ex = contentOverlap(leftText, rightText);
+      const sm = semanticSimilarity(leftText, rightText, domainStopStems);
+      if (ex >= 0.55 || sm >= 0.65) {
+        duplicatedScenarios.add(right.scenario.id);
+        repetitionAffected.push(`Scenario ${right.scenario.title}`);
+      }
+    }
+  }
+
+  const duplicatedTasks: string[] = [];
+  const moduleTasks = course.modules.filter(m => m.practicalTask?.instructions);
+  for (let i = 0; i < moduleTasks.length; i++) {
+    for (let j = i + 1; j < moduleTasks.length; j++) {
+      const tExact = contentOverlap(
+        moduleTasks[i].practicalTask!.instructions,
+        moduleTasks[j].practicalTask!.instructions
+      );
+      const tSem = semanticSimilarity(
+        moduleTasks[i].practicalTask!.instructions,
+        moduleTasks[j].practicalTask!.instructions,
+        domainStopStems
+      );
+      const tPeak = Math.max(tExact, tSem);
+      if (tExact >= 0.6 || tSem >= 0.68) {
+        duplicatedTasks.push(
+          `Module ${moduleTasks[i].moduleNumber} and Module ${moduleTasks[j].moduleNumber} practical tasks are near-identical (${Math.round(tPeak * 100)}% similarity).`
+        );
+        repetitionAffected.push(`Module ${moduleTasks[j].moduleNumber} Practical Task`);
+      }
+    }
+  }
+
+  const distinctContentCount = Math.max(1, lessonEntries.length + scenarioEntries.length);
+  const repeatedContentCount = duplicatedLessons.size + duplicatedScenarios.size;
+  const repetitionPenalty =
+    (repeatedContentCount / distinctContentCount) * 90 +
+    boilerplateHits.length * 14 +
+    duplicatedTasks.length * 22;
+  const originalityScore = Math.max(0, Math.min(100, Math.round(100 - repetitionPenalty)));
+
+  const repetitionEvidence = Array.from(
+    new Set([...highOverlapPairs, ...boilerplateHits, ...duplicatedTasks])
   );
 
-  // Detect unsupported regulatory hallucinations (e.g. invented NQF IDs or random Act citations without verified sources)
-  const groundingEvidence: string[] = [];
-  let southAfricanContextVerified = false;
-  let popiaCompliant = false;
+  if (duplicatedLessons.size >= 1 || boilerplateHits.length >= 2 || duplicatedTasks.length > 0) {
+    criticalIssues.push(
+      `Content repetition, paraphrased duplication, or generic boilerplate detected (${repetitionEvidence[0] || 'duplicated lessons/tasks'}).`
+    );
+  } else {
+    if (highOverlapPairs.length > 0) {
+      warnings.push(`${highOverlapPairs.length} lesson pair(s) share elevated phrasing similarity.`);
+    }
+    if (duplicatedScenarios.size > 0) {
+      warnings.push(`${duplicatedScenarios.size} workplace scenario(s) overlap substantially with another scenario.`);
+    }
+    if (boilerplateHits.length > 0) {
+      warnings.push(boilerplateHits[0]);
+    }
+  }
+
+  const repetitionStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    duplicatedLessons.size >= 1 || boilerplateHits.length >= 2 || duplicatedTasks.length > 0
+      ? 'FAIL'
+      : highOverlapPairs.length > 0 || duplicatedScenarios.size > 0 || boilerplateHits.length > 0
+        ? 'WARNING'
+        : 'PASS';
+
+  if (repetitionStatus === 'PASS') {
+    passedChecks.push('All lessons, scenarios, practical tasks, and MCQs are distinct with zero paraphrased duplication or boilerplate.');
+  }
+
+  qaChecks.push({
+    id: 'repetition',
+    label: '8. Repetition & Paraphrase Control',
+    category: 'Pedagogy & Depth',
+    status: repetitionStatus,
+    score: originalityScore,
+    summary:
+      repetitionStatus === 'PASS'
+        ? `Lessons, scenarios, and tasks are distinct without verbatim or paraphrased duplication (${originalityScore}% originality).`
+        : 'Detected verbatim or paraphrased duplication across lessons/tasks or generic template boilerplate.',
+    evidence:
+      repetitionEvidence.length > 0
+        ? repetitionEvidence.slice(0, 6)
+        : [`${lessonEntries.length} lessons and ${scenarioEntries.length} scenarios passed exact shingle & semantic similarity checks (${originalityScore}%).`],
+    affectedItems: Array.from(new Set(repetitionAffected)),
+    recommendations:
+      repetitionStatus === 'PASS'
+        ? []
+        : ['Rewrite flagged lessons or tasks so each introduces distinct concepts, worked examples, and problem contexts.']
+  });
+
+  // ===========================================================================
+  // 9. LOGICAL LEARNING PROGRESSION
+  // ===========================================================================
+  const progEvidence: string[] = [];
+  const progAffected: string[] = [];
+  let progDeductions = 0;
+
+  // Check duplicate lesson titles within or across modules
+  const seenLessonTitles = new Map<string, string>();
+  for (const { module, lesson } of lessonEntries) {
+    const key = (lesson.title || '').toLowerCase().trim();
+    if (seenLessonTitles.has(key)) {
+      progDeductions += 20;
+      progAffected.push(`M${module.moduleNumber}: ${lesson.title}`);
+      progEvidence.push(`Lesson title "${lesson.title}" is repeated across modules (${seenLessonTitles.get(key)} and Module ${module.moduleNumber}).`);
+    } else {
+      seenLessonTitles.set(key, `Module ${module.moduleNumber}`);
+    }
+  }
+
+  // Verify Bloom progression doesn't put strictly Evaluation before Understand/Foundations in multi-module courses
+  if (course.modules.length >= 2) {
+    const firstModL1Level = (course.modules[0].learningObjectives?.[0]?.bloomLevel || 'Understand').toLowerCase();
+    const lastModMaxLevel = (
+      course.modules[course.modules.length - 1].learningObjectives?.slice(-1)[0]?.bloomLevel || 'Evaluate'
+    ).toLowerCase();
+    if (firstModL1Level === 'create' && lastModMaxLevel === 'remember') {
+      progDeductions += 25;
+      progAffected.push('Module 1 -> Final Module cognitive sequence');
+      progEvidence.push('Cognitive progression appears inverted (Create before foundational Understand/Apply concepts).');
+    }
+  }
+
+  // Ensure each module has >= 2 distinct lessons when total modules >= 1
+  for (const mod of course.modules) {
+    if ((mod.lessons?.length || 0) < 2) {
+      progDeductions += 15;
+      progAffected.push(`Module ${mod.moduleNumber}: ${mod.title}`);
+      progEvidence.push(`Module ${mod.moduleNumber} has only ${mod.lessons?.length || 0} lesson(s), limiting scaffolded progression.`);
+    }
+  }
+
+  const progressionScore = Math.max(0, 100 - progDeductions);
+  const progressionStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    progressionScore >= 85 ? 'PASS' : progressionScore >= 60 ? 'WARNING' : 'FAIL';
+
+  if (progressionStatus === 'PASS') {
+    passedChecks.push('Curriculum follows logical scaffolding from foundations through applied execution and evaluation.');
+  } else if (progressionStatus === 'WARNING') {
+    warnings.push('Review module/lesson progression for repeated headings or insufficient scaffolding.');
+  } else {
+    criticalIssues.push('Course progression is broken by repeated headings or inverted difficulty sequence.');
+  }
+
+  qaChecks.push({
+    id: 'progression',
+    label: '9. Logical Learning Progression',
+    category: 'Subject & Curriculum',
+    status: progressionStatus,
+    score: progressionScore,
+    summary:
+      progressionStatus === 'PASS'
+        ? `Modules and lessons progress cohesively from foundational mental models to applied mastery (${progressionScore}%).`
+        : 'Progression issues detected across module sequence or repeated lesson titles.',
+    evidence:
+      progEvidence.length > 0
+        ? progEvidence.slice(0, 6)
+        : [`Verified progressive sequencing across ${course.modules.length} modules and ${lessonEntries.length} distinct lessons.`],
+    affectedItems: Array.from(new Set(progAffected)),
+    recommendations:
+      progressionStatus === 'PASS'
+        ? []
+        : ['Sequence lessons from foundational concepts -> worked application -> edge-case evaluation without repeating headings.']
+  });
+
+  // ===========================================================================
+  // 10. FACTUAL, CITATION & SOUTH AFRICAN REGULATORY RELIABILITY
+  // ===========================================================================
+  const verifiedSources = (sourceCourse.research?.sources || []).filter(
+    source => source.status === 'Verified'
+  );
+  const verifiedSourceCount = verifiedSources.length;
+  const verifiedSourceBlob = verifiedSources
+    .map(s => `${s.name} ${s.reference} ${s.relevance}`)
+    .join(' ')
+    .toLowerCase();
+
+  const mentionsPopia = /popia|protection of personal information/i.test(fullCourseText);
+  const popiaSourceVerified = verifiedSources.some(
+    src => /popia|personal information/i.test(`${src.name} ${src.reference}`)
+  );
+
+  // Detect unqualified South African statutory, NQF, or numeric claims when not backed by verified sources or marked SME-validation
+  const unverifiedStatutoryMatches: string[] = [];
+  const statuteMatches = fullCourseText.match(
+    /(?:NQF\s+Level\s+\d+|SAQA\s+(?:ID|Unit\s+Standard)\s*\d+|Act\s+(?:No\.?\s*)?\d+\s+of\s+\d{4}|\d+\s+CPD\s+Credits?)/gi
+  ) || [];
+  for (const citation of Array.from(new Set(statuteMatches))) {
+    const normalized = citation.toLowerCase();
+    const backedBySource = verifiedSourceBlob.includes(normalized.replace(/\s+/g, ' ')) ||
+      (normalized.includes('popia') || normalized.includes('4 of 2013') ? popiaSourceVerified : false) ||
+      verifiedSources.some(vs => normalized.split(/\s+/).some(tok => tok.length > 3 && verifiedSourceBlob.includes(tok)));
+    const caveatPattern = new RegExp(
+      `${citation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^.\\n]{0,120}(?:To Be Confirmed|Requires SME|Verify|Pending)`,
+      'i'
+    );
+    const hasCaveat = caveatPattern.test(fullCourseText) || /To Be Confirmed\s*\(Requires SME Validation\)/i.test(fullCourseText);
+    if (!backedBySource && !hasCaveat) {
+      unverifiedStatutoryMatches.push(citation);
+    }
+  }
+
+  const reliabilityEvidence: string[] = [];
+  const reliabilityAffected: string[] = [];
+  const southAfricanContextVerified = verifiedSourceCount > 0 && subjectStatus !== 'FAIL' && unverifiedStatutoryMatches.length === 0;
+  const popiaCompliant = !mentionsPopia || popiaSourceVerified || Boolean(sourceCourse.ethics?.dataPrivacySafeguards?.trim());
 
   if (verifiedSourceCount > 0) {
-    southAfricanContextVerified = subjectStatus !== 'FAIL';
-    popiaCompliant = !mentionsPopia || popiaSourceVerified || Boolean(sourceCourse.ethics?.dataPrivacySafeguards?.trim());
-    groundingEvidence.push(
+    reliabilityEvidence.push(
       `${verifiedSourceCount} verified user source(s) supplied and linked in course metadata.`
     );
     passedChecks.push(`${verifiedSourceCount} verified source(s) incorporated into regulatory & technical grounding.`);
@@ -755,35 +1285,176 @@ export function reviewGeneratedCourseQuality(
     warnings.push(
       'No user-marked verified sources were supplied; regulatory, NQF, and factual claims require SME verification.'
     );
-    groundingEvidence.push('0 verified sources attached in Section 02; claims flagged for SME confirmation.');
+    reliabilityEvidence.push('0 verified sources attached in Section 02; claims require SME confirmation.');
   }
 
-  const groundingScore = verifiedSourceCount >= 2 ? 95 : verifiedSourceCount === 1 ? 80 : 60;
+  if (unverifiedStatutoryMatches.length > 0) {
+    const claimList = unverifiedStatutoryMatches.slice(0, 5).join(', ');
+    if (verifiedSourceCount === 0) {
+      warnings.push(
+        `Unverified statutory/accreditation claim(s) cited without verified sources or SME caveat: ${claimList}.`
+      );
+    } else {
+      warnings.push(
+        `Verify exact regulatory/accreditation reference(s) with an SME: ${claimList}.`
+      );
+    }
+    reliabilityEvidence.push(`Unqualified claim(s): ${claimList} (mark "To Be Confirmed (Requires SME Validation)" or attach source).`);
+    reliabilityAffected.push(...unverifiedStatutoryMatches.slice(0, 5));
+  }
+
+  let groundingScore = verifiedSourceCount >= 2 ? 95 : verifiedSourceCount === 1 ? 82 : 65;
+  groundingScore = Math.max(25, groundingScore - unverifiedStatutoryMatches.length * 15);
   const groundingStatus: 'PASS' | 'WARNING' | 'FAIL' =
-    verifiedSourceCount >= 1 && subjectStatus !== 'FAIL' ? 'PASS' : 'WARNING';
+    unverifiedStatutoryMatches.length >= 3 && verifiedSourceCount === 0
+      ? 'FAIL'
+      : verifiedSourceCount >= 1 && subjectStatus !== 'FAIL' && unverifiedStatutoryMatches.length === 0
+        ? 'PASS'
+        : 'WARNING';
+
+  if (groundingStatus === 'FAIL') {
+    criticalIssues.push(
+      `Multiple unverified South African statutory/NQF claims (${unverifiedStatutoryMatches.slice(0, 3).join(', ')}) cited without supporting sources.`
+    );
+  }
 
   qaChecks.push({
-    id: 'source_grounding',
-    label: 'SA Context & Source Grounding',
+    id: 'factual_reliability',
+    label: '10. Factual & Regulatory Reliability',
+    category: 'Reliability & Structure',
     status: groundingStatus,
     score: groundingScore,
     summary:
       groundingStatus === 'PASS'
-        ? 'South African context and compliance claims grounded in user-verified references.'
-        : 'User-verified references missing; facilitator/SME verification required before formal sign-off.',
-    evidence: groundingEvidence
+        ? 'Factual, statutory, and SA context references are honestly grounded in supplied verified sources.'
+        : 'Missing verified sources or unqualified statutory/NQF claims require SME verification before release.',
+    evidence: reliabilityEvidence,
+    affectedItems: reliabilityAffected,
+    recommendations:
+      groundingStatus === 'PASS'
+        ? []
+        : ['Attach verified Section 02 references or mark unconfirmed acts, NQF codes, and statistics "To Be Confirmed (Requires SME Validation)".']
   });
 
   // ===========================================================================
-  // COMPOSITE SCORE & OVERALL VERDICT
+  // 11. DOCUMENT & METADATA INTEGRITY
+  // ===========================================================================
+  const integrityEvidence: string[] = [];
+  const integrityAffected: string[] = [];
+  let integrityIssuesCount = 0;
+  let integrityWarningsCount = 0;
+
+  if (course.modules.length === 0 || lessonEntries.length === 0) {
+    criticalIssues.push('Generated course contains no modules or lessons.');
+    integrityEvidence.push('Missing modules or lessons in generated output.');
+    integrityAffected.push('Modules & Lessons');
+    integrityIssuesCount++;
+  }
+
+  const sourceModuleCount = sourceCourse.modules?.length || 0;
+  if (sourceModuleCount > 0 && sourceModuleCount !== course.modules.length) {
+    const msg = `Module count mismatch: template specified ${sourceModuleCount} module(s), generated output has ${course.modules.length}.`;
+    criticalIssues.push(msg);
+    integrityEvidence.push(msg);
+    integrityAffected.push(`Module count (${course.modules.length} vs ${sourceModuleCount})`);
+    integrityIssuesCount++;
+  } else if (sourceModuleCount > 0) {
+    passedChecks.push(`Preserved exact user-defined ${sourceModuleCount}-module structure.`);
+  }
+
+  for (let i = 0; i < Math.min(sourceModuleCount, course.modules.length); i++) {
+    const srcMod = sourceCourse.modules[i] as any;
+    const genMod = course.modules[i];
+    if (srcMod.title?.trim()) {
+      const srcNorm = srcMod.title.toLowerCase().trim();
+      const genNorm = (genMod.title || '').toLowerCase().trim();
+      if (srcNorm !== genNorm && !genNorm.includes(srcNorm) && !srcNorm.includes(genNorm)) {
+        const msg = `Module ${i + 1} title ("${genMod.title}") changed from template title ("${srcMod.title}").`;
+        warnings.push(msg);
+        integrityEvidence.push(msg);
+        integrityAffected.push(`Module ${i + 1} Title`);
+        integrityWarningsCount++;
+      }
+    }
+    if (Array.isArray(srcMod.lessons) && srcMod.lessons.length > 0 && genMod.lessons.length !== srcMod.lessons.length) {
+      const msg = `Module ${i + 1} lesson count (${genMod.lessons.length}) differs from configured template (${srcMod.lessons.length}).`;
+      warnings.push(msg);
+      integrityEvidence.push(msg);
+      integrityAffected.push(`Module ${i + 1} Lessons`);
+      integrityWarningsCount++;
+    }
+  }
+
+  const expectedCode = (sourceCourse.structure?.code || sourceCourse.code || '').trim();
+  if (expectedCode && course.code && course.code.trim() !== expectedCode) {
+    const msg = `Course code mismatch: template uses "${expectedCode}", generated output has "${course.code}".`;
+    warnings.push(msg);
+    integrityEvidence.push(msg);
+    integrityAffected.push('Course Code');
+    integrityWarningsCount++;
+  }
+
+  if (
+    course.assessments.preCourseDiagnostic.questions.length < 5 ||
+    course.assessments.preCourseDiagnostic.questions.length > 10
+  ) {
+    warnings.push('The pre-course diagnostic does not contain the configured 5–10 question range.');
+    integrityEvidence.push(
+      `Pre-course diagnostic has ${course.assessments.preCourseDiagnostic.questions.length} question(s) (expected 5–10).`
+    );
+    integrityAffected.push('Pre-Course Diagnostic');
+    integrityWarningsCount++;
+  }
+  if (!course.assessments.finalAssessment.capstoneCaseStudy) {
+    warnings.push('The final assessment has no configured capstone case study.');
+    integrityEvidence.push('Missing final capstone case study.');
+    integrityAffected.push('Capstone Case Study');
+    integrityWarningsCount++;
+  }
+
+  const structureScore = Math.max(0, 100 - integrityIssuesCount * 40 - integrityWarningsCount * 10);
+  const structureStatus: 'PASS' | 'WARNING' | 'FAIL' =
+    integrityIssuesCount > 0 ? 'FAIL' : integrityWarningsCount > 0 ? 'WARNING' : 'PASS';
+
+  if (structureStatus === 'PASS') {
+    integrityEvidence.push(
+      `Title, code (${course.code}), ${course.modules.length} modules, ${lessonEntries.length} lessons, diagnostic, and capstone match Master Template v9.0.`
+    );
+  }
+
+  qaChecks.push({
+    id: 'document_integrity',
+    label: '11. Document & Metadata Integrity',
+    category: 'Reliability & Structure',
+    status: structureStatus,
+    score: structureScore,
+    summary:
+      structureStatus === 'PASS'
+        ? `All template metadata, module counts, assessments, and exports align cleanly (${course.modules.length} modules, ${lessonEntries.length} lessons).`
+        : 'Structural or metadata deviations found compared to Master Template v9.0.',
+    evidence: integrityEvidence.slice(0, 6),
+    affectedItems: integrityAffected,
+    recommendations:
+      structureStatus === 'PASS'
+        ? []
+        : ['Restore any altered module counts/titles or missing diagnostic/capstone sections before export.']
+  });
+
+  // ===========================================================================
+  // COMPOSITE SCORE & OVERALL VERDICT ACROSS ALL 11 DIMENSIONS
   // ===========================================================================
   const weightedScore = Math.round(
-    subjectAlignmentScore * 0.3 +
-      structureScore * 0.15 +
-      originalityScore * 0.2 +
-      taskScore * 0.15 +
+    subjectAlignmentScore * 0.16 +
+      loScore * 0.08 +
+      depthScore * 0.14 +
+      techScore * 0.1 +
+      lessonRelScore * 0.08 +
+      taskScore * 0.1 +
       alignmentScore * 0.1 +
-      groundingScore * 0.1
+      originalityScore * 0.12 +
+      progressionScore * 0.04 +
+      groundingScore * 0.04 +
+      structureScore * 0.04
   );
 
   const hasCheckFail = qaChecks.some(c => c.status === 'FAIL') || criticalIssues.length > 0;
@@ -807,11 +1478,11 @@ export function reviewGeneratedCourseQuality(
   );
   if (overallVerdict === 'FAIL') {
     recommendations.unshift(
-      'Resolve all FAIL-level issues (such as cross-domain bleed, structure mismatch, or repeated modules) using Edit or Regenerate before approving this course.'
+      'Resolve all FAIL-level issues across the 11 QA dimensions using Edit or Regenerate before approving this course.'
     );
   } else if (overallVerdict === 'WARNING') {
     recommendations.unshift(
-      'Review highlighted warnings in the Quality Scorecard cards before signing off for deployment.'
+      'Review highlighted warnings across the 11 QA Scorecard cards before signing off for deployment.'
     );
   }
 
@@ -975,7 +1646,7 @@ export function validateAndSanitizeGeneratedCourse(
 
   const estimatedDuration = typeof raw.estimatedDuration === 'string' && raw.estimatedDuration.trim().length > 0
     ? raw.estimatedDuration.trim()
-    : (s.estimatedDuration || '4 - 6 Hours (Self-paced + Practical Tasks)');
+    : (s.estimatedDuration || '16 Hours (Self-paced + Practical Tasks)');
 
   let learningOutcomes: string[] = [];
   if (Array.isArray(raw.learningOutcomes) && raw.learningOutcomes.length > 0) {
@@ -1188,7 +1859,11 @@ export function validateAndSanitizeGeneratedCourse(
       : undefined
   };
 
-  const finalCourse = enforceComprehensiveCourseVolume(baseCourse, sourceCourse);
+  // Never mutate AI-generated courses via offline filler expansion
+  const finalCourse =
+    metadata.provider === 'local_fallback'
+      ? enforceComprehensiveCourseVolume(baseCourse, sourceCourse)
+      : baseCourse;
   finalCourse.qa = reviewGeneratedCourseQuality(finalCourse, sourceCourse, blueprint).qa;
 
   return {

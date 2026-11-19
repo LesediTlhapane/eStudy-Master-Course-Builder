@@ -331,7 +331,7 @@ function countPopulatedStrings(obj: any): number {
 export async function extractCourseFieldsFromDocument(
   req: TemplateExtractionRequest
 ): Promise<TemplateExtractionResult> {
-  const { fileName, mimeType, base64Data, rawText, model } = req;
+  const { fileName, mimeType, base64Data, rawText, provider, model } = req;
 
   let extractedDocumentText = (rawText || '').trim();
   const isPdf = mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
@@ -356,12 +356,16 @@ export async function extractCourseFieldsFromDocument(
     );
   }
 
-  const activeProvider: AIProvider = 'groq';
+  const activeProvider: AIProvider = provider === 'gemini' ? 'gemini' : 'groq';
   const requestedModel = model?.trim();
-  const activeModel =
-    requestedModel && !requestedModel.toLowerCase().includes('gemini')
-      ? requestedModel
-      : getDefaultModelForProvider(activeProvider, 'copilot');
+  const isCompatible =
+    requestedModel &&
+    (activeProvider === 'gemini'
+      ? requestedModel.toLowerCase().includes('gemini')
+      : !requestedModel.toLowerCase().includes('gemini'));
+  const activeModel = isCompatible
+    ? requestedModel
+    : getDefaultModelForProvider(activeProvider, 'copilot');
 
   const aiResponse = await aiRouter.execute({
     provider: activeProvider,
@@ -419,12 +423,16 @@ export async function refineProblemStatementWithAI(params: {
   skillGaps?: string;
   constraints?: string;
 }> {
-  const provider: AIProvider = 'groq';
+  const provider: AIProvider = params.provider === 'gemini' ? 'gemini' : 'groq';
   const requestedModel = params.model?.trim();
-  const model =
-    requestedModel && !requestedModel.toLowerCase().includes('gemini')
-      ? requestedModel
-      : getDefaultModelForProvider(provider, 'copilot');
+  const isCompatible =
+    requestedModel &&
+    (provider === 'gemini'
+      ? requestedModel.toLowerCase().includes('gemini')
+      : !requestedModel.toLowerCase().includes('gemini'));
+  const model = isCompatible
+    ? requestedModel
+    : getDefaultModelForProvider(provider, 'copilot');
 
   const systemInstruction = `You are eStudy South Africa's Senior Instructional Designer.
 Improve the clarity, grammar, and professional South African English phrasing of the user's Problem Statement inputs so they fit cleanly into the official eStudy formula:

@@ -151,7 +151,7 @@ export function calculateGeneratedCourseVolume(generated: GeneratedCourse): Cour
     scenarioCount,
     questionCount,
     meetsPageStandard: rawPages >= 22 && rawPages <= 30,
-    pageRangeLabel: 'Estimated page count; not a learning-quality score'
+    pageRangeLabel: `Pre-render estimate (~${rawPages} A4 pages at ~420 words/page; print layout may vary)`
   };
 }
 
@@ -271,34 +271,37 @@ export function enforceComprehensiveCourseVolume(
   course: GeneratedCourse,
   sourceCourse: Course
 ): GeneratedCourse {
-  if (course.generationMetadata?.provider === 'groq') {
+  if (
+    course.generationMetadata?.provider === 'groq' ||
+    course.generationMetadata?.provider === 'gemini'
+  ) {
     return course;
   }
 
   const s = sourceCourse.structure || ({} as any);
   const p = sourceCourse.problem || ({} as any);
   const r = sourceCourse.research || ({} as any);
-  const courseTitle = course.title || s.title || sourceCourse.name || 'Corporate Mastery Programme';
-  const targetRoles = course.targetAudience || s.targetRoles || p.targetGroup || 'Operational Professionals & Team Leaders';
-  const regFramework = r.regulatoryFramework || 'POPIA Act 4 of 2013 & South African Regulatory Standards';
+  const courseTitle = course.title || s.title || sourceCourse.name || 'Training Programme';
+  const targetRoles = course.targetAudience || s.targetRoles || p.targetGroup || 'Practitioners & Team Leads';
+  const regFramework = r.regulatoryFramework?.trim() || 'applicable domain standards (To Be Confirmed — Requires SME Validation)';
 
-  // 1. Expand Executive Overview & Purpose if too brief
+  // 1. Expand Executive Overview & Purpose only if minimal offline draft
   if (countWordsInText(course.overview) < 80) {
-    course.overview = `${course.overview ? course.overview.trim() + ' ' : ''}This comprehensive, NQF-aligned training programme equips ${targetRoles} with the end-to-end operational frameworks, standard operating procedures, and ethical AI governance competencies required to excel in ${courseTitle}. Designed in strict accordance with the eStudy South Africa Master Course Framework v9.0, the curriculum bridges high-level regulatory requirements (${regFramework}) with practical, day-to-day workplace execution. Across structured modules, worked South African case studies, interactive decision-point scenarios, and rigorous competency assessments, participants develop verifiable mastery that directly eliminates operational bottlenecks and elevates organisational compliance.`;
+    course.overview = `${course.overview ? course.overview.trim() + ' ' : ''}This applied training programme equips ${targetRoles} with foundational conceptual understanding, practical skills, and critical evaluation judgment in ${courseTitle}. Structured around the eStudy Master Course Framework v9.0, the curriculum moves progressively from core mechanisms and terminology to concrete domain examples, realistic problem solving, and responsible practice aligned with ${regFramework}.`;
   }
 
   if (countWordsInText(course.purpose) < 60) {
-    course.purpose = `${course.purpose ? course.purpose.trim() + ' ' : ''}The strategic purpose of ${courseTitle} is to establish a unified, audit-defensible standard of practice across all participating business units. By addressing core root causes—including process inconsistencies, skills gaps, and unmonitored digital tool adoption—this programme ensures measurable improvements in turnaround accuracy, stakeholder trust, and statutory compliance.`;
+    course.purpose = `${course.purpose ? course.purpose.trim() + ' ' : ''}The purpose of ${courseTitle} is to develop authentic, transferable competence for ${targetRoles} by addressing root capability gaps (${p.taskOrSkill || courseTitle}), eliminating common misconceptions, and reinforcing evidence-based judgement.`;
   }
 
-  // Ensure at least 6 comprehensive learning outcomes
+  // Ensure at least 6 subject-anchored learning outcomes
   const defaultOutcomes = [
-    `Diagnose and remediate systemic operational bottlenecks and root causes impacting ${courseTitle} in South African workplace environments.`,
-    `Execute standardised, five-stage operational procedures with measurable quality assurance and zero unverified shortcuts.`,
-    `Apply ${regFramework} and internal governance controls across all data handling, reporting, and stakeholder workflows.`,
-    `Integrate approved AI and digital productivity tools responsibly while enforcing strict Human-in-the-Loop (HITL) verification protocols.`,
-    `Resolve complex workplace and ethical dilemmas using structured decision-making frameworks and risk-mitigation matrices.`,
-    `Design and implement a 30-60-90 day departmental action plan that sustains continuous performance improvement and audit readiness.`
+    `Explain the core principles, mechanisms, and terminology underlying ${courseTitle}.`,
+    `Apply methods from ${courseTitle} to realistic workplace problems and constraints.`,
+    `Recognise common misconceptions, limitations, and failure modes when practising ${courseTitle}.`,
+    `Evaluate trade-offs between quality, speed, cost, and risk in ${courseTitle} decisions.`,
+    `Use approved digital or AI tools responsibly within ${courseTitle}, verifying all technical outputs independently.`,
+    `Translate programme concepts into an actionable 30-60-90 day capability plan tailored to ${targetRoles}.`
   ];
   while (course.learningOutcomes.length < 6) {
     const nextOutcome = defaultOutcomes[course.learningOutcomes.length];
@@ -522,28 +525,28 @@ export function enforceComprehensiveCourseVolume(
 
     const practicalTask: GeneratedPracticalTask = {
       id: mod.practicalTask?.id || `task-${modNum}`,
-      title: mod.practicalTask?.title || `Module ${modNum} Practical Application: ${mod.title}`,
+      title: mod.practicalTask?.title || `Module ${modNum} Applied Practice: ${mod.title}`,
       instructions: hasStructuredTask
         ? mod.practicalTask!.instructions
-        : `Objective: Demonstrate practical mastery of ${mod.title} within ${courseTitle}.\nScenario: Acting as ${targetRoles} in a ${cityBase} team, you must evaluate and improve an active deliverable related to ${mod.title}.\nResources: Approved domain tools (${r.aiToolsPlatformName || 'workplace templates'}), Module ${modNum} reference guide, and verification checklist.\nSteps: 1. Define scope, inputs, and constraints for ${mod.title}. 2. Execute the core domain workflow on a sample scenario. 3. Audit outputs against domain accuracy, security, and ${regFramework}. 4. Document corrections and stakeholder sign-off notes.\nDeliverable: Completed Module ${modNum} ${mod.title} Implementation & Review Artefact.\nSuccess criteria: All steps trace cleanly to LO ${modNum}.1–LO ${modNum}.${mod.learningObjectives.length}, with verified evidence and zero unvalidated assumptions.\nReflection: Identify one risk prevented by your verification check and one improvement for future iterations.`,
+        : `Objective: Apply core concepts from ${mod.title} to solve a realistic challenge in ${courseTitle}.\nScenario: Working as ${targetRoles} in a ${cityBase} team, you need to design and test an effective solution for ${mod.title}.\nResources: ${r.aiToolsPlatformName || 'Domain tools & reference materials'}, Module ${modNum} study guide, and working example template.\nInstructions: Work through the sequential steps below to build a concrete deliverable grounded in ${mod.title} principles.\nSteps: 1. Frame the problem goals, constraints, and key terminology from ${mod.title}. 2. Construct and test a practical solution applying core concepts from this module's lessons. 3. Evaluate limitations or edge cases against ${regFramework} and refine weak areas.\nDeliverable: Completed Module ${modNum} ${mod.title} Applied Portfolio Brief.\nSuccess criteria: Demonstrates accurate use of ${mod.title} concepts, addresses constraints explicitly, and provides justified decisions aligned to LO ${modNum}.1–LO ${modNum}.${mod.learningObjectives.length}.\nReflection: Which concept or misconception from ${mod.title} had the greatest impact on your solution?`,
       deliverable:
         countWordsInText(mod.practicalTask?.deliverable) >= 8
           ? mod.practicalTask!.deliverable
-          : `Completed Module ${modNum} ${mod.title} Practical Artefact with verification checklist.`,
+          : `Completed Module ${modNum} ${mod.title} Applied Portfolio Brief.`,
       evaluationRubric:
         Array.isArray(mod.practicalTask?.evaluationRubric) && mod.practicalTask!.evaluationRubric.length >= 2
           ? mod.practicalTask!.evaluationRubric
           : [
-              `Subject accuracy and application of ${mod.title} concepts (40%)`,
-              'Completeness and clarity of execution steps and deliverable (35%)',
-              'Verification discipline, risk awareness, and reflection quality (25%)'
+              `Conceptual accuracy and application of ${mod.title} principles (40%)`,
+              'Completeness and quality of practical deliverable and reasoning (35%)',
+              'Identification of edge cases, limitations, and reflection quality (25%)'
             ]
     };
 
     const enrichedSummary =
       countWordsInText(mod.summary) >= 20
         ? mod.summary
-        : `Module ${modNum} (${mod.title}) developed practical competence in ${mod.purpose || mod.title}, linking conceptual foundations to hands-on application and verification.`;
+        : `Module ${modNum} (${mod.title}) developed practical competence in ${mod.purpose || mod.title}, linking conceptual foundations to hands-on application and critical evaluation.`;
 
     return {
       ...mod,
@@ -555,67 +558,67 @@ export function enforceComprehensiveCourseVolume(
     };
   });
 
-  // 3. Ensure 5 Pre-Course Diagnostic Questions
+  // 3. Ensure 5 Pre-Course Diagnostic Questions anchored to courseTitle
   const defaultDiagQuestions: GeneratedQuestion[] = [
     {
       id: 'diag-1',
-      question: `Which statement best describes how standard operating procedures (SOPs) for ${courseTitle} are currently executed in your daily workflow?`,
+      question: `How familiar are you with the foundational principles and terminology of ${courseTitle}?`,
       options: [
-        'Ad-hoc and informal, with frequent undocumented shortcuts under deadline pressure',
-        'Partially documented, though quality verification varies between team members',
-        'Standardised with formal checklists and consistent supervisory sign-off',
-        'Fully optimised with continuous root-cause auditing and metrics tracking'
+        `No prior exposure to ${courseTitle} concepts`,
+        `Basic familiarity with definitions, limited practical application`,
+        `Regularly apply core methods in guided workplace tasks`,
+        `Experienced practitioner able to critique and mentor others`
       ],
       correctAnswer: 2,
-      rationale: 'Establishes the participant’s baseline maturity regarding procedural standardisation and quality gates.'
+      rationale: `Benchmarks prior familiarity with core ${courseTitle} concepts and vocabulary.`
     },
     {
       id: 'diag-2',
-      question: `When handling customer, employee, or proprietary records under South African POPIA (Act 4 of 2013), what is the primary pre-processing requirement?`,
+      question: `When approaching an unfamiliar challenge in ${courseTitle}, what is the most reliable starting step?`,
       options: [
-        'Data can be shared freely across any external cloud platform without restriction',
-        'Personal identifiers must be verified for lawful purpose and masked/anonymised before external tool processing',
-        'Privacy rules only apply if a customer submits a formal legal complaint',
-        'Only the IT department is responsible for data privacy compliance'
+        'Skip problem framing and adopt the first template found online',
+        'Clarify inputs, constraints, and domain criteria before selecting a method',
+        'Assume one tool setting suits every context equally',
+        'Rely purely on intuition without checking domain assumptions'
       ],
       correctAnswer: 1,
-      rationale: 'Evaluates baseline awareness of POPIA lawful processing conditions and data de-identification.'
+      rationale: 'Sound practice in any domain starts by clarifying constraints and assumptions before execution.'
     },
     {
       id: 'diag-3',
-      question: `What is the primary operational risk of deploying generative AI or automated tools without a Human-in-the-Loop (HITL) review gate?`,
+      question: `What is the main limitation of relying uncritically on AI-assisted outputs when working in ${courseTitle}?`,
       options: [
-        'The software might use slightly more electricity',
-        'Plausible hallucinations, fabricated statutory citations, or biased outputs may be released as official company records',
-        'Team members will type faster than usual',
-        'Documents will automatically convert to PDF format'
+        'Outputs may be formatted in clean paragraphs',
+        'Plausible-looking answers can contain conceptual errors, fabrications, or context mismatches if not verified against domain evidence',
+        'Tools may generate answers faster than manual typing',
+        'Drafts require saving in standard file formats'
       ],
       correctAnswer: 1,
-      rationale: 'Tests foundational AI literacy regarding model hallucinations and human accountability.'
+      rationale: 'Tests awareness of why domain judgement must verify automated drafts.'
     },
     {
       id: 'diag-4',
-      question: `If an operational discrepancy is discovered immediately prior to a client or executive handover, what is the correct course of action?`,
+      question: `How do you distinguish an effective practical trade-off in ${courseTitle} from a flawed shortcut?`,
       options: [
-        'Release the deliverable on time and hope the client does not notice the error',
-        'Halt the release, log the anomaly, verify against primary source records, and communicate a transparent remediation timeline',
-        'Delete the error log to protect departmental KPIs',
-        'Blame an external vendor without investigating the root cause'
+        'Shortcuts always produce better results regardless of constraints',
+        'An effective trade-off weighs measurable accuracy, feasibility, and domain risk explicitly',
+        'Only speed matters in professional deliverables',
+        'Trade-offs never affect downstream outcomes'
       ],
       correctAnswer: 1,
-      rationale: 'Assesses ethical decision-making and adherence to quality assurance escalation protocols.'
+      rationale: 'Gauges readiness for structured decision evaluation across course modules.'
     },
     {
       id: 'diag-5',
-      question: `How do you currently measure the impact of process improvements within your functional role?`,
+      question: `What best supports lasting skill transfer after completing ${courseTitle}?`,
       options: [
-        'We do not track process metrics after training',
-        'Through informal verbal feedback during annual reviews',
-        'By tracking error reduction, turnaround time, and audit compliance across a 30-60-90 day implementation plan',
-        'By counting the number of emails sent per day'
+        'Treating concepts as abstract theory with no workplace follow-through',
+        'Applying concepts immediately to real tasks with concrete feedback criteria and reflection',
+        'Memorising definitions without practising problem solving',
+        'Avoiding peer review on initial implementations'
       ],
-      correctAnswer: 2,
-      rationale: 'Gauges readiness for outcome-oriented 30-60-90 day workplace application.'
+      correctAnswer: 1,
+      rationale: 'Establishes action-oriented learning habits for the 30-60-90 day plan.'
     }
   ];
 
@@ -625,128 +628,141 @@ export function enforceComprehensiveCourseVolume(
   }
   course.assessments.preCourseDiagnostic.questions = currentDiag.slice(0, 5);
 
-  // 4. Ensure 10 Final Summative Assessment Questions + Deep Capstone Case Study
+  // 4. Ensure up to 10 Final Summative Assessment Questions anchored to course modules & LOs
+  const moduleLoRefs = course.modules.map(m => ({
+    modTitle: m.title,
+    loCode: m.learningObjectives?.[0]?.code || `LO ${m.moduleNumber}.1`
+  }));
   const defaultFinalQuestions: GeneratedQuestion[] = [
     {
       id: 'final-q1',
-      question: `In regulated South African enterprise operations, what is the primary operational vulnerability of adopting unmonitored AI tools for ${courseTitle}?`,
+      question: `Why must practitioners master the underlying mechanism of concepts taught in ${courseTitle} rather than copying surface steps?`,
       options: [
-        'Minor font formatting discrepancies in internal memos',
-        'Severe breach of POPIA conditions, exposure of confidential PII, and unverified algorithmic hallucinations entering official records',
-        'Slight reduction in desktop monitor brightness',
-        'Increased usage of local printer paper'
+        'Surface steps work identically even when constraints change',
+        'Understanding mechanisms reveals why an approach works, where it breaks, and how to adapt it safely',
+        'Conceptual knowledge removes the need for testing solutions',
+        'Surface steps take longer to read'
       ],
       correctAnswer: 1,
-      rationale: 'Unvetted AI tools risk exposing Personal Identifiable Information (PII) under POPIA and introducing plausible but factually incorrect hallucinations.'
+      rationale: 'Deep mechanism comprehension enables sound adaptation and edge-case detection.',
+      learningObjectiveRef: moduleLoRefs[0]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q2',
-      question: `When planning and delivering work in ${courseTitle}, why must teams verify key inputs and constraints before implementation?`,
+      question: `When designing deliverables in ${courseTitle}, why should constraints and acceptance criteria be defined before execution?`,
       options: [
-        'To delay delivery unnecessarily',
-        'To catch incomplete assumptions early, ensure domain feasibility, and avoid downstream rework',
-        'To bypass stakeholder review',
-        'To remove accountability records'
+        'To delay project progress unnecessarily',
+        'To prevent hidden assumptions from causing rework or invalid solutions later',
+        'To eliminate collaborative feedback',
+        'To avoid measuring solution quality'
       ],
       correctAnswer: 1,
-      rationale: `Validating inputs and constraints early protects quality across ${courseTitle} and aligns with Module 1 foundations.`,
-      learningObjectiveRef: course.modules?.[0]?.learningObjectives?.[0]?.code || 'LO 1.1'
+      rationale: `Explicit criteria align execution with ${courseTitle} objectives from the start.`,
+      learningObjectiveRef: moduleLoRefs[0]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q3',
-      question: `How does POPIA Section 71 govern automated decision-making in corporate workflows?`,
+      question: `How should practitioners address common misconceptions identified in ${courseTitle}?`,
       options: [
-        'It permits fully automated profiling of data subjects without human intervention or recourse',
-        'It protects data subjects from decisions based solely on automated processing that have legal or substantial impact, requiring human oversight and the opportunity to make representations',
-        'It bans the use of computers in South African offices',
-        'It applies only to international shipping companies'
+        'Ignore edge cases whenever initial drafts look plausible',
+        'Test assumptions explicitly against worked examples and domain constraints',
+        'Assume confidence in presentation equals accuracy',
+        'Defer all technical judgement to default settings'
       ],
       correctAnswer: 1,
-      rationale: 'POPIA Section 71 mandates meaningful human oversight and protects individuals from consequential decisions made solely by automated algorithms.'
+      rationale: 'Testing assumptions against concrete examples prevents predictable domain errors.',
+      learningObjectiveRef: moduleLoRefs[1 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q4',
-      question: `During a cross-departmental handover, the receiving specialist notices that the prerequisite verification checklist is unsigned. What is the mandatory action?`,
+      question: `What is the right approach when external tools or AI assistants suggest unverified regulatory or factual claims within ${courseTitle}?`,
       options: [
-        'Sign the checklist on behalf of the sender without checking the data',
-        'Proceed with execution and ignore the missing signature',
-        'Place the handover on formal quality hold, request the completed verification evidence from the originating officer, and log the exception',
-        'Discard the entire project permanently'
+        'Publish the claims directly into client deliverables',
+        'Verify against authoritative primary sources or explicitly mark "To Be Confirmed (Requires SME Validation)"',
+        'Remove all context notes without review',
+        'Treat unverified citations as binding standards'
       ],
-      correctAnswer: 2,
-      rationale: 'Enforcing handover quality gates prevents defective inputs from cascading into downstream operational failures.'
+      correctAnswer: 1,
+      rationale: 'Only primary-source verified or SME-validated claims belong in authoritative work.',
+      learningObjectiveRef: moduleLoRefs[2 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q5',
-      question: `What distinguishes a root-cause remediation strategy from superficial symptom patching?`,
+      question: `What distinguishes a root-cause improvement in ${courseTitle} from superficial patching?`,
       options: [
-        'Root-cause remediation addresses underlying process design, training gaps, and governance controls so the failure cannot recur',
-        'Symptom patching is slower and more expensive than root-cause analysis',
-        'Root-cause remediation focuses exclusively on issuing punitive warnings to junior staff',
-        'There is no operational difference between the two approaches'
+        'Root-cause improvement resolves the underlying conceptual, design, or capability driver so the issue does not recur',
+        'Superficial patching requires deeper domain analysis',
+        'Root-cause work ignores measurable outcomes',
+        'There is no practical difference between them'
       ],
       correctAnswer: 0,
-      rationale: 'True root-cause analysis eliminates systemic vulnerabilities in workflow design, tooling, and capability.'
+      rationale: 'Root-cause fixes address underlying drivers rather than temporary symptoms.',
+      learningObjectiveRef: moduleLoRefs[1 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q6',
-      question: `When constructing prompts for an approved enterprise AI assistant, which practice upholds both output precision and statutory compliance?`,
+      question: `When handling sensitive or proprietary inputs inside digital tools during ${courseTitle}, what principle applies?`,
       options: [
-        'Pasting raw customer spreadsheets with ID numbers and asking the AI to "fix everything"',
-        'Providing clear role context, anonymised/synthetic data parameters, explicit formatting constraints, and mandatory verification criteria',
-        'Using vague one-word prompts with no domain context',
-        'Requesting the AI to bypass company compliance rules'
+        'Upload unrestricted confidential records to any public endpoint',
+        'Protect confidential/personal data according to organisational security and applicable privacy rules',
+        'Assume external tools delete all inputs automatically',
+        'Disable access controls during pilot testing'
       ],
       correctAnswer: 1,
-      rationale: 'Structured prompt engineering with anonymised inputs yields high-precision scaffolding while preserving POPIA data privacy.'
+      rationale: 'Data protection and least-privilege handling safeguard confidentiality across workflows.',
+      learningObjectiveRef: moduleLoRefs[2 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q7',
-      question: `Why is psychological safety essential when conducting departmental quality audits and error debriefs?`,
+      question: `How does collaborative peer review strengthen outcomes across ${courseTitle}?`,
       options: [
-        'It lowers performance standards so mistakes are ignored',
-        'It encourages practitioners to surface near-misses and process anomalies early rather than concealing errors out of fear',
-        'It eliminates the need for standard operating procedures',
-        'It replaces formal competency assessments'
+        'It lowers standards by encouraging informal shortcuts',
+        'Constructive critique surfaces blind spots and assumption errors before live rollout',
+        'It replaces personal accountability for deliverables',
+        'It removes the need for clear evaluation criteria'
       ],
       correctAnswer: 1,
-      rationale: 'A blame-free, accountable culture surfaces operational risks early, enabling proactive systemic remediation.'
+      rationale: 'Blameless, structured peer critique improves accuracy and collective learning.',
+      learningObjectiveRef: moduleLoRefs[1 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q8',
-      question: `Under King IV Principle 12 (Technology and Information Governance), who holds ultimate accountability for the ethical and compliant use of technology in an organisation?`,
+      question: `Who retains accountability for validating quality, safety, and domain fit in ${courseTitle} deliverables?`,
       options: [
-        'The software vendor’s automated helpdesk',
-        'The governing body and accountable management through structured governance, risk controls, and human oversight',
-        'Entry-level interns operating the keyboard',
-        'No one, as digital outputs are legally neutral'
+        'External software vendors',
+        'The accountable practitioner and reviewing leads exercising informed domain judgement',
+        'Automated templates alone',
+        'No one once a template is generated'
       ],
       correctAnswer: 1,
-      rationale: 'King IV Principle 12 places clear responsibility on leadership and management to govern technology ethically, securely, and accountably.'
+      rationale: 'Tools assist execution, while human practitioners retain final domain accountability.',
+      learningObjectiveRef: moduleLoRefs[2 % moduleLoRefs.length]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q9',
-      question: `What is the primary purpose of the 30-60-90 Day Workplace Implementation Action Plan at the conclusion of ${courseTitle}?`,
+      question: `What is the purpose of a 30-60-90 day implementation roadmap after completing ${courseTitle}?`,
       options: [
-        'To serve as a theoretical filing exercise with no workplace follow-up',
-        'To translate classroom mastery into measurable operational habits, audited milestones, and sustained departmental ROI',
-        'To delay applying new skills for three months',
-        'To replace standard operating procedures with personal opinions'
+        'To serve as paperwork filed away without follow-up',
+        'To translate programme skills into concrete milestones, feedback checks, and sustained workplace outcomes',
+        'To delay practising new methods for three months',
+        'To eliminate ongoing review'
       ],
       correctAnswer: 1,
-      rationale: 'Structured 30-60-90 day milestones ensure immediate behavioural transfer and measurable workplace performance gains.'
+      rationale: 'Phased milestones embed new skills into real work with measurable feedback.',
+      learningObjectiveRef: moduleLoRefs[0]?.loCode || 'LO 1.1'
     },
     {
       id: 'final-q10',
-      question: `Before approving any AI-augmented deliverable for final client or executive release, the reviewing practitioner must confirm:`,
+      question: `Before finalising a solution in ${courseTitle}, what check best confirms readiness?`,
       options: [
-        'Only that the document has an attractive cover page',
-        'Factual accuracy against primary sources, absence of exposed PII under POPIA, alignment with organisational SOPs, and documented human sign-off',
-        'That the AI model generated the response in less than two seconds',
-        'That no human edited the raw AI text'
+        'Checking formatting aesthetics alone',
+        'Confirming conceptual accuracy, edge-case testing, source reliability, and alignment with the task brief',
+        'Measuring only how fast the draft was written',
+        'Skipping stakeholder validation'
       ],
       correctAnswer: 1,
-      rationale: 'Comprehensive Human-in-the-Loop sign-off verifies factual accuracy, statutory compliance, and alignment with operational standards.'
+      rationale: 'Readiness requires verifying domain correctness, edge cases, and source reliability.',
+      learningObjectiveRef: moduleLoRefs[moduleLoRefs.length - 1]?.loCode || 'LO 1.1'
     }
   ];
 
@@ -761,11 +777,11 @@ export function enforceComprehensiveCourseVolume(
   if (!existingCap || countWordsInText(existingCap.scenario) < 40) {
     course.assessments.finalAssessment.capstoneCaseStudy = {
       title: existingCap?.title || `Applied Capstone Case Study: ${courseTitle}`,
-      scenario: `A South African organisation is modernising its capabilities in ${courseTitle} for ${targetRoles}. Recent project reviews identified inconsistent workflows, unverified outputs under tight timelines, and unclear escalation boundaries under ${regFramework}. You are tasked with designing an end-to-end solution across the modules covered in this programme.`,
+      scenario: `A South African organisation is modernising its capabilities in ${courseTitle} for ${targetRoles}. Recent reviews showed inconsistent practices, unverified assumptions under tight timelines, and limited awareness of ${regFramework}. You are tasked with designing an integrated, well-reasoned solution uniting concepts from Modules 1–${course.modules.length}.`,
       tasks: [
-        `Task 1 — Diagnostic Assessment: Identify key operational gaps, assumptions, and risk points in ${courseTitle}.`,
-        `Task 2 — Applied Architecture & Workflow Design: Apply the core methods taught across Modules 1–${course.modules.length} to design a practical solution.`,
-        `Task 3 — Verification & Governance Controls: Define measurable acceptance checks and human-oversight boundaries appropriate to ${courseTitle}.`,
+        `Task 1 — Problem Framing & Root Analysis: Identify key conceptual gaps, assumptions, and constraints in ${courseTitle}.`,
+        `Task 2 — Applied Solution Architecture: Apply the core methods taught across Modules 1–${course.modules.length} to produce a coherent solution.`,
+        `Task 3 — Trade-Offs & Verification Strategy: Explain limitations, human judgement checks, and evidence requirements appropriate to ${courseTitle}.`,
         `Task 4 — 30-60-90 Day Implementation Plan: Outline phased milestones and success indicators for workplace adoption.`
       ],
       deliverable: `Completed ${courseTitle} Capstone Solution Brief & Implementation Plan ready for facilitator review.`

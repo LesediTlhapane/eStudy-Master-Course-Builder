@@ -530,6 +530,8 @@ export interface GeneratedQACheckDetail {
   score: number;
   summary: string;
   evidence?: string[];
+  affectedItems?: string[];
+  recommendations?: string[];
 }
 
 export interface GeneratedCourseQA {
@@ -548,7 +550,7 @@ export interface GeneratedCourseQA {
   popiaCompliant: boolean;
 }
 
-export type AIProvider = 'groq';
+export type AIProvider = 'gemini' | 'groq';
 
 export interface AIModelCapability {
   structuredOutput: boolean;

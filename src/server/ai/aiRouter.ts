@@ -1,12 +1,14 @@
 import type { AIProvider } from '../../types.js';
 import type { AIProviderAdapter, AIRequest, AIResponse } from './types.js';
 import { groqProvider } from './groqProvider.js';
-import { getDefaultModelForProvider } from './modelRegistry.js';
+import { geminiProvider } from './geminiProvider.js';
+import { getDefaultModelForProvider, getModelMeta } from './modelRegistry.js';
 
 class AIRouter {
   private adapters: Map<AIProvider, AIProviderAdapter> = new Map();
 
   constructor() {
+    this.registerAdapter(geminiProvider);
     this.registerAdapter(groqProvider);
   }
 
@@ -27,12 +29,30 @@ class AIRouter {
     return adapter ? adapter.isConfigured() : false;
   }
 
+  public getRegisteredProviders(): AIProvider[] {
+    return Array.from(this.adapters.keys());
+  }
+
   public async execute(request: AIRequest): Promise<AIResponse> {
-    const provider: AIProvider = 'groq';
+    let provider: AIProvider =
+      request.provider === 'gemini' || request.provider === 'groq'
+        ? request.provider
+        : this.isProviderConfigured('gemini') && !this.isProviderConfigured('groq')
+          ? 'gemini'
+          : 'groq';
+
+    // If requested provider has no key configured but the other provider does, allow explicit caller error OR clean configured resolution only when provider wasn't forced
     const adapter = this.getAdapter(provider);
 
-    // Resolve model if not provided or empty
-    const model = request.model?.trim() || getDefaultModelForProvider(provider);
+    const requestedModel = request.model?.trim() || '';
+    const modelMatchesProvider =
+      requestedModel &&
+      (Boolean(getModelMeta(provider, requestedModel)) ||
+        (provider === 'gemini' ? requestedModel.toLowerCase().includes('gemini') : !requestedModel.toLowerCase().includes('gemini')));
+
+    const model = modelMatchesProvider
+      ? requestedModel
+      : getDefaultModelForProvider(provider);
 
     const validatedRequest: AIRequest = {
       ...request,

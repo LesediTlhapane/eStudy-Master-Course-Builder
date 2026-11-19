@@ -1,7 +1,45 @@
 import type { AIProvider, AIModelMeta } from '../../types.js';
 import { getGroqApiKeys } from './groqProvider.js';
+import { getGeminiApiKeys } from './geminiProvider.js';
 
 export const STATIC_MODEL_REGISTRY: AIModelMeta[] = [
+  // --- Google Gemini Models (@google/genai) ---
+  {
+    id: 'gemini-4-hydrogen',
+    provider: 'gemini',
+    displayName: 'Gemini 4 Hydrogen (Google)',
+    description: 'High-reasoning flagship Google Gemini model with 1M context window, native JSON output, and strong curriculum synthesis.',
+    contextWindow: 1000000,
+    capabilities: {
+      structuredOutput: true,
+      jsonMode: true,
+      longContext: true,
+      reasoning: true,
+      fastInference: true
+    },
+    enabledForCourseGeneration: true,
+    enabledForCopilot: true,
+    enabledForRegeneration: true,
+    isDefault: true,
+    recommendedBadge: 'Recommended (Gemini Default)'
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    provider: 'gemini',
+    displayName: 'Gemini 3.1 Flash Lite (Google)',
+    description: 'Ultra-fast, cost-efficient Gemini model ideal for Copilot conversations, template extraction, and rapid granular edits.',
+    contextWindow: 1000000,
+    capabilities: {
+      structuredOutput: true,
+      jsonMode: true,
+      longContext: true,
+      reasoning: true,
+      fastInference: true
+    },
+    enabledForCourseGeneration: true,
+    enabledForCopilot: true,
+    enabledForRegeneration: true
+  },
   // --- Groq Models (OpenAI-compatible low-latency inference on Groq LPUs) ---
   {
     id: 'openai/gpt-oss-120b',
@@ -112,18 +150,29 @@ export function getDefaultModelForProvider(
   const models = getRegisteredModels(provider, task);
   const def = models.find(m => m.isDefault);
   if (def) return def.id;
-  return models[0]?.id || 'openai/gpt-oss-120b';
+  if (models[0]?.id) return models[0].id;
+  return provider === 'gemini' ? 'gemini-4-hydrogen' : 'openai/gpt-oss-120b';
 }
 
 export function getModelMeta(provider: AIProvider, modelId: string): AIModelMeta | undefined {
   return STATIC_MODEL_REGISTRY.find(m => m.provider === provider && m.id === modelId);
 }
 
-export function checkKeysConfigured(): { groq: boolean; groqKeyCount: number } {
+export function checkKeysConfigured(): {
+  groq: boolean;
+  groqKeyCount: number;
+  gemini: boolean;
+  geminiKeyCount: number;
+} {
   const groqKeys = getGroqApiKeys();
-  const groq = groqKeys.length > 0;
+  const geminiKeys = getGeminiApiKeys();
 
-  return { groq, groqKeyCount: groqKeys.length };
+  return {
+    groq: groqKeys.length > 0,
+    groqKeyCount: groqKeys.length,
+    gemini: geminiKeys.length > 0,
+    geminiKeyCount: geminiKeys.length
+  };
 }
 
 /**

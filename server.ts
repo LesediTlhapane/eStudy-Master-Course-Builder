@@ -23,27 +23,34 @@ async function startServer() {
     const keys = checkKeysConfigured();
     res.json({
       status: 'ok',
-      service: 'eStudy Course Builder Groq AI Backend',
+      service: 'eStudy Course Builder Dual-Provider AI Backend (Gemini + Groq)',
       version: '9.0',
       hasGroqKey: keys.groq,
       groqKeyCount: keys.groqKeyCount,
-      providers: ['groq']
+      hasGeminiKey: keys.gemini,
+      geminiKeyCount: keys.geminiKeyCount,
+      providers: ['gemini', 'groq']
     });
   });
 
-  // GET /api/ai/models - Returns registry of supported Groq AI models and key status
+  // GET /api/ai/models - Returns registry of supported Google Gemini and Groq AI models and key status
   app.get('/api/ai/models', async (req, res) => {
     const keys = checkKeysConfigured();
     const task = (req.query.task as any) || undefined;
-    const models = getRegisteredModels('groq', task);
+    const providerFilter =
+      req.query.provider === 'gemini' || req.query.provider === 'groq'
+        ? (req.query.provider as 'gemini' | 'groq')
+        : undefined;
+    const models = getRegisteredModels(providerFilter, task);
 
     res.json({
       providers: [
+        { id: 'gemini', name: 'Google Gemini', isConfigured: keys.gemini, keyCount: keys.geminiKeyCount },
         { id: 'groq', name: 'Groq Cloud', isConfigured: keys.groq, keyCount: keys.groqKeyCount }
       ],
       models,
       keysConfigured: keys,
-      defaultProvider: 'groq'
+      defaultProvider: keys.gemini && !keys.groq ? 'gemini' : 'groq'
     });
   });
 

@@ -52,10 +52,11 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   onBackToBuilder,
   onBackToDashboard
 }) => {
-  const generatedCourse = useMemo(
-    () => enforceComprehensiveCourseVolume(JSON.parse(JSON.stringify(rawGeneratedCourse)), course),
-    [rawGeneratedCourse, course]
-  );
+  const generatedCourse = useMemo(() => {
+    const copy = JSON.parse(JSON.stringify(rawGeneratedCourse)) as GeneratedCourse;
+    const isLocalFallback = !copy.generationMetadata || copy.generationMetadata.provider === 'local_fallback';
+    return isLocalFallback ? enforceComprehensiveCourseVolume(copy, course) : copy;
+  }, [rawGeneratedCourse, course]);
   const volumeMetrics = useMemo(
     () => calculateGeneratedCourseVolume(generatedCourse),
     [generatedCourse]
@@ -118,13 +119,22 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   const handleRegeneratePart = async (partType: string, targetId: string, moduleId?: string) => {
     setIsRegenerating(targetId);
     try {
-      const activeProvider: AIProvider = 'groq';
+      const activeProvider: AIProvider =
+        selectedProvider === 'gemini' || generatedCourse.generationMetadata?.provider === 'gemini'
+          ? 'gemini'
+          : 'groq';
       const activeModel =
-        (selectedModel && !selectedModel.toLowerCase().includes('gemini') ? selectedModel : undefined) ||
-        (generatedCourse.generationMetadata?.model && !generatedCourse.generationMetadata.model.toLowerCase().includes('gemini')
-          ? generatedCourse.generationMetadata.model
-          : undefined) ||
-        'openai/gpt-oss-120b';
+        activeProvider === 'gemini'
+          ? (selectedModel && selectedModel.toLowerCase().includes('gemini') ? selectedModel : undefined) ||
+            (generatedCourse.generationMetadata?.model && generatedCourse.generationMetadata.model.toLowerCase().includes('gemini')
+              ? generatedCourse.generationMetadata.model
+              : undefined) ||
+            'gemini-4-hydrogen'
+          : (selectedModel && !selectedModel.toLowerCase().includes('gemini') ? selectedModel : undefined) ||
+            (generatedCourse.generationMetadata?.model && !generatedCourse.generationMetadata.model.toLowerCase().includes('gemini')
+              ? generatedCourse.generationMetadata.model
+              : undefined) ||
+            'openai/gpt-oss-120b';
 
       // Send granular regeneration request to server or run local refinement
       const res = await fetch('/api/courses/regenerate-part', {
@@ -1156,12 +1166,28 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                         </span>
                       </div>
                       <p className="text-slate-700">{chk.summary}</p>
+                      {chk.affectedItems && chk.affectedItems.length > 0 && (
+                        <div className="text-[11px] text-slate-700 bg-white/70 border border-slate-200/80 rounded-lg px-2.5 py-1.5">
+                          <span className="font-semibold text-[#052B66]">Affected sections: </span>
+                          <span>{chk.affectedItems.join(' · ')}</span>
+                        </div>
+                      )}
                       {chk.evidence && chk.evidence.length > 0 && (
                         <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600">
                           {chk.evidence.map((ev, eIdx) => (
                             <li key={eIdx}>{ev}</li>
                           ))}
                         </ul>
+                      )}
+                      {chk.recommendations && chk.recommendations.length > 0 && (
+                        <div className="text-[11px] text-amber-900 bg-amber-50/70 border border-amber-200/80 rounded-lg px-2.5 py-1.5 space-y-0.5">
+                          <span className="font-semibold block">Recommended fixes:</span>
+                          <ul className="list-disc pl-4 space-y-0.5">
+                            {chk.recommendations.map((rec, rIdx) => (
+                              <li key={rIdx}>{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </div>
                   ))}

@@ -439,7 +439,7 @@ export const QuickAICourseModal: React.FC<QuickAICourseModalProps> = ({
                 className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer py-1"
               >
                 <Sliders className="w-3.5 h-3.5 text-[#052B66]" />
-                <span>AI Engine Settings (Groq Cloud)</span>
+                <span>AI Engine Settings ({provider === 'gemini' ? 'Google Gemini' : 'Groq Cloud'})</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedSettings ? 'rotate-180' : ''}`} />
               </button>
 
@@ -450,14 +450,16 @@ export const QuickAICourseModal: React.FC<QuickAICourseModalProps> = ({
                       AI Provider:
                     </label>
                     <select
-                      value="groq"
-                      onChange={() => {
-                        setProvider('groq');
-                        setModel(getDefaultModel('groq', 'course_generation'));
+                      value={provider}
+                      onChange={e => {
+                        const nextP = e.target.value as AIProvider;
+                        setProvider(nextP);
+                        setModel(getDefaultModel(nextP, 'course_generation'));
                       }}
                       className="w-full p-2 rounded-lg border border-slate-300 bg-white font-semibold text-slate-800"
                     >
                       <option value="groq">Groq Cloud (Fast LPU)</option>
+                      <option value="gemini">Google Gemini (1M Context)</option>
                     </select>
                   </div>
 

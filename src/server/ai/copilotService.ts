@@ -113,15 +113,22 @@ function formatConversationTranscript(messages: CopilotMessage[]): string {
     .join('\n\n');
 }
 
+import { getDefaultModelForProvider } from './modelRegistry.js';
+
 export async function processAIAssistedCopilotChat(
   payload: CopilotChatPayload,
   options?: { aiExecute?: (req: AIRequest) => Promise<AIResponse> }
 ): Promise<CopilotChatResponse> {
-  const provider: AIProvider = 'groq';
-  const model =
-    payload.model && !payload.model.toLowerCase().includes('gemini')
-      ? payload.model
-      : 'openai/gpt-oss-20b';
+  const provider: AIProvider = payload.provider === 'gemini' ? 'gemini' : 'groq';
+  const requestedModel = payload.model?.trim();
+  const isCompatible =
+    requestedModel &&
+    (provider === 'gemini'
+      ? requestedModel.toLowerCase().includes('gemini')
+      : !requestedModel.toLowerCase().includes('gemini'));
+  const model = isCompatible
+    ? requestedModel
+    : getDefaultModelForProvider(provider, 'copilot');
 
   const executeAI = options?.aiExecute || ((req: AIRequest) => aiRouter.execute(req));
 

@@ -448,17 +448,19 @@ Return a JSON object matching this schema:
     console.warn(`Granular regeneration via AI provider ${provider} failed, using local refinement fallback:`, err?.message || err);
     fallbackUsed = true;
     
-    // Provide safe local fallback refinement for the targeted part
+    // Provide safe subject-aligned local fallback refinement for the targeted part
+    const courseSubject = s.title || course.name || blueprint.subjectTitle;
+    const domainTerms = blueprint.requiredDomainConcepts.slice(0, 3);
     if (partType === 'scenario') {
       const refreshedScenario: GeneratedScenario = {
         id: targetId,
-        title: `Workplace Scenario: High-Impact Decision Point`,
+        title: `Workplace Scenario: Applied ${courseSubject} Decision`,
         type: 'Workplace',
-        situation: `During an operational cycle in ${s.title || 'the organisation'}, unforeseen variance arises requiring immediate remediation.`,
-        challenge: `Reconciling throughput timelines with mandatory POPIA and compliance standards.`,
-        decisionPoint: `Initiate root-cause escalation protocol vs applying an undocumented shortcut.`,
-        debrief: `Shortcuts create audit and statutory non-compliance. Escalation preserves quality and organizational accountability.`,
-        keyTakeaway: `Adhere strictly to standard operating procedures and documentation gates.`
+        situation: `During an applied project in ${courseSubject}, a practitioner encounters conflicting constraints affecting ${domainTerms[0] || courseSubject}.`,
+        challenge: `Balancing delivery timelines with verified domain quality criteria in ${courseSubject}.`,
+        decisionPoint: `Investigate the root cause using domain evidence vs applying an unvalidated assumption.`,
+        debrief: `Evidence-based diagnosis resolves the underlying ${domainTerms[0] || 'technical'} constraint cleanly and prevents downstream rework.`,
+        keyTakeaway: `Validate assumptions against domain criteria before committing ${courseSubject} deliverables.`
       };
       updatedCourse.modules = updatedCourse.modules.map(m => ({
         ...m,
@@ -468,15 +470,15 @@ Return a JSON object matching this schema:
     } else if (partType === 'lesson') {
       const refreshedLesson: GeneratedLesson = {
         id: targetId,
-        title: `Applied Workplace Execution & Compliance Standards`,
+        title: `${courseSubject}: Applied Mechanisms & Worked Practice`,
         durationMinutes: 30,
-        concepts: ['Operating Procedures', 'Human Oversight', 'Audit Trails'],
-        contentBody: `### Applied Implementation\nThis lesson refines core operational procedures under ${s.title || 'the standard framework'}.\n\n### Core Protocol\n1. Validate source information against statutory standards.\n2. Execute procedures with zero unvetted shortcuts.\n3. Log all decisions for quality audits.`,
+        concepts: domainTerms.length >= 2 ? domainTerms : [courseSubject, 'Core Mechanisms', 'Practical Application'],
+        contentBody: `### Applied Implementation in ${courseSubject}\nThis lesson explains the practical mechanics and decision criteria behind **${domainTerms[0] || courseSubject}** within ${blueprint.domainLabel}.\n\n### Core Principles & Worked Steps\n1. Define clear inputs, scope, and success criteria specific to ${courseSubject}.\n2. Apply the core method systematically, noting limitations and common misconceptions.\n3. Verify outcomes against domain evidence before stakeholder release.`,
         callouts: [
-          { type: 'Tip', title: 'Operational Checklist', content: 'Double-check compliance criteria before customer hand-off.' }
+          { type: 'Tip', title: `${courseSubject} Practice Tip`, content: `Test edge cases and verify assumptions explicitly when applying ${domainTerms[0] || courseSubject}.` }
         ],
-        workplaceApplication: 'Immediate integration into daily task checklists and peer reviews.',
-        aiApplication: 'Use AI assistants for drafting while enforcing mandatory human-in-the-loop review.'
+        workplaceApplication: `Apply ${domainTerms[0] || courseSubject} principles directly to your role in ${s.targetRoles || blueprint.targetAudience}.`,
+        aiApplication: `Where relevant to ${courseSubject}, validate AI-assisted outputs against primary evidence before adoption.`
       };
       updatedCourse.modules = updatedCourse.modules.map(m => ({
         ...m,
@@ -495,11 +497,22 @@ Return a JSON object matching this schema:
     console.warn('Could not re-evaluate QA after granular regeneration:', qaErr);
   }
 
+  const activeProvider: AIProvider = provider === 'gemini' ? 'gemini' : 'groq';
+  const defaultModel = activeProvider === 'gemini' ? 'gemini-4-hydrogen' : 'openai/gpt-oss-120b';
+  const modelCompatible =
+    model &&
+    (activeProvider === 'gemini' ? model.toLowerCase().includes('gemini') : !model.toLowerCase().includes('gemini'));
+  const resolvedModel = modelCompatible ? model! : defaultModel;
+
   // Update generation metadata to record the granular change
   updatedCourse.generationMetadata = {
-    provider: fallbackUsed ? 'local_fallback' : 'groq',
-    providerDisplayName: fallbackUsed ? 'Local Fallback Engine' : 'Groq Cloud',
-    model: model && !model.toLowerCase().includes('gemini') ? model : 'llama-3.3-70b-versatile',
+    provider: fallbackUsed ? 'local_fallback' : activeProvider,
+    providerDisplayName: fallbackUsed
+      ? 'Local Fallback Engine'
+      : activeProvider === 'gemini'
+        ? 'Google Gemini'
+        : 'Groq Cloud',
+    model: resolvedModel,
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
     fallbackUsed,
@@ -510,8 +523,8 @@ Return a JSON object matching this schema:
     success: true,
     course: updatedCourse,
     updatedPart,
-    provider,
-    model: model || '',
+    provider: activeProvider,
+    model: resolvedModel,
     durationMs: Date.now() - startTime,
     fallbackUsed
   };

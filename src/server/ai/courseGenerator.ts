@@ -65,21 +65,29 @@ async function generateModuleFromBlueprint(
 NON-NEGOTIABLE EDUCATIONAL RULES:
 1. STRICT SUBJECT LOCK: Teach ONLY "${blueprint.subjectTitle}" for "${blueprint.targetAudience}" (${blueprint.learnerLevel}).
    FORBIDDEN OFF-TOPIC CONCEPTS (NEVER include): ${forbiddenTermsList.join(', ') || 'None'}.
+   APPLICABLE SA REGULATORY CONTEXT: ${blueprint.regulatoryGrounding.applicableFrameworks.join('; ')}.
 2. Keep the EXACT module number (${modPlan.moduleNumber}), title ("${modPlan.title}"), learning objectives, and lesson count/titles (${modPlan.lessonPlans.length} lessons).
-3. Each lesson MUST be substantial (250–380 words), distinct, and progressive:
-   - Explain core concepts, mechanisms (how/why they work), limitations/edge cases, and one concrete worked example specific to that lesson.
-   - NEVER repeat five-stage SOP boilerplate or copy paragraphs between lessons.
-4. Vary South African workplace scenarios distinctly across the planned settings (${modPlan.scenarioContexts.map(s => `${s.cityOrSetting}: ${s.organisationType}`).join('; ')}). Include 3 Workplace scenarios and 1 AI Specific scenario (or applied governance scenario if AI is tangential).
-5. Practical task MUST contain labelled sections in instructions:
-   "Objective:", "Scenario:", "Resources:", "Steps: 1. ... 2. ... 3. ...", "Deliverable:", "Success criteria:", "Reflection:"
+3. Use ALL 7 planning dimensions provided in each lesson's blueprint plan:
+   - knowledgeToAcquire, conceptsToExplain, keyTerminology, subjectExamples, practicalSkills, commonMisconceptions, demonstrationMethod.
+   Each lesson MUST be substantial (250–400 words), genuinely educational, distinct from every other lesson, and structured to explain:
+   - What the concept/principle means and why it matters in "${blueprint.subjectTitle}"
+   - Core mechanisms / how it works in practice (using the planned keyTerminology)
+   - One concrete, subject-authentic worked example from lessonPlans.subjectExamples
+   - Common misconceptions and limitations/edge cases learners must avoid
+   NEVER inject generic five-stage SOP boilerplate, filler operational protocols, or repetitive phrasing across lessons.
+4. Vary South African scenarios distinctly across the planned settings (${modPlan.scenarioContexts.map(s => `${s.cityOrSetting}: ${s.organisationType}`).join('; ')}). Include authentic Workplace challenges and an AI Specific scenario (or state how AI applies/fails carefully).
+5. Practical task MUST honour all 10 elements of modPlan.practicalTaskSpec cleanly:
+   Include labelled sections in instructions:
+   "Objective:", "Scenario:", "Resources:", "Instructions:", "Steps: 1. ... 2. ... 3. ...", "Deliverable:", "Success criteria:", "Reflection:"
    AND an "evaluationRubric" array whose percentages sum to 100%.
-6. Knowledge checks: 5 distinct scenario/application MCQs, 4 options each, accurate rationale, and "learningObjectiveRef" set to an exact LO code from this module (${modPlan.learningObjectives.map(o => o.code).join(', ')}).
-7. Accuracy & Source Grounding: Cite legislation, NQF IDs, or statistics ONLY if supported by supplied verified sources; mark unverified legal/technical claims "To Be Confirmed (Requires SME Validation)".
+   Do NOT turn technical/creative/leadership modules into generic "audit workflow failures / corrective action checklist / human sign-off" exercises unless the module genuinely teaches compliance auditing.
+6. Knowledge checks: 5 distinct concept/application MCQs testing concepts explicitly taught in this module's lessons, 4 plausible options each, misconception-addressing rationale, and "learningObjectiveRef" set to an exact LO code from this module (${modPlan.learningObjectives.map(o => o.code).join(', ')}). Never insert generic POPIA/SOP/sign-off MCQs if unrelated to the module.
+7. Accuracy & Source Grounding: ${blueprint.regulatoryGrounding.strictTruthRule}
 Return ONLY valid JSON matching the GeneratedModule schema.`;
 
   const prompt = `Author complete Module ${modPlan.moduleNumber} JSON for course "${blueprint.subjectTitle}" (${blueprint.courseCode}).
 
-MODULE BLUEPRINT SPECIFICATION:
+MODULE BLUEPRINT SPECIFICATION (WITH 7 LESSON DIMENSIONS & 10-ELEMENT PRACTICAL TASK SPEC):
 ${JSON.stringify(
   {
     id: modPlan.moduleId,
@@ -87,7 +95,20 @@ ${JSON.stringify(
     title: modPlan.title,
     purpose: modPlan.purpose,
     learningObjectives: modPlan.learningObjectives,
-    lessonPlans: modPlan.lessonPlans,
+    lessonPlans: modPlan.lessonPlans.map(lp => ({
+      id: lp.id,
+      title: lp.title,
+      purpose: lp.purpose,
+      progressionStage: lp.progressionStage,
+      knowledgeToAcquire: lp.knowledgeToAcquire,
+      conceptsToExplain: lp.conceptsToExplain,
+      keyTerminology: lp.keyTerminology,
+      subjectExamples: lp.subjectExamples,
+      practicalSkills: lp.practicalSkills,
+      commonMisconceptions: lp.commonMisconceptions,
+      demonstrationMethod: lp.demonstrationMethod,
+      avoidRepeating: lp.avoidRepeating
+    })),
     scenarioContexts: modPlan.scenarioContexts,
     practicalTaskSpec: modPlan.practicalTaskSpec,
     assessmentTargets: modPlan.assessmentTargets
@@ -112,10 +133,10 @@ Return a single JSON object:
       "id": "lesson-${modPlan.moduleNumber}-1",
       "title": "Exact lesson title from lessonPlans",
       "durationMinutes": 35,
-      "concepts": ["Concept 1", "Concept 2", "Concept 3"],
-      "contentBody": "Deep, multi-paragraph subject teaching (250-380 words) with mechanism, limitations, and worked example",
-      "callouts": [{ "type": "Tip", "title": "Domain Practice Tip", "content": "Actionable insight" }],
-      "workplaceApplication": "Concrete application in target role",
+      "concepts": ["Concept from conceptsToExplain", "Key terminology", "Applied skill"],
+      "contentBody": "Deep, multi-paragraph subject teaching (250-400 words) explaining conceptsToExplain, keyTerminology, worked example from subjectExamples, practicalSkills, and commonMisconceptions",
+      "callouts": [{ "type": "Tip", "title": "Domain Practice Tip", "content": "Actionable subject insight addressing commonMisconceptions" }],
+      "workplaceApplication": "Concrete application aligned to practicalSkills & demonstrationMethod",
       "aiApplication": "Relevant AI workflow or state 'Not applicable' where inappropriate"
     }
   ],
@@ -125,30 +146,30 @@ Return a single JSON object:
       "title": "Distinct scenario title",
       "type": "Workplace",
       "situation": "Realistic domain situation",
-      "challenge": "Specific technical/operational constraint",
+      "challenge": "Specific technical/conceptual constraint",
       "decisionPoint": "Concrete choice the learner must make",
       "debrief": "Domain-grounded reasoning explaining the right choice",
-      "keyTakeaway": "Memorable rule"
+      "keyTakeaway": "Memorable principle"
     }
   ],
   "knowledgeChecks": [
     {
       "id": "kc-${modPlan.moduleNumber}-1",
-      "question": "Distinct question testing a taught concept",
+      "question": "Distinct question testing a concept taught in this module's lessons",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 1,
-      "rationale": "Why correct answer is right and strongest distractor is wrong",
+      "rationale": "Why correct answer is right and why the common misconception/distractor is wrong",
       "learningObjectiveRef": "LO ${modPlan.moduleNumber}.1"
     }
   ],
   "practicalTask": {
     "id": "task-${modPlan.moduleNumber}",
     "title": "${modPlan.practicalTaskSpec.title}",
-    "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nSteps: 1. ... 2. ... 3. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...",
-    "deliverable": "${modPlan.practicalTaskSpec.deliverable}",
+    "instructions": "Objective: ${modPlan.practicalTaskSpec.learningObjective}\\nScenario: ${modPlan.practicalTaskSpec.scenarioOrTask}\\nResources: ...\\nInstructions: ${modPlan.practicalTaskSpec.clearInstructions}\\nSteps: 1. ... 2. ... 3. ...\\nDeliverable: ${modPlan.practicalTaskSpec.expectedDeliverable}\\nSuccess criteria: ...\\nReflection: ${modPlan.practicalTaskSpec.reflectionPrompt}",
+    "deliverable": "${modPlan.practicalTaskSpec.expectedDeliverable}",
     "evaluationRubric": ${JSON.stringify(modPlan.practicalTaskSpec.rubricCriteria)}
   },
-  "reflection": ["Reflection prompt 1", "Reflection prompt 2"],
+  "reflection": ["${modPlan.practicalTaskSpec.reflectionPrompt}", "Domain reflection prompt 2"],
   "summary": "Concise synthesis of Module ${modPlan.moduleNumber}"
 }`;
 
@@ -210,23 +231,28 @@ async function generateCourseWrapperAndAssessments(
 
   const systemInstruction = `You are authoring the Executive Overview, Course Outcomes, Pre-Course Diagnostic, Final Summative Exam, and Capstone Case Study for "${blueprint.subjectTitle}" (${blueprint.domainLabel}).
 STRICT RULES:
-- Stay 100% faithful to "${blueprint.subjectTitle}" and ONLY assess concepts covered in the synthesized modules below.
+- Stay 100% faithful to "${blueprint.subjectTitle}" and ONLY assess concepts actually taught in the synthesized modules below.
 - Do NOT introduce unrelated domains (${blueprint.outOfScopeDomains.map(d => d.domain).join(', ') || 'None'}).
-- Pre-course diagnostic: 5 realistic baseline questions (4 options each).
+- NEVER insert generic POPIA/SOP/sign-off MCQs unless POPIA/SOP compliance is genuinely taught in the synthesized modules.
+- Pre-course diagnostic: 5 realistic baseline questions (4 options each) probing prior familiarity with "${blueprint.subjectTitle}".
 - Final assessment: 10 distinct scenario/application questions mapped via "learningObjectiveRef" to exact LO codes below, plus a domain-authentic Capstone Case Study with 4 sequential tasks and deliverable.
-- Mark unverified legal or accreditation facts "To Be Confirmed (Requires SME Validation)".
+- ${blueprint.regulatoryGrounding.strictTruthRule}
 Return ONLY valid JSON.`;
 
   const prompt = `Create Overview, Outcomes, Diagnostic, and Final Summative Assessment for "${blueprint.subjectTitle}" (${blueprint.courseCode}).
 Audience: ${blueprint.targetAudience} (${blueprint.learnerLevel})
 Duration: ${blueprint.estimatedDuration}
+Regulatory Context: ${blueprint.regulatoryGrounding.applicableFrameworks.join('; ')}
 
-Modules & Taught Objectives:
+Synthesized Modules, Taught Concepts & Objectives:
 ${JSON.stringify(
   synthesizedModules.map(m => ({
     moduleNumber: m.moduleNumber,
     title: m.title,
-    lessonTitles: (m.lessons || []).map((l: any) => l.title),
+    lessons: (m.lessons || []).map((l: any) => ({
+      title: l.title,
+      concepts: l.concepts || []
+    })),
     objectives: m.learningObjectives
   })),
   null,
@@ -298,16 +324,16 @@ async function attemptTargetedQualityRepair(
   model: string,
   aiExecute: (req: AIRequest) => Promise<AIResponse>
 ): Promise<{ applied: number; inputTokens?: number; outputTokens?: number }> {
-  const prompt = `Revise only the flagged lesson content, practical-task instructions, and assessment questions below for "${generatedCourse.title}". Keep all IDs, titles, module structure, and the existing GeneratedCourse schema unchanged. Teach ONLY "${generatedCourse.title}" and do NOT introduce unrelated engineering/finance/legal filler. Return only JSON:
+  const prompt = `Revise only the flagged lesson content, practical-task instructions, and assessment questions below for "${generatedCourse.title}". Keep all IDs, titles, module structure, and the existing GeneratedCourse schema unchanged. Teach ONLY "${generatedCourse.title}" with genuine educational mechanisms, terminology, worked examples, and misconception prevention—eliminating paraphrased repetition, generic SOP/checklist boilerplate, and off-topic filler. Return only JSON:
 {
   "lessons": [
-    { "id": "existing-lesson-id", "concepts": ["Specific concept"], "contentBody": "Revised lesson teaching text", "workplaceApplication": "Specific application", "aiApplication": "Relevant AI application or Not applicable" }
+    { "id": "existing-lesson-id", "concepts": ["Specific concept"], "contentBody": "Revised deep educational teaching text", "workplaceApplication": "Specific application", "aiApplication": "Relevant AI application or Not applicable" }
   ],
   "tasks": [
-    { "moduleId": "existing-module-id", "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nSteps: 1. ... 2. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...", "deliverable": "Expected learner artefact", "evaluationRubric": ["Criterion 1 (50%)", "Criterion 2 (50%)"] }
+    { "moduleId": "existing-module-id", "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nInstructions: ...\\nSteps: 1. ... 2. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...", "deliverable": "Expected learner artefact", "evaluationRubric": ["Criterion 1 (50%)", "Criterion 2 (50%)"] }
   ],
   "questions": [
-    { "id": "existing-question-id", "questionLocation": "module or final", "question": "Distinct question", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": 0, "rationale": "Why the answer is correct", "learningObjectiveRef": "Exact objective code" }
+    { "id": "existing-question-id", "questionLocation": "module or final", "question": "Distinct question aligned to taught concepts", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": 0, "rationale": "Why the answer is correct and misconception is wrong", "learningObjectiveRef": "Exact objective code" }
   ]
 }
 
@@ -470,12 +496,11 @@ export async function generateCourseWithAIEngine(
 ): Promise<CourseGenerationResult> {
   const startTime = Date.now();
   const course = sanitizeCourse(rawCourse);
-  const provider: AIProvider = 'groq';
+  const provider: AIProvider = providerInput === 'gemini' ? 'gemini' : 'groq';
+  const defaultModel = getDefaultModelForProvider(provider, 'course_generation');
   const requestedModel = modelInput?.trim();
-  const model: string =
-    requestedModel && !requestedModel.toLowerCase().includes('gemini')
-      ? requestedModel
-      : getDefaultModelForProvider(provider, 'course_generation');
+  const requestedMeta = requestedModel ? getModelMeta(provider, requestedModel) : undefined;
+  const model: string = requestedMeta ? requestedMeta.id : defaultModel;
   const modelInfo = getModelMeta(provider, model);
   const aiExecute: (req: AIRequest) => Promise<AIResponse> =
     options?.aiExecute || (req => aiRouter.execute(req));
@@ -577,7 +602,7 @@ export async function generateCourseWithAIEngine(
 
   const metadata: GenerationMetadata = {
     provider,
-    providerDisplayName: 'Groq Cloud',
+    providerDisplayName: provider === 'gemini' ? 'Google Gemini' : 'Groq Cloud',
     model,
     modelDisplayName: modelInfo?.displayName || model,
     generatedAt: new Date().toISOString(),

@@ -2,6 +2,7 @@ export * from './types.js';
 export * from './modelRegistry.js';
 export * from './aiRouter.js';
 export * from './groqProvider.js';
+export * from './geminiProvider.js';
 export * from './courseValidator.js';
 export * from './granularRegenerator.js';
 export * from './courseGenerator.js';

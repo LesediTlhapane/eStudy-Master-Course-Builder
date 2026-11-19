@@ -193,10 +193,42 @@ export interface BlueprintLessonPlan {
   id: string;
   title: string;
   purpose: string;
-  progressionStage: 'Foundation & Mental Model' | 'Core Architecture & Execution' | 'Applied Decision & Optimisation' | 'Governance & Verification';
+  progressionStage:
+    | 'Foundation & Mental Model'
+    | 'Core Architecture & Execution'
+    | 'Applied Decision & Optimisation'
+    | 'Governance & Verification';
+  /** Legacy alias kept in sync with conceptsToExplain */
   conceptsToTeach: string[];
+  /** Legacy alias kept in sync with subjectExamples[0] */
   workedExampleTopic: string;
   avoidRepeating: string[];
+  // 7 mandatory lesson planning dimensions
+  knowledgeToAcquire: string[];
+  conceptsToExplain: string[];
+  keyTerminology: string[];
+  subjectExamples: string[];
+  practicalSkills: string[];
+  commonMisconceptions: string[];
+  demonstrationMethod: string;
+}
+
+export interface BlueprintPracticalTaskSpec {
+  title: string;
+  // 10 mandatory practical task elements (plus legacy aliases)
+  learningObjective: string;
+  objective: string;
+  scenarioOrTask: string;
+  realisticScenario: string;
+  requiredResources: string[];
+  resourcesRequired: string[];
+  clearInstructions: string;
+  sequentialSteps: string[];
+  expectedDeliverable: string;
+  deliverable: string;
+  successCriteria: string[];
+  rubricCriteria: string[];
+  reflectionPrompt: string;
 }
 
 export interface BlueprintModulePlan {
@@ -213,14 +245,7 @@ export interface BlueprintModulePlan {
     cityOrSetting: string;
     coreDilemma: string;
   }>;
-  practicalTaskSpec: {
-    title: string;
-    objective: string;
-    realisticScenario: string;
-    deliverable: string;
-    resourcesRequired: string[];
-    rubricCriteria: string[];
-  };
+  practicalTaskSpec: BlueprintPracticalTaskSpec;
   assessmentTargets: Array<{
     objectiveCode: string;
     conceptTested: string;
@@ -247,6 +272,261 @@ export interface CurriculumBlueprint {
   alignmentChecksPassed: boolean;
   validationNotes: string[];
 }
+
+interface DomainCurriculumSeed {
+  coreConcepts: string[];
+  terminology: string[];
+  misconceptions: string[];
+  exampleTopics: string[];
+  practicalDeliverableNoun: string;
+  practicalToolHint: string;
+}
+
+const DOMAIN_CURRICULUM_SEEDS: Record<SubjectDomainCategory, DomainCurriculumSeed> = {
+  generative_ai_business: {
+    coreConcepts: [
+      'Large Language Models & Next-Token Prediction',
+      'Context Windows, Tokens & Attention Limits',
+      'Pre-Training vs Fine-Tuning vs Prompt Grounding',
+      'Retrieval-Augmented Generation (RAG) & Grounded Answers',
+      'Model Hallucinations & Confidence Calibration',
+      'Structured Prompt Engineering & Output Constraints',
+      'Data Privacy & Enterprise Governance (Section 71 / PII Redaction)'
+    ],
+    terminology: [
+      'Tokenisation',
+      'Context Window',
+      'Temperature / Sampling',
+      'Hallucination',
+      'Grounding / RAG',
+      'System Prompt & Few-Shot Examples',
+      'Human-in-the-Loop (HITL)'
+    ],
+    misconceptions: [
+      'Assuming LLMs retrieve verified facts from a live database rather than predicting statistically plausible token sequences',
+      'Believing longer prompts or polite phrasing automatically eliminate factual hallucinations without external source grounding',
+      'Treating high fluency or confident tone as proof of accuracy or legal validity'
+    ],
+    exampleTopics: [
+      'Deconstructing how an LLM generates a plausible yet fabricated contract clause when context is underspecified',
+      'Designing a constrained prompt with role, explicit schema, few-shot examples, and grounding passages for quarterly reporting',
+      'Comparing zero-shot prompting against RAG-grounded synthesis over internal policy documents'
+    ],
+    practicalDeliverableNoun: 'Iterative Prompt & Grounded Output Evaluation Portfolio',
+    practicalToolHint: 'Approved enterprise LLM workspace, sample domain brief, and evaluation rubric'
+  },
+  cloud_engineering: {
+    coreConcepts: [
+      'Shared Responsibility Model & Cloud Compute/Storage Primitives',
+      'Virtual Private Clouds (VPC), Subnets, Routing & Availability Zones',
+      'Infrastructure as Code (IaC) State, Modules & Drift Control',
+      'CI/CD Deployment Pipelines, Canary Releases & Rollbacks',
+      'IAM Least-Privilege Policies & Network Segmentation',
+      'Observability Telemetry (Logs, Metrics, Traces) & FinOps Right-Sizing'
+    ],
+    terminology: [
+      'CIDR Block & Subnetting',
+      'Availability Zone vs Region',
+      'Terraform State & Drift',
+      'Least-Privilege IAM Policy',
+      'Canary & Blue-Green Deployment',
+      'FinOps Tagging & Right-Sizing'
+    ],
+    misconceptions: [
+      'Assuming cloud high availability happens automatically without multi-AZ subnet design and health-checked load balancing',
+      'Editing live console settings after Terraform deployment without reconciling state files (causing silent IaC drift)',
+      'Over-provisioning compute sizes for safety instead of matching autoscaling policies and workload profiles'
+    ],
+    exampleTopics: [
+      'Designing a two-tier VPC subnet layout across public and private availability zones with NAT gateway routing',
+      'Tracing a Terraform state conflict and writing a clean deployment pipeline rollback stage',
+      'Auditing an overly permissive wildcard IAM role and calculating monthly cloud savings via FinOps tagging'
+    ],
+    practicalDeliverableNoun: 'Cloud Architecture & IaC Deployment Specification',
+    practicalToolHint: 'Cloud architecture diagramming workspace, sample Terraform module, and cost calculator'
+  },
+  human_resource_management: {
+    coreConcepts: [
+      'Competency-Based Job Analysis & Structured Recruitment',
+      'Structured Behavioural Interviewing & Bias Mitigation',
+      '90-Day Onboarding & Psychological Contract Alignment',
+      'Continuous Performance Management & Objective Calibration',
+      'Fair Workplace Discipline & Grievance Procedure',
+      'Total Rewards Equity, Retention Diagnostics & Employee Data Privacy'
+    ],
+    terminology: [
+      'Competency Framework',
+      'Anchored Rating Scale',
+      'Procedural vs Substantive Fairness',
+      'Performance Improvement Plan (PIP)',
+      'Pay Band Compression',
+      'Informed Employee Consent'
+    ],
+    misconceptions: [
+      'Relying on unstructured gut-feel interviews rather than standardised job-related behavioural rubrics',
+      'Equating annual appraisal scores solely with coaching instead of ongoing clear expectations and documented support',
+      'Assuming rapid dismissal is lawful without first establishing both substantive reason and fair procedure'
+    ],
+    exampleTopics: [
+      'Converting vague job descriptions into a weighted behavioural interview scorecard for a mid-level hire',
+      'Structuring a fair performance feedback conversation supported by observable role outcomes and coaching milestones',
+      'Designing an ethical employee onboarding checklist protecting candidate personal records under applicable privacy rules'
+    ],
+    practicalDeliverableNoun: 'Structured Talent & Performance Decision Pack',
+    practicalToolHint: 'Role competency matrix, interview scorecard template, and coaching guide'
+  },
+  mechanical_engineering: {
+    coreConcepts: [
+      'Structural Load Paths, Stress Concentration & Factor of Safety',
+      'CAD Parametric Modelling & GD&T Tolerance Stack-Up',
+      'Finite Element Analysis (FEA) Boundary Conditions & Mesh Convergence',
+      'Fluid Systems, Pump Curves & Cavitation NPSH Margins',
+      'Reliability-Centred Maintenance (FMEA & Condition Monitoring)'
+    ],
+    terminology: [
+      'Von Mises Stress',
+      'Mesh Convergence',
+      'GD&T Datum Frame',
+      'Net Positive Suction Head (NPSH)',
+      'Failure Mode & Effects Analysis (FMEA)'
+    ],
+    misconceptions: [
+      'Trusting colourful FEA stress contours without verifying boundary constraints, load units, and mesh independence',
+      'Tightening machining tolerances uniformly instead of applying GD&T only to functional mating interfaces'
+    ],
+    exampleTopics: [
+      'Evaluating mesh convergence and boundary fixity errors in a bracket load simulation',
+      'Diagnosing centrifugal pump cavitation from suction piping losses and NPSH margins'
+    ],
+    practicalDeliverableNoun: 'Engineering Design & Verification Calculation Brief',
+    practicalToolHint: 'CAD/FEA parameter sheet, pump/system curve data, and FMEA worksheet'
+  },
+  financial_services: {
+    coreConcepts: [
+      'Cash Flow Forecasting, Working Capital & Liquidity Ratios',
+      'Time Value of Money, Interest Compounding & Credit Pricing',
+      'Risk Underwriting, Affordability Assessment & Fraud Indicators',
+      'Internal Controls, Reconciliation & Market Conduct Governance'
+    ],
+    terminology: [
+      'Net Present Value (NPV)',
+      'Debt-Service Coverage Ratio',
+      'Working Capital Cycle',
+      'Reconciliation Variance',
+      'Conduct Risk'
+    ],
+    misconceptions: [
+      'Confusing accounting profitability with positive operating cash flow timing',
+      'Focusing exclusively on headline interest rate without total cost of credit and liquidity buffer stress'
+    ],
+    exampleTopics: [
+      'Building a 13-week rolling cash flow projection to identify seasonal working capital strain',
+      'Evaluating an SME credit application using cash-conversion ratios and stress sensitivity'
+    ],
+    practicalDeliverableNoun: 'Financial Risk & Cash-Flow Analysis Memorandum',
+    practicalToolHint: 'Financial statement extract, cash-flow spreadsheet model, and ratio worksheet'
+  },
+  emotional_intelligence: {
+    coreConcepts: [
+      'Self-Awareness, Emotional Triggers & Cognitive Appraisal',
+      'Self-Regulation & Constructive Impulse Management',
+      'Empathy, Active Listening & Perspective Taking',
+      'Psychological Safety, Conflict De-Escalation & Feedback Delivery'
+    ],
+    terminology: [
+      'Emotional Trigger',
+      'Cognitive Reappraisal',
+      'Psychological Safety',
+      'Non-Defensive Framing',
+      'Active Reflective Listening'
+    ],
+    misconceptions: [
+      'Confusing emotional intelligence with suppressing emotions or avoiding difficult accountability conversations',
+      'Treating empathy as agreeing with every viewpoint rather than accurately understanding another person’s perspective'
+    ],
+    exampleTopics: [
+      'Reframing a tense cross-team escalation using Situation-Behaviour-Impact feedback',
+      'Mapping personal stress triggers before leading a high-stakes stakeholder alignment meeting'
+    ],
+    practicalDeliverableNoun: 'Applied Leadership & Difficult Conversation Playbook',
+    practicalToolHint: 'Communication reflection journal, SBI feedback template, and scenario script'
+  },
+  cybersecurity_it: {
+    coreConcepts: [
+      'Threat Modelling, Attack Surface & CIA Triad',
+      'Zero Trust Architecture, Identity & Access Hardening',
+      'Vulnerability Triage, Patch Prioritisation & Network Defence',
+      'Incident Response Lifecycle (Containment, Eradication, Recovery)'
+    ],
+    terminology: [
+      'Zero Trust',
+      'Lateral Movement',
+      'Principle of Least Privilege',
+      'Mean Time to Contain (MTTC)',
+      'Security Telemetry'
+    ],
+    misconceptions: [
+      'Treating perimeter firewalls alone as sufficient without identity segmentation and endpoint telemetry',
+      'Prioritising raw CVSS scores blindly without considering exploitability and asset exposure'
+    ],
+    exampleTopics: [
+      'Triaging a suspected credential phishing compromise through identity logs and session revocation',
+      'Applying STRIDE threat modelling to an internet-facing API gateway'
+    ],
+    practicalDeliverableNoun: 'Threat Model & Incident Containment Playbook',
+    practicalToolHint: 'Architecture diagram, sample security event log, and risk triage matrix'
+  },
+  healthcare: {
+    coreConcepts: [
+      'Evidence-Based Clinical Decision Making & Patient Safety',
+      'Therapeutic Communication & Informed Patient Consent',
+      'Clinical Handover Precision & Adverse Event Prevention',
+      'Health Information Confidentiality & Ethical Recordkeeping'
+    ],
+    terminology: [
+      'ISBAR Handover',
+      'Informed Consent',
+      'Triage Acuity',
+      'Special Personal Health Information',
+      'Clinical Audit'
+    ],
+    misconceptions: [
+      'Relying on informal verbal ward handovers instead of structured ISBAR escalation checks',
+      'Assuming digital clinical summaries replace direct verification of allergies and medication dosages'
+    ],
+    exampleTopics: [
+      'Structuring an ISBAR clinical escalation for a deteriorating patient without omitting critical vitals',
+      'Reviewing health data sharing boundaries before transferring patient referral summaries'
+    ],
+    practicalDeliverableNoun: 'Clinical Safety & Handover Protocol Brief',
+    practicalToolHint: 'De-identified clinical case summary and ISBAR structured communication guide'
+  },
+  general: {
+    coreConcepts: [
+      'First-Principles Problem Framing & Scope Definition',
+      'Core Domain Mechanics, Decision Criteria & Trade-Offs',
+      'Practical Execution Techniques & Edge-Case Handling',
+      'Outcome Evaluation, Stakeholder Alignment & Continuous Improvement'
+    ],
+    terminology: [
+      'Decision Criterion',
+      'Root Cause vs Symptom',
+      'Trade-Off Analysis',
+      'Quality Threshold',
+      'Feedback Loop'
+    ],
+    misconceptions: [
+      'Applying superficial rules-of-thumb without understanding the underlying domain mechanism or constraints',
+      'Measuring activity volume rather than verified quality and real learner/stakeholder outcomes'
+    ],
+    exampleTopics: [
+      'Working step by step through a realistic domain scenario showing both an effective approach and a common pitfall',
+      'Evaluating trade-offs between speed, cost, and quality when selecting a solution approach'
+    ],
+    practicalDeliverableNoun: 'Applied Subject Portfolio Artefact',
+    practicalToolHint: 'Subject reference guide, domain problem brief, and assessment rubric'
+  }
+};
 
 export function classifySubjectDomain(course: Course): SubjectDomainCategory {
   const s = course.structure || ({} as any);
@@ -361,6 +641,7 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
   const courseCode = (s.code || course.code || 'EST-COURSE-01').trim();
   const domainCategory = classifySubjectDomain(course);
   const domainSpec = DOMAIN_SPECS[domainCategory];
+  const domainSeed = DOMAIN_CURRICULUM_SEEDS[domainCategory];
   const subjectKeywords = extractSubjectKeywords(course);
 
   const verifiedSourceNames = (r.sources || [])
@@ -372,12 +653,12 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
   const sourceModules = Array.isArray(course.modules) && course.modules.length > 0 ? course.modules : [];
 
   const settingsPool = [
-    { org: 'Cape Town SaaS & Digital Platform Provider', city: 'Cape Town' },
-    { org: 'Johannesburg National Retail & Logistics Group', city: 'Johannesburg' },
-    { org: 'Pretoria Public Sector Digital Services Directorate', city: 'Pretoria' },
-    { org: 'Durban Maritime & Supply Chain Operations Hub', city: 'Durban' },
-    { org: 'Midrand Financial & Enterprise Shared Services Centre', city: 'Midrand' },
-    { org: 'Gqeberha Regional Manufacturing & Operations Division', city: 'Gqeberha' }
+    { org: 'Cape Town Digital Platform & Services Team', city: 'Cape Town' },
+    { org: 'Johannesburg National Commercial Enterprise', city: 'Johannesburg' },
+    { org: 'Pretoria Institutional & Public Operations Unit', city: 'Pretoria' },
+    { org: 'Durban Logistics & Regional Operations Hub', city: 'Durban' },
+    { org: 'Midrand Enterprise Shared Services Centre', city: 'Midrand' },
+    { org: 'Gqeberha Regional Operations & Advisory Division', city: 'Gqeberha' }
   ];
 
   const progressionStages: BlueprintLessonPlan['progressionStage'][] = [
@@ -394,9 +675,9 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
       Array.isArray(mod.learningObjectives) && mod.learningObjectives.length > 0
         ? mod.learningObjectives.map((o: any) => (typeof o === 'string' ? o : o?.statement || '')).filter(Boolean)
         : [
-            `Explain core principles and architecture of ${modTitle} in ${subjectTitle}`,
-            `Apply structured techniques and tools taught in ${modTitle} to realistic workplace tasks`,
-            `Evaluate quality, trade-offs, and governance controls in ${modTitle}`
+            `Explain the core mechanisms and principles behind ${modTitle} in ${subjectTitle}`,
+            `Apply domain techniques taught in ${modTitle} to solve realistic ${subjectTitle} tasks`,
+            `Evaluate trade-offs, limitations, and quality criteria in ${modTitle}`
           ];
 
     const learningObjectives = modObjectivesRaw.map((stmt, oIdx) => ({
@@ -410,32 +691,58 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
     const targetLessonCount = configuredLessons ? configuredLessons.length : 3;
 
     const defaultLessonTitles = [
-      `${modTitle}: Core Concepts & Mental Models`,
-      `${modTitle}: Applied Design, Configuration & Workflow`,
-      `${modTitle}: Trade-Offs, Troubleshooting & Quality Governance`
+      `${modTitle}: Core Mechanisms & Mental Models`,
+      `${modTitle}: Applied Technique & Worked Practice`,
+      `${modTitle}: Trade-Offs, Limitations & Critical Evaluation`
     ];
 
     const lessonPlans: BlueprintLessonPlan[] = Array.from({ length: targetLessonCount }).map((_, lIdx) => {
       const cfgLesson = configuredLessons?.[lIdx];
       const lTitle = (cfgLesson?.title || defaultLessonTitles[lIdx] || `${modTitle}: Part ${lIdx + 1}`).trim();
       const stage = progressionStages[lIdx % progressionStages.length];
+      const seedIdx = (mIdx * targetLessonCount + lIdx) % domainSeed.coreConcepts.length;
+      const conceptPair = [
+        domainSeed.coreConcepts[seedIdx],
+        domainSeed.coreConcepts[(seedIdx + 1) % domainSeed.coreConcepts.length]
+      ];
+      const modSkillHint = Array.isArray(mod.keySkills) && mod.keySkills[lIdx] ? mod.keySkills[lIdx] : conceptPair[0];
+      const conceptsToExplain =
+        Array.isArray(cfgLesson?.concepts) && cfgLesson.concepts.length > 0
+          ? cfgLesson.concepts.map(String)
+          : Array.from(new Set([modSkillHint, ...conceptPair])).slice(0, 3);
+      const keyTerminology = [
+        domainSeed.terminology[seedIdx % domainSeed.terminology.length],
+        domainSeed.terminology[(seedIdx + 1) % domainSeed.terminology.length]
+      ];
+      const exampleTopic = domainSeed.exampleTopics[seedIdx % domainSeed.exampleTopics.length];
+      const misconception = domainSeed.misconceptions[seedIdx % domainSeed.misconceptions.length];
+
       return {
         id: cfgLesson?.id || `lesson-${modNum}-${lIdx + 1}`,
         title: lTitle,
         purpose:
           cfgLesson?.purpose ||
-          `Teach ${stage.toLowerCase()} aspects of ${lTitle} in direct alignment with ${modTitle}.`,
+          `Build ${stage.toLowerCase()} mastery of ${lTitle} through clear conceptual explanations, domain examples, and applied practice.`,
         progressionStage: stage,
-        conceptsToTeach:
-          Array.isArray(cfgLesson?.concepts) && cfgLesson.concepts.length > 0
-            ? cfgLesson.concepts
-            : (mod.keySkills || subjectKeywords).slice(lIdx, lIdx + 3),
-        workedExampleTopic: `Concrete worked example applying ${lTitle} in ${subjectTitle}`,
-        avoidRepeating: []
+        conceptsToTeach: conceptsToExplain,
+        workedExampleTopic: exampleTopic,
+        avoidRepeating: [],
+        knowledgeToAcquire: [
+          `Foundational principles and real-world role of ${conceptsToExplain[0]} within ${subjectTitle}`,
+          `How ${conceptsToExplain[1] || modTitle} behaves under practical workplace constraints`
+        ],
+        conceptsToExplain,
+        keyTerminology,
+        subjectExamples: [exampleTopic],
+        practicalSkills: [
+          `Design and apply ${conceptsToExplain[0]} appropriately for ${s.targetRoles || p.targetGroup || 'target practitioners'}`,
+          `Diagnose limitations and refine ${conceptsToExplain[1] || lTitle} outputs using evidence`
+        ],
+        commonMisconceptions: [misconception],
+        demonstrationMethod: `Explain how ${conceptsToExplain[0]} works in own words and apply it to an authentic ${modTitle} scenario`
       };
     });
 
-    // Populate mutual avoid-repeating hints
     for (let i = 0; i < lessonPlans.length; i++) {
       lessonPlans[i].avoidRepeating = lessonPlans
         .filter((_, j) => j !== i)
@@ -445,52 +752,78 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
     const baseSettingA = settingsPool[(mIdx * 2) % settingsPool.length];
     const baseSettingB = settingsPool[(mIdx * 2 + 1) % settingsPool.length];
     const baseSettingC = settingsPool[(mIdx * 2 + 2) % settingsPool.length];
+    const seedTerm = domainSeed.coreConcepts[mIdx % domainSeed.coreConcepts.length];
 
     const scenarioContexts = [
       {
-        title: `${modTitle}: Architecture & Operational Trade-Off`,
+        title: `${modTitle}: Conceptual & Design Trade-Off`,
         type: 'Workplace' as const,
         organisationType: baseSettingA.org,
         cityOrSetting: baseSettingA.city,
-        coreDilemma: `Selecting the right ${modTitle} approach under budget, reliability, and team-skill constraints`
+        coreDilemma: `Choosing an effective ${seedTerm} approach under realistic technical, resource, and stakeholder constraints`
       },
       {
-        title: `${modTitle}: Cross-Team Delivery Bottleneck`,
+        title: `${modTitle}: Applied Execution Bottleneck`,
         type: 'Workplace' as const,
         organisationType: baseSettingB.org,
         cityOrSetting: baseSettingB.city,
-        coreDilemma: `Resolving hand-off failures or configuration defects while protecting service quality`
+        coreDilemma: `Resolving practical failures or misunderstandings in ${modTitle} without sacrificing solution quality`
       },
       {
-        title: `${modTitle}: AI-Assisted Verification & Oversight`,
+        title: `${modTitle}: Responsible Tooling & Critical Oversight`,
         type: 'AI Specific' as const,
         organisationType: baseSettingC.org,
         cityOrSetting: baseSettingC.city,
-        coreDilemma: `Auditing AI-assisted outputs for domain accuracy, privacy/security compliance, and human accountability`
+        coreDilemma: `Evaluating where automated/AI assistance adds genuine value to ${modTitle} versus where human domain judgement is essential`
       }
     ];
 
-    const practicalTaskSpec = {
-      title: `Module ${modNum} Applied Practical Task: ${modTitle}`,
-      objective: `Demonstrate applied capability in ${learningObjectives[1]?.statement || modTitle}.`,
-      realisticScenario: `Act as ${s.targetRoles || p.targetGroup || 'a practitioner'} at a ${baseSettingA.org} implementing ${modTitle}.`,
-      deliverable: `A concrete, reviewed ${modTitle} implementation artefact aligned to module success criteria.`,
-      resourcesRequired: [
-        r.aiToolsPlatformName || s.toolsSystems || 'Standard domain tools and approved sandbox environment',
-        `Module ${modNum} reference guide and verification checklist`
-      ],
-      rubricCriteria: [
-        `Domain accuracy and application of ${modTitle} concepts (40%)`,
-        'Completeness and feasibility of execution steps (35%)',
-        'Verification evidence, security/governance awareness, and reflection (25%)'
-      ]
+    const taskObjective = `Demonstrate applied mastery of ${learningObjectives[1]?.statement || modTitle} through an authentic ${subjectTitle} deliverable.`;
+    const taskScenario = `Working as ${s.targetRoles || p.targetGroup || 'a practitioner'} in a ${baseSettingA.city} ${baseSettingA.org}, produce a solution applying ${seedTerm} and ${lessonPlans[0]?.conceptsToExplain[0] || modTitle}.`;
+    const taskResources = [
+      r.aiToolsPlatformName || s.toolsSystems || domainSeed.practicalToolHint,
+      `Module ${modNum} reference concepts (${lessonPlans.map(l => l.title).join('; ')})`
+    ];
+    const sequentialSteps = [
+      `Analyse the ${modTitle} problem brief and define target goals, constraints, and key assumptions for ${subjectTitle}.`,
+      `Apply ${lessonPlans[0]?.conceptsToExplain[0] || modTitle} and ${lessonPlans[1]?.conceptsToExplain[0] || seedTerm} step by step to construct a working draft solution.`,
+      `Test edge cases or evaluate outputs against the success criteria, refining weak areas with documented rationale.`
+    ];
+    const expectedDeliverable = `Module ${modNum} ${domainSeed.practicalDeliverableNoun}: ${modTitle}`;
+    const successCriteria = [
+      `Demonstrates accurate understanding of ${lessonPlans.map(l => l.conceptsToExplain[0]).join(' and ')}`,
+      `Addresses the module constraints and explains key trade-offs clearly`,
+      `Includes concrete evidence, worked reasoning, and personal reflection`
+    ];
+    const rubricCriteria = [
+      `Conceptual accuracy & subject depth in ${modTitle} (40%)`,
+      `Quality, completeness & practical feasibility of execution steps (35%)`,
+      `Critical evaluation of trade-offs, limitations & learner reflection (25%)`
+    ];
+    const reflectionPrompt = `Which concept or misconception from ${modTitle} most changed how you will approach ${subjectTitle} in your role?`;
+
+    const practicalTaskSpec: BlueprintPracticalTaskSpec = {
+      title: `Module ${modNum} Applied Task: ${modTitle}`,
+      learningObjective: taskObjective,
+      objective: taskObjective,
+      scenarioOrTask: taskScenario,
+      realisticScenario: taskScenario,
+      requiredResources: taskResources,
+      resourcesRequired: taskResources,
+      clearInstructions: `Complete the three sequential steps using the supplied module concepts and tools to produce ${expectedDeliverable}.`,
+      sequentialSteps,
+      expectedDeliverable,
+      deliverable: expectedDeliverable,
+      successCriteria,
+      rubricCriteria,
+      reflectionPrompt
     };
 
     const assessmentTargets = [
-      { objectiveCode: learningObjectives[0]?.code || `LO ${modNum}.1`, conceptTested: lessonPlans[0]?.conceptsToTeach[0] || modTitle, cognitiveLevel: 'Recall' as const },
-      { objectiveCode: learningObjectives[0]?.code || `LO ${modNum}.1`, conceptTested: lessonPlans[0]?.title || modTitle, cognitiveLevel: 'Explanation' as const },
-      { objectiveCode: learningObjectives[1]?.code || `LO ${modNum}.2`, conceptTested: lessonPlans[1]?.title || modTitle, cognitiveLevel: 'Application' as const },
-      { objectiveCode: learningObjectives[1]?.code || `LO ${modNum}.2`, conceptTested: lessonPlans[1]?.conceptsToTeach[0] || modTitle, cognitiveLevel: 'Application' as const },
+      { objectiveCode: learningObjectives[0]?.code || `LO ${modNum}.1`, conceptTested: lessonPlans[0]?.conceptsToExplain[0] || modTitle, cognitiveLevel: 'Recall' as const },
+      { objectiveCode: learningObjectives[0]?.code || `LO ${modNum}.1`, conceptTested: lessonPlans[0]?.keyTerminology[0] || lessonPlans[0]?.title || modTitle, cognitiveLevel: 'Explanation' as const },
+      { objectiveCode: learningObjectives[1]?.code || `LO ${modNum}.2`, conceptTested: lessonPlans[1]?.conceptsToExplain[0] || lessonPlans[1]?.title || modTitle, cognitiveLevel: 'Application' as const },
+      { objectiveCode: learningObjectives[1]?.code || `LO ${modNum}.2`, conceptTested: lessonPlans[1]?.commonMisconceptions[0] || modTitle, cognitiveLevel: 'Application' as const },
       { objectiveCode: (learningObjectives[2] || learningObjectives[0])?.code || `LO ${modNum}.1`, conceptTested: lessonPlans[lessonPlans.length - 1]?.title || modTitle, cognitiveLevel: 'Application' as const }
     ];
 
@@ -498,7 +831,7 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
       moduleId: mod.id || `module-${modNum}`,
       moduleNumber: modNum,
       title: modTitle,
-      purpose: (mod.purpose || `Develop verified capability in ${modTitle}.`).trim(),
+      purpose: (mod.purpose || `Develop genuine conceptual mastery and applied skills in ${modTitle}.`).trim(),
       learningObjectives,
       lessonPlans,
       scenarioContexts,
@@ -507,6 +840,12 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
     };
   });
 
+  const applicableFrameworks = r.regulatoryFramework?.trim()
+    ? [r.regulatoryFramework.trim()]
+    : verifiedSourceNames.length > 0
+      ? domainSpec.applicableSouthAfricanFrameworks
+      : ['To Be Confirmed (Requires SME Validation — no verified regulatory source supplied)'];
+
   const baseBlueprint: CurriculumBlueprint = {
     subjectTitle,
     courseCode,
@@ -514,21 +853,20 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
     domainLabel: domainSpec.label,
     targetAudience: (s.targetRoles || p.targetGroup || 'Working professionals').trim(),
     learnerLevel: s.difficultyLevel || 'Intermediate',
-    estimatedDuration: s.estimatedDuration || '16 Hours / 2 CPD Credits',
+    estimatedDuration: s.estimatedDuration || '16 Hours (Self-paced + Applied Practice)',
     requiredDomainConcepts: Array.from(
       new Set([
+        ...domainSeed.coreConcepts,
         ...subjectKeywords,
-        ...(domainSpec.positiveKeywords.slice(0, 6))
+        ...domainSpec.positiveKeywords.slice(0, 6)
       ])
-    ).slice(0, 16),
+    ).slice(0, 18),
     outOfScopeDomains,
     regulatoryGrounding: {
-      applicableFrameworks: [
-        ...(r.regulatoryFramework ? [r.regulatoryFramework] : domainSpec.applicableSouthAfricanFrameworks)
-      ],
+      applicableFrameworks,
       verifiedSourceNames,
       strictTruthRule:
-        'Only cite South African legislation, NQF unit standards, or statistics that are directly relevant to the subject and supported by verified user sources; mark unverified external claims as "To Be Confirmed (Requires SME Validation)".'
+        'Only cite South African legislation, NQF unit standards, CPD credits, or statistics that are directly relevant to the subject and supported by verified user sources; mark unverified external claims as "To Be Confirmed (Requires SME Validation)".'
     },
     modules,
     alignmentChecksPassed: true,
@@ -604,9 +942,11 @@ export function validateBlueprintAlignment(
     const combinedModText = [
       bpMod.title,
       bpMod.purpose,
-      ...bpMod.lessonPlans.map(l => `${l.title} ${l.purpose} ${l.conceptsToTeach.join(' ')}`),
-      bpMod.practicalTaskSpec.objective,
-      bpMod.practicalTaskSpec.realisticScenario
+      ...bpMod.lessonPlans.map(
+        l => `${l.title} ${l.purpose} ${l.conceptsToExplain.join(' ')} ${l.keyTerminology.join(' ')}`
+      ),
+      bpMod.practicalTaskSpec.learningObjective,
+      bpMod.practicalTaskSpec.scenarioOrTask
     ].join(' ');
 
     const bleedHits = detectCrossDomainBleed(combinedModText, blueprint.outOfScopeDomains);
@@ -634,44 +974,61 @@ export async function generateCurriculumBlueprint(
 ): Promise<{ blueprint: CurriculumBlueprint; tokensUsed?: { input?: number; output?: number } }> {
   const deterministic = buildDeterministicBlueprint(course);
 
-  const systemInstruction = `You are a Principal Curriculum Architect creating an internal Subject & Curriculum Blueprint before full course authoring.
-STRICT SUBJECT LOCK:
-- Subject: "${deterministic.subjectTitle}"
-- Domain: "${deterministic.domainLabel}"
-- Audience: "${deterministic.targetAudience}" (${deterministic.learnerLevel})
-- FORBIDDEN OFF-TOPIC DOMAINS (NEVER mention these unless directly part of this subject): ${
-    deterministic.outOfScopeDomains.map(d => `${d.domain} (${d.forbiddenTerms.slice(0, 6).join(', ')})`).join('; ') || 'None'
-  }
-- Preserve the EXACT module count (${deterministic.modules.length}), module titles, and module learning objectives supplied below.
-- Give every lesson within every module a genuinely distinct scope, clear progression (foundation -> execution -> trade-offs/optimisation -> governance), specific technical/domain concepts, and a distinct worked example.
-- Vary South African workplace contexts cleanly across scenarios (never reuse the exact same company/scenario across modules).
-- Do not fabricate South African legislation, NQF unit standard IDs, or statistics.
-Return ONLY valid JSON with:
+  const systemInstruction = `You are a Principal Curriculum Architect creating an internal Subject & Curriculum Blueprint BEFORE authoring full course lessons.
+IDENTICAL MULTI-PROVIDER MANDATE: Teach the genuine intellectual and practical substance of "${deterministic.subjectTitle}" (${deterministic.domainLabel}).
+STRICT RULES:
+1. SUBJECT LOCK: Plan ONLY "${deterministic.subjectTitle}" for "${deterministic.targetAudience}" (${deterministic.learnerLevel}).
+   FORBIDDEN OFF-TOPIC DOMAINS: ${
+     deterministic.outOfScopeDomains.map(d => `${d.domain} (${d.forbiddenTerms.slice(0, 6).join(', ')})`).join('; ') || 'None'
+   }.
+2. Preserve EXACT module count (${deterministic.modules.length}), module titles, and module learning objectives.
+3. For EVERY lesson in EVERY module, define all 7 lesson planning dimensions distinctly (never repeat the same lesson scope or example):
+   - knowledgeToAcquire (what learners must know)
+   - conceptsToExplain (specific domain mechanisms/principles — NOT generic checklists or SOP boilerplate)
+   - keyTerminology (authentic domain terms)
+   - subjectExamples (concrete subject-specific worked examples)
+   - practicalSkills (how to apply the knowledge in practice)
+   - commonMisconceptions (real learner misconceptions to prevent)
+   - demonstrationMethod (how learners demonstrate understanding)
+4. For EVERY module's practicalTaskSpec, design an authentic subject-specific task with all 10 elements:
+   title, learningObjective, scenarioOrTask, requiredResources, clearInstructions, sequentialSteps (3-5 steps), expectedDeliverable, successCriteria, rubricCriteria (summing to 100%), reflectionPrompt.
+   NEVER default to generic "audit workflow failures / corrective action plan / sign-off checklist" unless the module is explicitly about compliance auditing!
+5. Do NOT invent South African NQF codes, Acts, CPD credits, or stats.
+Return ONLY valid JSON:
 {
-  "requiredDomainConcepts": ["10-14 specific domain concepts for this subject"],
+  "requiredDomainConcepts": ["10-14 authentic concepts specific to ${deterministic.subjectTitle}"],
   "modules": [
     {
       "moduleNumber": 1,
       "title": "Exact supplied module title",
       "lessonPlans": [
         {
-          "title": "Distinct lesson title (keep configured title if provided)",
+          "title": "Distinct lesson title (keep configured title if supplied)",
           "purpose": "Distinct lesson teaching goal",
           "progressionStage": "Foundation & Mental Model",
-          "conceptsToTeach": ["Concept A", "Concept B", "Concept C"],
-          "workedExampleTopic": "Concrete domain-specific worked example"
+          "knowledgeToAcquire": ["..."],
+          "conceptsToExplain": ["Concept A", "Concept B"],
+          "keyTerminology": ["Term 1", "Term 2"],
+          "subjectExamples": ["Concrete subject worked example"],
+          "practicalSkills": ["Applied skill"],
+          "commonMisconceptions": ["Common error learners make"],
+          "demonstrationMethod": "How learner demonstrates mastery"
         }
       ],
       "scenarioContexts": [
         { "title": "Scenario title", "type": "Workplace", "organisationType": "Distinct SA org", "cityOrSetting": "City", "coreDilemma": "Subject-specific decision" }
       ],
       "practicalTaskSpec": {
-        "title": "Concrete task title",
-        "objective": "Measurable task objective",
-        "realisticScenario": "Specific domain scenario",
-        "deliverable": "Concrete learner artefact",
-        "resourcesRequired": ["Tool/Resource 1", "Tool/Resource 2"],
-        "rubricCriteria": ["Criterion 1 (40%)", "Criterion 2 (35%)", "Criterion 3 (25%)"]
+        "title": "Subject-authentic practical task title",
+        "learningObjective": "Specific LO-aligned goal",
+        "scenarioOrTask": "Realistic subject-grounded task prompt",
+        "requiredResources": ["Tool/Resource 1", "Resource 2"],
+        "clearInstructions": "Clear overview instructions",
+        "sequentialSteps": ["Step 1...", "Step 2...", "Step 3..."],
+        "expectedDeliverable": "Concrete subject deliverable",
+        "successCriteria": ["Criterion 1", "Criterion 2"],
+        "rubricCriteria": ["Criterion 1 (40%)", "Criterion 2 (35%)", "Criterion 3 (25%)"],
+        "reflectionPrompt": "Subject-grounded reflection question"
       }
     }
   ]
@@ -681,6 +1038,7 @@ Return ONLY valid JSON with:
 Subject Title: ${deterministic.subjectTitle}
 Industry Domain: ${course.structure?.industryDomain || deterministic.domainLabel}
 Core Skill / Problem: ${course.problem?.taskOrSkill || ''}
+Target Audience: ${deterministic.targetAudience} (${deterministic.learnerLevel})
 Modules to plan cleanly (${deterministic.modules.length}):
 ${JSON.stringify(
   deterministic.modules.map(m => ({
@@ -702,14 +1060,17 @@ ${JSON.stringify(
       systemInstruction,
       responseFormat: 'json',
       temperature: 0.2,
-      maxTokens: 2800,
-      timeoutMs: 35000
+      maxTokens: 3200,
+      timeoutMs: 40000
     });
 
     const cleaned = res.text.trim().replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     const parsed = JSON.parse(firstBrace !== -1 && lastBrace > firstBrace ? cleaned.slice(firstBrace, lastBrace + 1) : cleaned);
+
+    const asStringArray = (val: any, fb: string[]): string[] =>
+      Array.isArray(val) && val.length > 0 ? val.map(String).filter(Boolean) : fb;
 
     const merged: CurriculumBlueprint = {
       ...deterministic,
@@ -723,16 +1084,22 @@ ${JSON.stringify(
           : null;
         if (!aiMod) return baseMod;
 
-        // Always keep user's exact module title & configured lesson count/titles if explicitly configured
         const srcMod = (course.modules || [])[idx] as any;
         const hasConfiguredLessons = Array.isArray(srcMod?.lessons) && srcMod.lessons.length > 0;
 
         const lessonPlans: BlueprintLessonPlan[] = baseMod.lessonPlans.map((baseLesson, lIdx) => {
           const aiLesson = Array.isArray(aiMod.lessonPlans) ? aiMod.lessonPlans[lIdx] : null;
           if (!aiLesson) return baseLesson;
+          const concepts = asStringArray(
+            aiLesson.conceptsToExplain || aiLesson.conceptsToTeach,
+            baseLesson.conceptsToExplain
+          );
+          const examples = asStringArray(
+            aiLesson.subjectExamples || (aiLesson.workedExampleTopic ? [aiLesson.workedExampleTopic] : []),
+            baseLesson.subjectExamples
+          );
           return {
             ...baseLesson,
-            // Preserve user-configured lesson titles when present
             title:
               hasConfiguredLessons && srcMod.lessons[lIdx]?.title?.trim()
                 ? baseLesson.title
@@ -741,21 +1108,24 @@ ${JSON.stringify(
               typeof aiLesson.purpose === 'string' && aiLesson.purpose.trim()
                 ? aiLesson.purpose.trim()
                 : baseLesson.purpose,
-            conceptsToTeach:
-              Array.isArray(aiLesson.conceptsToTeach) && aiLesson.conceptsToTeach.length >= 2
-                ? aiLesson.conceptsToTeach.map(String)
-                : baseLesson.conceptsToTeach,
-            workedExampleTopic:
-              typeof aiLesson.workedExampleTopic === 'string' && aiLesson.workedExampleTopic.trim()
-                ? aiLesson.workedExampleTopic.trim()
-                : baseLesson.workedExampleTopic
+            conceptsToTeach: concepts,
+            conceptsToExplain: concepts,
+            knowledgeToAcquire: asStringArray(aiLesson.knowledgeToAcquire, baseLesson.knowledgeToAcquire),
+            keyTerminology: asStringArray(aiLesson.keyTerminology, baseLesson.keyTerminology),
+            subjectExamples: examples,
+            workedExampleTopic: examples[0] || baseLesson.workedExampleTopic,
+            practicalSkills: asStringArray(aiLesson.practicalSkills, baseLesson.practicalSkills),
+            commonMisconceptions: asStringArray(aiLesson.commonMisconceptions, baseLesson.commonMisconceptions),
+            demonstrationMethod:
+              typeof aiLesson.demonstrationMethod === 'string' && aiLesson.demonstrationMethod.trim()
+                ? aiLesson.demonstrationMethod.trim()
+                : baseLesson.demonstrationMethod
           };
         });
 
-        // Strip any cross-domain bleed back to deterministic if an AI lesson/task leaked off-topic terms
         const repairedLessons = lessonPlans.map((lp, lIdx) => {
           const bleed = detectCrossDomainBleed(
-            `${lp.title} ${lp.purpose} ${lp.conceptsToTeach.join(' ')} ${lp.workedExampleTopic}`,
+            `${lp.title} ${lp.purpose} ${lp.conceptsToExplain.join(' ')} ${lp.keyTerminology.join(' ')} ${lp.subjectExamples.join(' ')}`,
             deterministic.outOfScopeDomains
           );
           return bleed.length > 0 ? baseMod.lessonPlans[lIdx] : lp;
@@ -765,21 +1135,31 @@ ${JSON.stringify(
         const taskText = rawTask ? JSON.stringify(rawTask) : '';
         const taskBleed = detectCrossDomainBleed(taskText, deterministic.outOfScopeDomains);
 
-        const practicalTaskSpec =
-          rawTask && taskBleed.length === 0 && rawTask.objective && rawTask.deliverable
+        const baseTask = baseMod.practicalTaskSpec;
+        const rawObj = rawTask?.learningObjective || rawTask?.objective;
+        const rawScenario = rawTask?.scenarioOrTask || rawTask?.realisticScenario;
+        const rawDeliverable = rawTask?.expectedDeliverable || rawTask?.deliverable;
+        const rawResources = rawTask?.requiredResources || rawTask?.resourcesRequired;
+
+        const practicalTaskSpec: BlueprintPracticalTaskSpec =
+          rawTask && taskBleed.length === 0 && rawObj && rawDeliverable
             ? {
-                title: String(rawTask.title || baseMod.practicalTaskSpec.title),
-                objective: String(rawTask.objective),
-                realisticScenario: String(rawTask.realisticScenario || baseMod.practicalTaskSpec.realisticScenario),
-                deliverable: String(rawTask.deliverable),
-                resourcesRequired: Array.isArray(rawTask.resourcesRequired) && rawTask.resourcesRequired.length > 0
-                  ? rawTask.resourcesRequired.map(String)
-                  : baseMod.practicalTaskSpec.resourcesRequired,
-                rubricCriteria: Array.isArray(rawTask.rubricCriteria) && rawTask.rubricCriteria.length >= 2
-                  ? rawTask.rubricCriteria.map(String)
-                  : baseMod.practicalTaskSpec.rubricCriteria
+                title: String(rawTask.title || baseTask.title),
+                learningObjective: String(rawObj),
+                objective: String(rawObj),
+                scenarioOrTask: String(rawScenario || baseTask.scenarioOrTask),
+                realisticScenario: String(rawScenario || baseTask.realisticScenario),
+                requiredResources: asStringArray(rawResources, baseTask.requiredResources),
+                resourcesRequired: asStringArray(rawResources, baseTask.resourcesRequired),
+                clearInstructions: String(rawTask.clearInstructions || baseTask.clearInstructions),
+                sequentialSteps: asStringArray(rawTask.sequentialSteps, baseTask.sequentialSteps),
+                expectedDeliverable: String(rawDeliverable),
+                deliverable: String(rawDeliverable),
+                successCriteria: asStringArray(rawTask.successCriteria, baseTask.successCriteria),
+                rubricCriteria: asStringArray(rawTask.rubricCriteria, baseTask.rubricCriteria),
+                reflectionPrompt: String(rawTask.reflectionPrompt || baseTask.reflectionPrompt)
               }
-            : baseMod.practicalTaskSpec;
+            : baseTask;
 
         const scenarioContexts =
           Array.isArray(aiMod.scenarioContexts) && aiMod.scenarioContexts.length >= 3
@@ -789,7 +1169,7 @@ ${JSON.stringify(
                 if (scBleed.length > 0) return fb;
                 return {
                   title: String(sc.title || fb.title),
-                  type: sc.type === 'AI Specific' ? 'AI Specific' as const : 'Workplace' as const,
+                  type: sc.type === 'AI Specific' ? ('AI Specific' as const) : ('Workplace' as const),
                   organisationType: String(sc.organisationType || fb.organisationType),
                   cityOrSetting: String(sc.cityOrSetting || fb.cityOrSetting),
                   coreDilemma: String(sc.coreDilemma || fb.coreDilemma)

@@ -474,7 +474,8 @@ export function printCoursePdf(course: Course) {
   const rawGen: GeneratedCourse = course.generatedCourse
     ? JSON.parse(JSON.stringify(course.generatedCourse))
     : generateLocalFallbackCourse(course);
-  const gen = enforceComprehensiveCourseVolume(rawGen, course);
+  const isLocalFallback = !rawGen.generationMetadata || rawGen.generationMetadata.provider === 'local_fallback';
+  const gen = isLocalFallback ? enforceComprehensiveCourseVolume(rawGen, course) : rawGen;
   const volume = calculateGeneratedCourseVolume(gen);
 
   const logoHtml = course.coverLogoUrl
@@ -692,7 +693,7 @@ export function printCoursePdf(course: Course) {
   <div class="cover-page">
     <div class="brand-bar">
       <div>${logoHtml}</div>
-      <span class="badge-v9">Master Framework v9.0 · ${volume.estimatedPages}-Page Manual</span>
+      <span class="badge-v9">Master Framework v9.0 · Est. ~${volume.estimatedPages}-Page Manual</span>
     </div>
     <h1 class="title">${gen.title || course.name || s.title || 'Course Master Manual'}</h1>
     <p class="subtitle">${gen.purpose}</p>
@@ -712,12 +713,12 @@ export function printCoursePdf(course: Course) {
         <span>${gen.estimatedDuration || s.estimatedDuration || '16 Hours / 2 CPD Credits'}</span>
       </div>
       <div class="meta-item">
-        <strong>Manual Volume</strong>
-        <span>${volume.estimatedPages} Pages (${volume.totalWords.toLocaleString()} Words)</span>
+        <strong>Estimated Manual Volume</strong>
+        <span>Est. ~${volume.estimatedPages} A4 Pages (${volume.totalWords.toLocaleString()} Words · print layout varies)</span>
       </div>
       <div class="meta-item">
         <strong>SETA / NQF Alignment</strong>
-        <span>${s.setaNqfLevel || 'NQF Level 5 Alignment'}</span>
+        <span>${s.setaNqfLevel || 'To Be Confirmed (Requires SME Validation)'}</span>
       </div>
       <div class="meta-item">
         <strong>Curriculum Scope</strong>
@@ -741,7 +742,7 @@ export function printCoursePdf(course: Course) {
     <div class="card">
       <p class="card-desc"><strong>Workplace Challenge:</strong> ${p.taskOrSkill || 'Identified workplace capability gap.'}</p>
       <p class="card-desc"><strong>Operational Impact:</strong> ${p.operationalImpact || 'Productivity latency, manual errors, or compliance risks.'}</p>
-      <p class="card-desc"><strong>Primary Statutory Anchor:</strong> ${r.regulatorySources || r.regulatoryFramework || 'POPIA Act 4 of 2013, King IV Principle 12, SAQA standards'}</p>
+      <p class="card-desc"><strong>Primary Statutory Anchor:</strong> ${r.regulatorySources || r.regulatoryFramework || 'To Be Confirmed (Requires SME Validation)'}</p>
     </div>
   </div>
 
@@ -895,7 +896,7 @@ export function printCoursePdf(course: Course) {
   </div>
 
   <div class="footer-note">
-    eStudy South Africa · Universal Master Course Builder Framework v9.0 · ${volume.estimatedPages}-Page Comprehensive Edition (${volume.totalWords.toLocaleString()} Words) · Generated ${new Date().toLocaleDateString('en-ZA')}
+    eStudy South Africa · Universal Master Course Builder Framework v9.0 · Est. ~${volume.estimatedPages}-Page Edition (${volume.totalWords.toLocaleString()} Words) · Generated ${new Date().toLocaleDateString('en-ZA')}
   </div>
 </body>
 </html>

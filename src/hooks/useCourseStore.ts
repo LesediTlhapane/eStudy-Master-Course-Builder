@@ -156,9 +156,13 @@ export function useCourseStore(): UseCourseStoreReturn {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [targetFocusField, setTargetFocusField] = useState<string | null>(null);
 
-  // Groq Cloud AI engine selection state
+  // Dual AI provider selection state (Google Gemini + Groq Cloud)
   const [selectedAIProvider, setSelectedAIProviderState] = useState<AIProvider>(() => {
     try {
+      const saved = localStorage.getItem(AI_PROVIDER_KEY);
+      if (saved === 'gemini' || saved === 'groq') {
+        return saved;
+      }
       localStorage.setItem(AI_PROVIDER_KEY, 'groq');
     } catch (e) {}
     return 'groq';
@@ -166,20 +170,23 @@ export function useCourseStore(): UseCourseStoreReturn {
 
   const [selectedAIModel, setSelectedAIModelState] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(AI_MODEL_KEY);
-      if (saved && saved.trim() && !saved.toLowerCase().includes('gemini')) {
-        return saved;
+      const savedProvider = localStorage.getItem(AI_PROVIDER_KEY);
+      const savedModel = localStorage.getItem(AI_MODEL_KEY);
+      if (savedModel && savedModel.trim()) {
+        return savedModel;
       }
+      if (savedProvider === 'gemini') return 'gemini-4-hydrogen';
     } catch (e) {}
     return 'openai/gpt-oss-120b';
   });
 
-  const setAIProvider = useCallback((_provider: AIProvider) => {
-    setSelectedAIProviderState('groq');
-    const defaultModel = 'openai/gpt-oss-120b';
+  const setAIProvider = useCallback((provider: AIProvider) => {
+    const resolved: AIProvider = provider === 'gemini' ? 'gemini' : 'groq';
+    setSelectedAIProviderState(resolved);
+    const defaultModel = resolved === 'gemini' ? 'gemini-4-hydrogen' : 'openai/gpt-oss-120b';
     setSelectedAIModelState(defaultModel);
     try {
-      localStorage.setItem(AI_PROVIDER_KEY, 'groq');
+      localStorage.setItem(AI_PROVIDER_KEY, resolved);
       localStorage.setItem(AI_MODEL_KEY, defaultModel);
     } catch (e) {}
   }, []);
@@ -455,25 +462,30 @@ export function useCourseStore(): UseCourseStoreReturn {
     }
   }, []);
 
-  const startAIGeneration = useCallback((_provider?: AIProvider, model?: string) => {
-    setSelectedAIProviderState('groq');
+  const startAIGeneration = useCallback((provider?: AIProvider, model?: string) => {
+    const resolvedProvider: AIProvider =
+      provider === 'gemini' || provider === 'groq' ? provider : selectedAIProvider;
+    setSelectedAIProviderState(resolvedProvider);
     try {
-      localStorage.setItem(AI_PROVIDER_KEY, 'groq');
+      localStorage.setItem(AI_PROVIDER_KEY, resolvedProvider);
     } catch (e) {}
-    if (model && !model.toLowerCase().includes('gemini')) {
-      setSelectedAIModelState(model);
-      try {
-        localStorage.setItem(AI_MODEL_KEY, model);
-      } catch (e) {}
-    } else {
-      const defaultModel = 'openai/gpt-oss-120b';
-      setSelectedAIModelState(defaultModel);
-      try {
-        localStorage.setItem(AI_MODEL_KEY, defaultModel);
-      } catch (e) {}
-    }
+
+    const defaultForProvider =
+      resolvedProvider === 'gemini' ? 'gemini-4-hydrogen' : 'openai/gpt-oss-120b';
+    const candidateModel = model?.trim() || selectedAIModel?.trim();
+    const isCompatible =
+      candidateModel &&
+      (resolvedProvider === 'gemini'
+        ? candidateModel.toLowerCase().includes('gemini')
+        : !candidateModel.toLowerCase().includes('gemini'));
+    const resolvedModel = isCompatible ? candidateModel : defaultForProvider;
+
+    setSelectedAIModelState(resolvedModel);
+    try {
+      localStorage.setItem(AI_MODEL_KEY, resolvedModel);
+    } catch (e) {}
     setView('generating');
-  }, []);
+  }, [selectedAIProvider, selectedAIModel]);
 
   const setGeneratedCourseForActive = useCallback((generated: GeneratedCourse) => {
     updateActiveCourse({
