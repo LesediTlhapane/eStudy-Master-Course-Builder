@@ -62,13 +62,42 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
 
         return {
           id: preserveStr(m.id, `module-${idx + 1}`),
+          number: typeof m.number === 'number' ? m.number : (typeof m.moduleNumber === 'number' ? m.moduleNumber : idx + 1),
           moduleNumber: typeof m.moduleNumber === 'number' ? m.moduleNumber : (typeof m.number === 'number' ? m.number : idx + 1),
           title: preserveStr(m.title, ''),
           subtitle: preserveStr(m.subtitle, ''),
           purpose: preserveStr(m.purpose, ''),
           duration: preserveStr(m.duration, ''),
-          keySkills: toSafeArray(m.keySkills).map(k => preserveStr(k)),
+          keySkills: Array.isArray(m.keySkills)
+            ? m.keySkills.map((k: any) => preserveStr(k))
+            : typeof m.keySkills === 'string' && m.keySkills.length > 0
+              ? m.keySkills
+              : [],
           learningObjectives: toSafeArray(m.learningObjectives).map(lo => preserveStr(lo)),
+          learningOutcomes: toSafeArray(m.learningOutcomes).map(lo => preserveStr(lo)),
+          coreConcepts: preserveStr(m.coreConcepts),
+          definitionsFrameworks: preserveStr(m.definitionsFrameworks),
+          rootCausesExploration: preserveStr(m.rootCausesExploration),
+          aiTopicCoverage: preserveStr(m.aiTopicCoverage),
+          practicalExercises: preserveStr(m.practicalExercises),
+          workplaceScenarios: preserveStr(m.workplaceScenarios),
+          miniCaseStudy: preserveStr(m.miniCaseStudy),
+          aiPracticalElement: preserveStr(m.aiPracticalElement),
+          implementationPlan: preserveStr(m.implementationPlan),
+          sopTemplatesChecklists: preserveStr(m.sopTemplatesChecklists),
+          kpiMetrics: preserveStr(m.kpiMetrics),
+          capstoneProject: preserveStr(m.capstoneProject),
+          aiGovernanceElement: preserveStr(m.aiGovernanceElement),
+          lessons: toSafeArray(m.lessons).map((lesson: any, lIdx: number) =>
+            lesson && typeof lesson === 'object'
+              ? {
+                  ...lesson,
+                  id: preserveStr(lesson.id, `lesson-${idx + 1}-${lIdx + 1}`),
+                  title: preserveStr(lesson.title, ''),
+                  concepts: toSafeArray(lesson.concepts).map(c => preserveStr(c)).filter(Boolean)
+                }
+              : { id: `lesson-${idx + 1}-${lIdx + 1}`, title: preserveStr(lesson, ''), concepts: [] }
+          ),
           status: m.status === 'Complete' || m.status === 'In progress' ? m.status : 'Not started',
           requirements: {
             ...scratch.modules[0]?.requirements,
@@ -90,6 +119,7 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
             scenarios: toSafeArray(req.scenarios).map((sc: any, sIdx: number) => ({
               id: preserveStr(sc?.id, `sc-${sIdx + 1}`),
               title: preserveStr(sc?.title, ''),
+              isAiSpecific: typeof sc?.isAiSpecific === 'boolean' ? sc.isAiSpecific : undefined,
               situation: preserveStr(sc?.situation),
               challenge: preserveStr(sc?.challenge),
               decisionPoint: preserveStr(sc?.decisionPoint),
@@ -100,6 +130,7 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
             aiScenarios: toSafeArray(req.aiScenarios).map((sc: any, sIdx: number) => ({
               id: preserveStr(sc?.id, `ai-sc-${sIdx + 1}`),
               title: preserveStr(sc?.title, ''),
+              isAiSpecific: typeof sc?.isAiSpecific === 'boolean' ? sc.isAiSpecific : true,
               situation: preserveStr(sc?.situation),
               challenge: preserveStr(sc?.challenge),
               decisionPoint: preserveStr(sc?.decisionPoint),
@@ -237,6 +268,7 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
       title: preserveStr(s.title ?? (raw.name === 'Untitled Course' ? '' : raw.name)),
       code: preserveStr(s.code ?? raw.code),
       industryDomain: preserveStr(s.industryDomain),
+      industryContext: preserveStr(s.industryContext),
       targetRoles: preserveStr(s.targetRoles),
       targetAudience: preserveStr(s.targetAudience),
       deliveryModality: preserveStr(s.deliveryModality),
@@ -270,13 +302,16 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
       prerequisiteExperience: preserveStr(s.prerequisiteExperience),
       toolsSystems: preserveStr(s.toolsSystems),
       digitalLiteracyLevel: preserveStr(s.digitalLiteracyLevel),
-      diagnosticQuestions: safeDiagnostic.length > 0 ? safeDiagnostic : scratch.structure.diagnosticQuestions
+      diagnosticQuestions: safeDiagnostic.length > 0 ? safeDiagnostic : scratch.structure.diagnosticQuestions,
+      learningJourney: Array.isArray(s.learningJourney) && s.learningJourney.length > 0 ? s.learningJourney : scratch.structure.learningJourney
     },
     modules: safeModules,
     learningDesign: {
       ...scratch.learningDesign,
       coreStandardsSummary: preserveStr(ld.coreStandardsSummary),
       instructionalApproach: preserveStr(ld.instructionalApproach),
+      learningObjectivesList: toSafeArray(ld.learningObjectivesList).map(lo => preserveStr(lo)).filter(Boolean),
+      learnerEngagementTypes: toSafeArray(ld.learnerEngagementTypes).map(et => preserveStr(et)).filter(Boolean),
       assessments: safeAssessments.length > 0 ? safeAssessments : scratch.learningDesign.assessments,
       aiDemoSimulationDescription: preserveStr(ld.aiDemoSimulationDescription),
       promptExerciseDescription: preserveStr(ld.promptExerciseDescription),
@@ -288,12 +323,16 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
       criticalThinkingDescription: preserveStr(ld.criticalThinkingDescription),
       reflectionPrompts: preserveStr(ld.reflectionPrompts),
       practicalTaskWeighting: preserveStr(ld.practicalTaskWeighting),
-      finalAssessmentPassMark: preserveStr(ld.finalAssessmentPassMark)
+      finalAssessmentPassMark: preserveStr(ld.finalAssessmentPassMark),
+      guidedPracticeDescription: preserveStr(ld.guidedPracticeDescription),
+      summativeAssessmentDescription: preserveStr(ld.summativeAssessmentDescription)
     },
     ethics: {
       ...scratch.ethics,
       confidentialityRequirements: preserveStr(e.confidentialityRequirements),
+      dataPrivacySafeguards: preserveStr(e.dataPrivacySafeguards),
       dataPrivacyFramework: preserveStr(e.dataPrivacyFramework),
+      biasMitigationPlan: preserveStr(e.biasMitigationPlan),
       ethicsStandards: preserveStr(e.ethicsStandards),
       psychologicalSafetyNotes: preserveStr(e.psychologicalSafetyNotes),
       decisionMakingFramework: preserveStr(e.decisionMakingFramework),
@@ -304,6 +343,7 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
       dataSovereigntyContext: preserveStr(e.dataSovereigntyContext),
       aiWorkforceImpactNarrative: preserveStr(e.aiWorkforceImpactNarrative),
       aiGovernanceReference: preserveStr(e.aiGovernanceReference),
+      humanOversightNotes: preserveStr(e.humanOversightNotes),
       cards: safeCards.length > 0 ? safeCards : scratch.ethics.cards
     },
     outputRequirements: {
@@ -319,12 +359,19 @@ export function sanitizeCourse(raw: any, fallbackName: string = 'Untitled Course
       plainLanguageApplied: typeof out.plainLanguageApplied === 'boolean' ? out.plainLanguageApplied : true,
       culturalInclusivityNotes: preserveStr(out.culturalInclusivityNotes),
       formattingRequirements: preserveStr(out.formattingRequirements),
+      languageTone: preserveStr(out.languageTone),
+      nonTruncationRule: preserveStr(out.nonTruncationRule),
+      formattingRules: preserveStr(out.formattingRules),
       accreditationBody: preserveStr(out.accreditationBody),
       qualificationOrUnitStandard: preserveStr(out.qualificationOrUnitStandard),
       nqfLevel: preserveStr(out.nqfLevel),
       accreditationRequirements: preserveStr(out.accreditationRequirements),
       requiredLearningStructure: preserveStr(out.requiredLearningStructure),
-      accreditationAssessmentRequirements: preserveStr(out.accreditationAssessmentRequirements)
+      accreditationAssessmentRequirements: preserveStr(out.accreditationAssessmentRequirements),
+      accreditationAlignment: preserveStr(out.accreditationAlignment),
+      notionalHoursCredits: preserveStr(out.notionalHoursCredits),
+      qualificationUnitStandardId: preserveStr(out.qualificationUnitStandardId),
+      moderationRequirements: preserveStr(out.moderationRequirements)
     },
     qa: {
       benchmarkReviewed: Boolean(qa.benchmarkReviewed),

@@ -1,6 +1,7 @@
 import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedPracticalTask, AIProvider } from '../../types.js';
 import { aiRouter } from './aiRouter.js';
-import { extractAndParseJSON } from './courseValidator.js';
+import { extractAndParseJSON, reviewGeneratedCourseQuality } from './courseValidator.js';
+import { buildDeterministicBlueprint } from './curriculumBlueprint.js';
 import { generateLocalFallbackCourse } from '../../utils/localCourseEngine.js';
 import { sanitizeCourse } from '../../utils/courseSanitizer.js';
 
@@ -24,11 +25,21 @@ export async function executeGranularRegeneration(
 ): Promise<GranularRegenerationResult> {
   const startTime = Date.now();
   const course = sanitizeCourse(rawCourse);
+  const blueprint = buildDeterministicBlueprint(course);
   const s = course.structure || ({} as any);
   const p = course.problem || ({} as any);
+  const forbiddenList = blueprint.outOfScopeDomains
+    .flatMap(d => d.forbiddenTerms.slice(0, 5))
+    .slice(0, 15)
+    .join(', ');
 
-  const systemInstruction = `You are a subject-matter educator and instructional designer. Regenerate only the requested component in valid JSON.
-Teach the actual subject with accurate, understandable explanations, appropriate examples, and useful learner application. Avoid generic business/compliance filler, repeated procedures, and content already taught elsewhere in the course. Use legal or technical claims only when supported by the course's supplied verified sources; otherwise flag them for review instead of inventing facts. Align assessments to the existing learning objectives. Preserve all IDs, titles, configured structure, and component fields unless explicitly asked to change them. Return only JSON matching the requested schema.`;
+  const systemInstruction = `You are a subject-matter educator and instructional designer for "${blueprint.subjectTitle}" (${blueprint.domainLabel}). Regenerate ONLY the requested component in valid JSON.
+SUBJECT LOCK:
+- Stay strictly within "${blueprint.subjectTitle}" for "${blueprint.targetAudience}".
+- NEVER introduce off-topic concepts such as: ${forbiddenList || 'unrelated domains'}.
+- Avoid generic compliance/SOP filler and avoid repeating content taught elsewhere in the course.
+- Cite South African legal/regulatory claims ONLY when genuinely applicable and verified; otherwise mark unverified claims for SME validation.
+- Preserve all IDs, titles, and objective codes. Return ONLY valid JSON matching the requested schema.`;
 
   let prompt = '';
   let updatedCourse: GeneratedCourse = currentGeneratedCourse
@@ -475,6 +486,13 @@ Return a JSON object matching this schema:
     } else {
       updatedPart = updatedCourse;
     }
+  }
+
+  // Re-run QA review after granular update so Quality Scorecard stays accurate
+  try {
+    updatedCourse.qa = reviewGeneratedCourseQuality(updatedCourse, course, blueprint).qa;
+  } catch (qaErr) {
+    console.warn('Could not re-evaluate QA after granular regeneration:', qaErr);
   }
 
   // Update generation metadata to record the granular change

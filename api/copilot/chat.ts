@@ -27,7 +27,16 @@ export default async function handler(req: any, res: any) {
       } catch (e) {}
     }
 
-    const { messages, currentCourse, activeSection, qaResult, provider, model } = body || {};
+    const {
+      messages,
+      currentCourse,
+      activeSection,
+      qaResult,
+      provider,
+      model,
+      agreedRequirements,
+      conversationId
+    } = body || {};
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Missing messages array in request body.' });
@@ -39,7 +48,9 @@ export default async function handler(req: any, res: any) {
       activeSection: activeSection || '01',
       qaResult: qaResult || null,
       provider,
-      model
+      model,
+      agreedRequirements: agreedRequirements || null,
+      conversationId
     });
 
     return res.status(200).json({ success: true, ...response });
@@ -54,7 +65,9 @@ export default async function handler(req: any, res: any) {
         messages: body?.messages || [],
         currentCourse: body?.currentCourse || {},
         activeSection: body?.activeSection || '01',
-        qaResult: body?.qaResult || null
+        qaResult: body?.qaResult || null,
+        agreedRequirements: body?.agreedRequirements || null,
+        conversationId: body?.conversationId
       });
       return res.status(200).json({ success: true, ...fallbackResponse, fallbackUsed: true });
     } catch (fallbackErr) {

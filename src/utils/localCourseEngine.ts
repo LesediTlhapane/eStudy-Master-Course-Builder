@@ -1,4 +1,20 @@
-import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, GeneratedScenario, GeneratedQuestion, GeneratedAssessmentSet, GeneratedPracticalTask, GeneratedCourseQA, GeneratedSource } from '../types.js';
+import type {
+  Course,
+  CourseModule,
+  GeneratedCourse,
+  GeneratedModule,
+  GeneratedLesson,
+  GeneratedScenario,
+  GeneratedQuestion,
+  GeneratedAssessmentSet,
+  GeneratedPracticalTask,
+  GeneratedCourseQA,
+  GeneratedSource,
+  CopilotMode,
+  CopilotIntent,
+  CopilotAgreedRequirements
+} from '../types.js';
+import { createScratchCourse } from '../data/initialCourseData.js';
 import { enforceComprehensiveCourseVolume, calculateGeneratedCourseVolume } from './courseVolumeEngine.js';
 
 export interface LocalCopilotMessage {
@@ -11,6 +27,8 @@ export interface LocalCopilotPayload {
   currentCourse: Course;
   activeSection?: string;
   qaResult?: any;
+  agreedRequirements?: CopilotAgreedRequirements | null;
+  conversationId?: string;
 }
 
 export interface LocalCopilotSuggestedAction {
@@ -21,8 +39,11 @@ export interface LocalCopilotSuggestedAction {
 }
 
 export interface LocalCopilotResponse {
+  mode: CopilotMode;
+  intent: CopilotIntent;
   message: string;
   suggestedActions?: LocalCopilotSuggestedAction[];
+  agreedRequirements?: CopilotAgreedRequirements | null;
   coursePatch?: Partial<Course>;
   courseBrief?: {
     ready: boolean;
@@ -160,83 +181,97 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
           }
         ];
 
+    const lo0 = m.learningObjectives?.[0] || `Apply foundational principles of ${m.title}`;
+    const lo1 = m.learningObjectives?.[1] || `Execute quality-verified workflows in ${m.title}`;
+    const lo2 = m.learningObjectives?.[2] || `Govern compliance, risks, and review gates in ${m.title}`;
+    const regRef = course.research.regulatoryFramework || 'applicable organisational standards and POPIA where personal data applies';
+
     const knowledgeChecks: GeneratedQuestion[] = [
       {
         id: `qc-${modNum}-1`,
-        question: `What is the primary operational objective of ${m.title}?`,
+        question: `Which practice best demonstrates mastery of "${lo0}" in ${m.title}?`,
         options: [
-          `To eliminate manual work without quality controls`,
-          `To build structured capability and ensure compliance with ${course.research.regulatoryFramework || 'industry standards'}`,
-          `To replace human supervision with automated tools`,
-          `To reduce training hours regardless of outcome`
+          `Skipping baseline verification checks to accelerate routine task completion`,
+          `Applying structured first-principles analysis and documented quality criteria before execution`,
+          `Delegating technical judgements entirely to unverified automated outputs`,
+          `Removing peer review steps from operational workflows`
         ],
         correctAnswer: 1,
-        rationale: `The framework focuses on structured capability building, quality assurance, and compliance rather than unmonitored automation.`,
-        learningObjectiveRef: m.learningObjectives?.[0] || 'Core Knowledge'
+        rationale: `Aligned to ${lo0}: reliable workplace execution pairs structured analysis with documented verification gates.`,
+        learningObjectiveRef: `LO ${modNum}.1: ${lo0}`
       },
       {
         id: `qc-${modNum}-2`,
-        question: `When integrating AI tools into this process, which principle is non-negotiable?`,
+        question: `In relation to "${lo1}", how should practitioners validate an AI-assisted draft or analysis in ${m.title}?`,
         options: [
-          `Full autonomy of the AI engine without human oversight`,
-          `Mandatory human verification and compliance with POPIA data privacy standards`,
-          `Using free public AI models for confidential company data`,
-          `Ignoring discrepancy warnings to speed up delivery`
+          `Accept high-confidence formatted outputs without cross-checking source facts`,
+          `Verify outputs line by line against authoritative criteria, technical specifications, and workplace constraints`,
+          `Paste unredacted confidential records into public browser tools for speed`,
+          `Bypass escalation checkpoints whenever deadlines are tight`
         ],
         correctAnswer: 1,
-        rationale: `Human-in-the-loop oversight and POPIA compliance are mandatory pillars in the eStudy pedagogical standard.`,
-        learningObjectiveRef: m.learningObjectives?.[1] || 'AI Governance'
+        rationale: `Aligned to ${lo1}: human-in-the-loop verification against authoritative criteria prevents hallucinated or miscalibrated decisions.`,
+        learningObjectiveRef: `LO ${modNum}.2: ${lo1}`
       },
       {
         id: `qc-${modNum}-3`,
-        question: `How should a team member react when an AI tool produces an unexpected result or recommendation?`,
+        question: `When an anomaly or unexpected variance occurs during ${m.title}, what is the most defensible immediate step?`,
         options: [
-          `Accept it immediately because AI models analyze larger datasets`,
-          `Pause and independently verify the calculation or fact against authoritative records`,
-          `Delete the entire task without logging the issue`,
-          `Share the output directly with external stakeholders`
+          `Suppress the alert so monthly throughput targets remain unaffected`,
+          `Cross-check primary evidence, document the root cause, and escalate according to threshold rules`,
+          `Rerun the automated tool repeatedly until a favourable score appears`,
+          `Delete historical audit logs prior to review`
         ],
         correctAnswer: 1,
-        rationale: `Independent verification against source records prevents the propagation of hallucinations or systemic errors.`,
-        learningObjectiveRef: m.learningObjectives?.[1] || 'Critical Evaluation'
+        rationale: `Primary-source validation and transparent root-cause escalation safeguard operational reliability.`,
+        learningObjectiveRef: `LO ${modNum}.2: ${lo1}`
       },
       {
         id: `qc-${modNum}-4`,
-        question: `Under POPIA Act 4 of 2013, what must be done prior to inputting workplace records into digital tools?`,
+        question: `Regarding "${lo2}", what governance control applies when handling sensitive records or high-impact decisions?`,
         options: [
-          `Nothing, as internal records are exempt from data privacy laws`,
-          `Ensure lawful processing conditions are met and personal identifiers are de-identified or protected`,
-          `Upload all employee records to public cloud repositories`,
-          `Disclose all passwords in shared documents`
+          `Informal verbal confirmation is sufficient for all high-risk releases`,
+          `Enforce accountable human sign-off, access control, and alignment with ${regRef}`,
+          `Store unrestricted credentials inside shared project folders`,
+          `Allow external vendors to override internal sign-off charters`
         ],
         correctAnswer: 1,
-        rationale: `POPIA Section 11 mandates lawful processing conditions and appropriate technical measures to safeguard personal information.`,
-        learningObjectiveRef: m.learningObjectives?.[2] || 'POPIA Compliance'
+        rationale: `Aligned to ${lo2}: accountable human sign-off and applicable governance controls protect organisational compliance.`,
+        learningObjectiveRef: `LO ${modNum}.3: ${lo2}`
       },
       {
         id: `qc-${modNum}-5`,
-        question: `What distinguishes effective workplace execution from superficial task completion?`,
+        question: `What distinguishes sustainable operational excellence in ${m.title} from ad-hoc execution?`,
         options: [
-          `Speed of delivery over accuracy`,
-          `Continuous application of standard operating procedures, proactive risk mitigation, and continuous reflection`,
-          `Delegating all decisions to automated algorithms`,
-          `Avoiding documentation to save time`
+          `Prioritising speed over traceability and stakeholder sign-off`,
+          `Consistent use of repeatable standard operating procedures, measurable KPIs, and post-implementation audits`,
+          `Avoiding documentation after resolving production incidents`,
+          `Relying on individual intuition without feedback loops`
         ],
         correctAnswer: 1,
-        rationale: `Sustainable performance relies on rigorous standard operating procedures, active risk management, and structured feedback loops.`,
-        learningObjectiveRef: m.learningObjectives?.[0] || 'Operational Excellence'
+        rationale: `Repeatable procedures, measurable KPIs, and audit feedback loops ensure lasting capability transfer.`,
+        learningObjectiveRef: `LO ${modNum}.1: ${lo0}`
       }
     ];
 
+    const deliverableTarget = `Completed ${m.title} Practical Audit & Implementation Brief (with verification checklist and remediation log)`;
     const practicalTask: GeneratedPracticalTask = {
       id: `task-${modNum}`,
       title: `${m.title} Practical Workplace Application Task`,
-      instructions: `Conduct an operational assessment of your current workflow against the criteria taught in this module. Complete the supplied checklist and identify at least two risk areas.`,
-      deliverable: `Completed Workplace Assessment Template with mitigation action plan.`,
+      instructions: [
+        `Objective: Apply ${lo0} and ${lo1} to evaluate and remediate a realistic ${s.title || m.title} workflow challenge.`,
+        `Scenario: In your role as ${s.targetRoles || 'a practitioner'}, review a live workflow extract or simulated operational case for ${m.title} where unverified shortcuts and unclear thresholds have caused rework.`,
+        `Resources: Module ${modNum} SOP checklist, domain verification criteria, ${course.research.aiToolsPlatformName || 'approved workspace tools'}, and a stakeholder sign-off log.`,
+        `Steps: 1. Inspect the workflow inputs and isolate at least two root causes or failure modes. 2. Apply the module verification checklist and human-in-the-loop audit gate to draft corrective actions. 3. Document measurable success metrics and governance responsibilities for review.`,
+        `Deliverable: ${deliverableTarget}.`,
+        `Success criteria: Root causes match primary evidence (40%), controls align with domain standards and ${regRef} (30%), and corrective actions include clear owners and timelines (30%).`,
+        `Reflection: Identify which single verification step in your Module ${modNum} submission would prevent the highest-impact error in your current team.`
+      ].join('\n\n'),
+      deliverable: deliverableTarget,
       evaluationRubric: [
-        'Accuracy of operational gap identification (40%)',
-        'Compliance with regulatory and POPIA standards (30%)',
-        'Feasibility of proposed mitigation actions (30%)'
+        'Accuracy of domain diagnostics & root-cause evidence (40%)',
+        'Correct application of procedures, verification gates & governance controls (30%)',
+        'Practical feasibility, measurable KPIs & clarity of remediation plan (30%)'
       ]
     };
 
@@ -260,14 +295,14 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
         `How does the content of ${m.title} apply directly to your day-to-day role?`,
         `What is one immediate improvement you will implement in your team's workflow?`
       ],
-      summary: `${m.title} provides the structured foundation and practical techniques needed to bridge performance gaps and uphold regulatory excellence.`
+      summary: `${m.title} provides the structured foundation and practical techniques needed to bridge performance gaps and uphold domain excellence.`
     };
   });
 
   const assessments: GeneratedAssessmentSet = {
     preCourseDiagnostic: {
       title: 'Pre-Course Knowledge & Readiness Diagnostic',
-      instructions: 'Complete these 5 diagnostic questions to assess your baseline familiarity with domain concepts, AI readiness, and compliance principles.',
+      instructions: 'Complete these 5 diagnostic questions to assess your baseline familiarity with domain concepts, AI readiness, and governance principles.',
       questions: (s.diagnosticQuestions || []).slice(0, 5).map((dq, idx) => ({
         id: `diag-${idx + 1}`,
         question: dq.question,
@@ -290,50 +325,50 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
       questions: [
         {
           id: 'final-q1',
-          question: `In the context of South African corporate compliance, what is the primary risk of using unvetted AI tools for customer data?`,
+          question: `In ${s.title || 'this programme'}, why must practitioners combine domain verification gates with ${course.research.regulatoryFramework || 'applicable governance standards'}?`,
           options: [
-            'Minor formatting discrepancies in exported spreadsheets',
-            'Severe breach of POPIA conditions resulting in legal liability and regulatory penalties',
-            'Slight delay in document generation processing speed',
-            'Increased subscription licensing fees'
+            'To add unnecessary administrative steps before final delivery',
+            'To ensure technical outputs are accurate, auditable, privacy-safe, and legally defensible',
+            'To replace qualified specialist accountability with automated scripts',
+            'To eliminate documentation after project hand-off'
           ],
           correctAnswer: 1,
-          rationale: 'Unvetted AI tools can expose personal identifiable information (PII) to external models, directly violating POPIA requirements.'
+          rationale: `Integrating technical verification with ${course.research.regulatoryFramework || 'governance controls'} prevents high-impact operational and compliance failures.`
         },
         {
           id: 'final-q2',
-          question: `What constitutes an effective Human-in-the-Loop protocol?`,
+          question: `What constitutes an effective Human-in-the-Loop protocol across ${s.title || 'workplace workflows'}?`,
           options: [
-            'Glancing at the final report title page before emailing',
-            'Structured verification of factual claims, calculations, and compliance rules by a qualified practitioner',
-            'Trusting the AI confidence score above 90%',
-            'Delegating all verification to entry-level interns'
+            'Glancing at formatting before emailing deliverables to stakeholders',
+            'Structured verification of factual claims, technical logic, and compliance rules by a qualified practitioner',
+            'Trusting an AI confidence score without consulting primary evidence',
+            'Delegating all critical sign-off checks without an audit trail'
           ],
           correctAnswer: 1,
-          rationale: 'Human-in-the-Loop requires rigorous, qualified practitioner verification against authoritative reference data.'
+          rationale: 'Human-in-the-Loop requires rigorous, qualified practitioner verification against authoritative reference evidence.'
         },
         {
           id: 'final-q3',
-          question: `How should workplace operational resistance to new procedures be addressed?`,
+          question: `How should operational teams embed the workflows taught in ${s.title || 'this course'} after training concludes?`,
           options: [
-            'By enforcing disciplinary measures without explanation',
-            'Through transparent communication of root causes, structured training, and supportive feedback channels',
-            'By abandoning new compliance standards',
-            'By isolating dissenting team members'
+            'Enforce undocumented mandates without team feedback',
+            'Execute a phased 30-60-90 day rollout with clear SOPs, KPI tracking, and structured stakeholder reviews',
+            'Abandon quality gates whenever operational deadlines tighten',
+            'Treat pilot experiments as isolated from production governance'
           ],
           correctAnswer: 1,
-          rationale: 'Empirical instructional design emphasizes psychological safety, clear rationale, and supportive feedback mechanisms.'
+          rationale: 'Phased 30-60-90 day rollouts anchored in clear SOPs, KPIs, and blameless reviews turn training into durable capability.'
         }
       ],
       capstoneCaseStudy: {
-        title: `Comprehensive Workplace Integration Case Study`,
-        scenario: `Your organisation is rolling out ${s.title}. A mid-level supervisor reports that team members are adopting unmonitored AI tools to meet tight monthly deadlines, while skipping mandatory validation steps.`,
+        title: `Comprehensive Workplace Integration Case Study: ${s.title || course.name}`,
+        scenario: `Your organisation is deploying ${s.title || course.name} across operational teams. A supervisor reports that staff are adopting unverified shortcuts under deadline pressure and skipping mandatory review gates.`,
         tasks: [
-          '1. Audit the workflow risks against POPIA and internal policy.',
-          '2. Formulate a 3-step remediation strategy balancing productivity with compliance.',
-          '3. Draft an executive briefing note for department heads.'
+          `1. Audit the ${s.title || 'operational'} workflow risks against technical quality gates and ${course.research.regulatoryFramework || 'applicable governance standards'}.`,
+          `2. Design a practical 3-step remediation plan balancing throughput, human oversight, and measurable KPIs.`,
+          `3. Draft an executive implementation brief covering days 1–30, 31–60, and 61–90.`
         ],
-        deliverable: `A 3-page Operational Remediation Plan submitted for facilitator assessment.`
+        deliverable: `A 3-page ${s.title || 'Operational'} Remediation & Rollout Plan submitted for facilitator assessment.`
       }
     },
     postCourseReflection: {
@@ -416,112 +451,1602 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
   return enriched;
 }
 
-// Helper to extract a clean topic from user messages like:
-// 'build a template for me "The use of AI in mechanical engineering"'
-export function extractCourseTopicFromMessage(rawMessage: string, previousMessages: LocalCopilotMessage[] = []): string {
-  const msg = rawMessage.trim();
+// ============================================================================
+// CONVERSATIONAL INTENT CLASSIFICATION, REQUIREMENT EXTRACTION & CONTEXT GUARD
+// ============================================================================
 
-  // 1. If the user put the topic in quotes, e.g. build a template for me "The use of AI in mechanical engineering"
-  const quotedMatch = msg.match(/["“”'‘’]([^"“”'‘’]{4,120})["“”'‘’]/);
-  if (quotedMatch && quotedMatch[1]) {
-    const candidate = quotedMatch[1].trim();
-    if (!/^(build|create|make|help|check)/i.test(candidate)) {
-      return candidate.charAt(0).toUpperCase() + candidate.slice(1);
-    }
+type LocalDomainCategory =
+  | 'cloud_engineering'
+  | 'generative_ai_business'
+  | 'human_resource_management'
+  | 'mechanical_engineering'
+  | 'emotional_intelligence'
+  | 'financial_services'
+  | 'cybersecurity_it'
+  | 'general';
+
+function detectLocalDomain(topic: string): LocalDomainCategory {
+  const lower = (topic || '').toLowerCase();
+  if (/(cloud|aws|azure|gcp|kubernetes|terraform|devops|iac|vpc|serverless|microservice)/i.test(lower)) {
+    return 'cloud_engineering';
   }
+  if (/(generative ai|genai|llm|chatgpt|prompt engineering|ai for business|business ai|rag\b|copilot for business)/i.test(lower)) {
+    return 'generative_ai_business';
+  }
+  if (/(human resource|\bhr\b|people operations|talent acquisition|recruitment|onboarding|employee relations|bcea|lra|ccma|performance appraisal)/i.test(lower)) {
+    return 'human_resource_management';
+  }
+  if (/(mechanical|cad|fea|cfd|manufacturing|predictive maintenance|mechatronics|robotics|thermodynamic|pump|bearing|millwright)/i.test(lower)) {
+    return 'mechanical_engineering';
+  }
+  if (/(emotional intelligence|\beq\b|empathy|self-regulation|conflict de-escalation|interpersonal)/i.test(lower)) {
+    return 'emotional_intelligence';
+  }
+  if (/(financial|finance|fsca|credit|banking|budgeting|accounting|fraud)/i.test(lower)) {
+    return 'financial_services';
+  }
+  if (/(cybersecurity|cyber security|zero trust|phishing|ransomware|siem|\bsoc\b|infosec)/i.test(lower)) {
+    return 'cybersecurity_it';
+  }
+  return 'general';
+}
 
-  // 2. Strip conversational prefixes
-  let cleaned = msg
-    .replace(/^(hi|hello|hey|please|can you|could you|would you|i want you to|i would like you to|i need you to|i want to|i'd like to|help me|estudy copilot)\b[\s,.:;-]*/gi, '')
-    .replace(/^(build|create|make|generate|design|draft|set up|setup|start|outline|fill|populate|complete|write|prepare)\s+(a\s+|an\s+|the\s+|my\s+|me\s+a\s+|new\s+)?(master\s+)?(course\s+template|template|course|curriculum|programme|program|training|modules?|fields?)\s*(for\s+me\s*)?(on|about|for|titled|called|named|:|-)?\s*/i, '')
-    .replace(/^(for\s+me\s*)?(on|about|for|titled|called|named)\s+/i, '')
+function cleanExtractedTopic(raw: string): string {
+  const cleaned = raw
+    .replace(/^(hi|hello|hey|please|ok|okay|sure|great|that sounds good|sounds good|yes|thanks|thank you)\b[\s,.:;-]*/gi, '')
+    .replace(/^(can you|could you|would you|i want you to|i would like you to|i need you to|i want to|i'd like to|help me|let's|lets|can we|estudy copilot)\b[\s,.:;-]*/gi, '')
+    .replace(/^(build|create|make|generate|design|draft|plan|discuss|outline|structure|set up|setup|start|fill|populate|complete|write|prepare)\s+(a\s+|an\s+|the\s+|my\s+|me\s+a\s+|new\s+)?(master\s+)?(course\s+template|template|training\s+programme|training\s+program|course|curriculum|programme|program|training|modules?|fields?)\s*(for\s+me\s*)?(on|about|for|titled|called|named|:|-)?\s*/i, '')
+    .replace(/\s+for\s+(beginners|intermediate|advanced|novices|starters|managers|leaders|executives|teams|practitioners|staff|employees|engineers|analysts|hr).*$/i, '')
     .replace(/(and\s+fill\s+in\s+the\s+fields.*|instead\s+of\s+asking.*|for\s+me\s*$)/i, '')
     .replace(/^[,\s.:"'“”‘’\-–—]+|[,\s.:"'“”‘’\-–—]+$/g, '')
     .trim();
 
-  if (cleaned.length >= 3 && !/^(on\.\.\.|about\.\.\.|\.\.\.)$/i.test(cleaned)) {
-    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  if (!cleaned) return '';
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+// Helper to extract a clean topic from a user message without blindly bleeding unrelated prior chats
+export function extractCourseTopicFromMessage(
+  rawMessage: string,
+  previousMessages: LocalCopilotMessage[] = [],
+  agreedRequirements?: CopilotAgreedRequirements | null
+): string {
+  const msg = (rawMessage || '').trim();
+
+  // 1. Quoted course title always wins ("Build a template for me \"Human Resource Management\"")
+  const quotedMatch = msg.match(/["“”'‘’]([^"“”'‘’]{3,140})["“”'‘’]/);
+  if (quotedMatch && quotedMatch[1]) {
+    const candidate = quotedMatch[1].trim();
+    if (!/^(build|create|make|help|check|please|yes|ok)/i.test(candidate)) {
+      return candidate.charAt(0).toUpperCase() + candidate.slice(1);
+    }
   }
 
-  // 3. Check if previous user message had a topic
+  // 2. Pattern like "create a Cloud Engineering course for beginners" or "plan a Generative AI for Business course"
+  const inlineCourseMatch = msg.match(
+    /(?:create|build|plan|design|develop|make|structure|outline|start|want|need|about|for)\s+(?:a\s+|an\s+|the\s+|new\s+)?([a-zA-Z0-9][a-zA-Z0-9\s&/+-]{2,80}?)\s+(?:course|programme|program|curriculum|training|template)\b/i
+  );
+  if (inlineCourseMatch && inlineCourseMatch[1]) {
+    const candidate = cleanExtractedTopic(inlineCourseMatch[1]);
+    if (candidate.length >= 3 && !/^(new|my|this|that|the|a|full|complete|draft)$/i.test(candidate)) {
+      return candidate;
+    }
+  }
+
+  // 3. Pattern like "course on Cloud Engineering" / "template for Human Resource Management"
+  const afterPrepMatch = msg.match(
+    /(?:course|template|curriculum|programme|program|training)\s+(?:on|about|for|titled|called|named)\s+([a-zA-Z0-9][^.!?\n]{2,100})/i
+  );
+  if (afterPrepMatch && afterPrepMatch[1]) {
+    const candidate = cleanExtractedTopic(afterPrepMatch[1]);
+    if (candidate.length >= 3) {
+      return candidate;
+    }
+  }
+
+  // 4. If we already have agreedRequirements in THIS active conversation and the user says "Please create the course"
+  if (agreedRequirements?.title || agreedRequirements?.subject) {
+    return (agreedRequirements.title || agreedRequirements.subject).trim();
+  }
+
+  // 5. Fallback cleanup if the user typed a direct topic/title like "Cloud Engineering"
+  const cleaned = cleanExtractedTopic(msg);
+  if (
+    cleaned.length >= 3 &&
+    !/^(it|this|that|the course|course|template|on\.\.\.|about\.\.\.|\.\.\.)$/i.test(cleaned)
+  ) {
+    return cleaned;
+  }
+
+  // 6. Only check prior messages inside the same conversation if they explicitly named a course topic
   for (let i = previousMessages.length - 1; i >= 0; i--) {
     const prev = previousMessages[i];
-    if (prev.role === 'user' && prev.content.trim().length > 4 && !prev.content.includes('...')) {
-      const prevClean = prev.content
-        .replace(/^(build|create|make|generate|design|fill|populate).*(template|course)\s*(for\s+me\s*)?(on|about|for)?\s*/i, '')
-        .replace(/^[,\s.:"'“”]+|[,\s.:"'“”]+$/g, '')
-        .trim();
-      if (prevClean.length >= 3) {
-        return prevClean.charAt(0).toUpperCase() + prevClean.slice(1);
+    if (prev.role === 'user') {
+      const m = prev.content.match(/["“”]([^"“”]{3,120})["“”]/);
+      if (m?.[1]) return m[1].trim();
+      const inline = prev.content.match(
+        /(?:create|build|plan|design|about)\s+(?:a\s+|an\s+)?([a-zA-Z0-9][a-zA-Z0-9\s&/+-]{2,70}?)\s+(?:course|programme|program|template)\b/i
+      );
+      if (inline?.[1]) {
+        const cand = cleanExtractedTopic(inline[1]);
+        if (cand.length >= 3 && !/^(new|my|this|that|the|a)$/i.test(cand)) return cand;
       }
     }
   }
 
-  return 'Applied AI in Workplace Operations';
+  return 'Applied Workplace Operations & Governance';
+}
+
+/**
+ * Distinguishes between:
+ *  - qa_check: review/audit current template compliance
+ *  - course_create: explicit imperative command to populate/build/create the template/course NOW
+ *  - course_discussion_plan: starting or asking to discuss/plan/outline a course without executing full generation yet
+ *  - course_refine: adding goals, audience, duration, or adjustments to an active planned course in the conversation
+ *  - general_chat: general questions, explanations, brainstorming, follow-ups (ChatGPT-style conversation)
+ */
+export function classifyCopilotIntent(
+  lastMessage: string,
+  messages: LocalCopilotMessage[] = [],
+  agreedRequirements?: CopilotAgreedRequirements | null
+): CopilotIntent {
+  const msg = (lastMessage || '').trim();
+  const lower = msg.toLowerCase();
+
+  // 1. Explicit QA / readiness check
+  if (
+    /^(check|review|audit|verify|inspect)\s+(my\s+|the\s+)?(course\s+)?(qa|quality|framework|compliance|readiness)/i.test(lower) ||
+    lower === 'check qa' ||
+    lower === 'check my course framework compliance'
+  ) {
+    return 'qa_check';
+  }
+
+  // 2. Placeholder prompt without a topic yet -> conversational prompt, never course generation
+  if (/^i want to build a new course on\.{0,3}$/i.test(lower)) {
+    return 'course_discussion_plan';
+  }
+
+  // 3. Explicit course/template creation commands ONLY
+  const hasExplicitConfirmCreate =
+    /\b(please\s+)?(create|generate|build|populate|fill\s+in)\s+(the\s+|this\s+|my\s+)?(full\s+|complete\s+)?(course|template|all\s+9\s+sections|fields)\b/i.test(lower) &&
+    !/^(i\s+want\s+to|i'd\s+like\s+to|i\s+would\s+like\s+to|can\s+we|could\s+we|let's|how\s+do\s+i|how\s+should|what\s+if|should\s+i)/i.test(lower);
+
+  const hasBuildTemplateCommand =
+    /^(please\s+)?(build|populate|fill(\s+in)?|generate|create)\s+(a\s+|an\s+|the\s+)?(master\s+)?(course\s+)?template\b/i.test(lower) ||
+    /\b(build|populate|fill\s+in)\s+(a\s+)?template\s+for\s+me\b/i.test(lower) ||
+    /\b(go\s+ahead|proceed|yes,?\s*(please\s*)?(create|build|generate)|sounds\s+good\.?\s*(please\s*)?(create|build|generate)|create\s+it\s+now|build\s+it\s+now|generate\s+it\s+now)\b/i.test(lower);
+
+  if (hasBuildTemplateCommand || hasExplicitConfirmCreate) {
+    return 'course_create';
+  }
+
+  // 4. Starting a course discussion / planning flow naturally (NOT generating yet!)
+  const isPlanningStarter =
+    /^(i\s+want\s+to|i'd\s+like\s+to|i\s+would\s+like\s+to|we\s+want\s+to|help\s+me|can\s+you\s+help\s+me|let's|can\s+we)\s+(create|build|design|plan|develop|structure|outline|brainstorm)\s+(a\s+|an\s+)?.*(course|programme|program|curriculum|training)/i.test(lower) ||
+    /\b(suggest|propose|outline|structure|plan|recommend)\b.*\b(course|modules?|curriculum|learning\s+pathway|syllabus)\b/i.test(lower);
+
+  if (isPlanningStarter) {
+    return 'course_discussion_plan';
+  }
+
+  // 5. General question / explanation / brainstorming checks (questions always stay in chat unless QA check)
+  const startsAsQuestion =
+    /^(what|why|how|when|where|who|which|explain|define|compare|difference\s+between|tell\s+me|give\s+me\s+(some\s+|5\s+|a\s+few\s+)?ideas|brainstorm|can\s+you\s+explain|could\s+you\s+explain|is\s+it\s+better|how\s+do|follow\s*up)/i.test(lower) ||
+    (msg.endsWith('?') && !/\b(create|build|generate)\s+(the\s+)?(course|template)\b/i.test(lower));
+
+  if (startsAsQuestion && !agreedRequirements?.subject) {
+    return 'general_chat';
+  }
+
+  // 6. Refining an active course plan in the current conversation
+  if (agreedRequirements?.subject) {
+    const looksLikeGeneralUnrelatedQuestion =
+      startsAsQuestion &&
+      !/\b(module|course|objective|outcome|learner|audience|practical|duration|hours|credit|this\s+programme|that)\b/i.test(lower);
+
+    if (looksLikeGeneralUnrelatedQuestion) {
+      return 'general_chat';
+    }
+
+    const looksLikeRefinement =
+      /\b(i\s+want\s+them\s+to|they\s+should|focus\s+on|make\s+(the\s+course|it)|more\s+practical|hands-on|add\s+a\s+module|include|cover|target\s+audience|beginners|intermediate|advanced|modules?|hours|days|weeks|understand|learn|emphasis|scenarios?)\b/i.test(lower);
+
+    if (looksLikeRefinement || messages.length >= 2) {
+      if (startsAsQuestion && /\b(explain|what\s+is|why\s+is|how\s+does)\b/i.test(lower)) {
+        return 'general_chat';
+      }
+      return 'course_refine';
+    }
+  }
+
+  // Default to general conversational chat — NEVER assume every message is a course-generation request
+  return 'general_chat';
+}
+
+export function extractRequirementsFromMessage(
+  message: string,
+  intent: CopilotIntent,
+  existingAgreed?: CopilotAgreedRequirements | null
+): Partial<CopilotAgreedRequirements> {
+  const msg = (message || '').trim();
+  const lower = msg.toLowerCase();
+  const extracted: Partial<CopilotAgreedRequirements> = {};
+
+  // Extract explicit subject when starting a new topic or creating a template explicitly
+  const quoted = msg.match(/["“”'‘’]([^"“”'‘’]{3,120})["“”'‘’]/);
+  const inlineCourseMatch = msg.match(
+    /(?:create|build|plan|design|develop|make|structure|outline|start)\s+(?:a\s+|an\s+|the\s+|new\s+)?([a-zA-Z0-9][a-zA-Z0-9\s&/+-]{2,80}?)\s+(?:course|programme|program|curriculum|training|template)\b/i
+  );
+  const onTopicMatch = msg.match(
+    /(?:course|template|curriculum|programme|program)\s+(?:on|about|for|titled|called)\s+([a-zA-Z0-9][^.!?\n]{2,100})/i
+  );
+
+  if (quoted?.[1] && !/^(build|create|make|help|check|please|yes|ok)/i.test(quoted[1])) {
+    const t = quoted[1].trim();
+    extracted.subject = t;
+    extracted.title = t.charAt(0).toUpperCase() + t.slice(1);
+  } else if (inlineCourseMatch?.[1]) {
+    const t = cleanExtractedTopic(inlineCourseMatch[1]);
+    if (t.length >= 3 && !/^(the|this|that|new|my|full|complete)$/i.test(t)) {
+      extracted.subject = t;
+      extracted.title = t;
+    }
+  } else if (onTopicMatch?.[1]) {
+    const t = cleanExtractedTopic(onTopicMatch[1]);
+    if (t.length >= 3 && !/^(the|this|that|new|my|beginners|managers)$/i.test(t)) {
+      extracted.subject = t;
+      extracted.title = t;
+    }
+  }
+
+  // Difficulty / Audience cues
+  if (/\b(beginner|beginners|foundational|entry-level|novice|no\s+prior)\b/i.test(lower)) {
+    extracted.difficultyLevel = 'Foundational';
+    extracted.targetAudience = 'Beginners and entry-level practitioners entering the domain';
+  } else if (/\b(advanced|senior|expert|lead|principal|architect)\b/i.test(lower)) {
+    extracted.difficultyLevel = 'Advanced';
+    extracted.targetAudience = 'Senior practitioners, specialists, and technical leads';
+  } else if (/\b(intermediate|mid-level)\b/i.test(lower)) {
+    extracted.difficultyLevel = 'Intermediate';
+    extracted.targetAudience = 'Mid-level practitioners with foundational operational experience';
+  }
+
+  const audienceMatch = msg.match(/\b(?:aimed\s+at|for|target(?:ing)?\s+audience\s*(?:is|:)?)\s+([^.!?\n]{4,90})/i);
+  if (audienceMatch?.[1] && !/^(me|you|the\s+course|a\s+template)/i.test(audienceMatch[1].trim())) {
+    const aud = audienceMatch[1].trim();
+    if (!/\b(understand|cover|learn)\b/i.test(aud)) {
+      extracted.targetAudience = aud.charAt(0).toUpperCase() + aud.slice(1);
+    }
+  }
+
+  // Module count ("4 modules", "5-module")
+  const modMatch = lower.match(/\b([2-8])\s*[-\s]?modules?\b/);
+  if (modMatch?.[1]) {
+    extracted.moduleCount = parseInt(modMatch[1], 10);
+  }
+
+  // Duration ("16 hours", "3 days", "4 weeks")
+  const durMatch = msg.match(/\b(\d{1,3}\s*(?:hours?|hrs?|days?|weeks?))\b/i);
+  if (durMatch?.[1]) {
+    extracted.duration = durMatch[1];
+  }
+
+  // Learning goals ("I want them to understand cloud infrastructure, deployment, security and cost optimisation")
+  const goalsMatch = msg.match(
+    /(?:understand|learn(?:\s+about)?|cover|master|focus\s+on|include|outcomes?\s*:?|goals?\s*:?)\s+([^.!?\n]{6,220})/i
+  );
+  if (goalsMatch?.[1]) {
+    const rawGoals = goalsMatch[1]
+      .replace(/^(how\s+to|about|the|on)\s+/i, '')
+      .split(/\s*(?:,|;|\band\b|\bplus\b)\s*/i)
+      .map(g => g.trim().replace(/^[,\s.-]+|[,\s.-]+$/g, ''))
+      .filter(g => g.length >= 3 && !/^(the\s+course|it|more|much|very)$/i.test(g));
+    if (rawGoals.length > 0) {
+      extracted.learningGoals = rawGoals;
+    }
+  }
+
+  // Practical emphasis
+  if (/\b(more\s+practical|practical|hands-on|hands\s+on|lab|labs|workshop|real-world|applied|scenarios?)\b/i.test(lower)) {
+    extracted.practicalFocus = 'Hands-on labs, real-world South African workplace simulations, and step-by-step operational exercises';
+  }
+
+  // If intent is course_create and user still didn't specify a subject, preserve existingAgreed
+  if (intent === 'course_create' && !extracted.subject && existingAgreed?.subject) {
+    extracted.subject = existingAgreed.subject;
+    extracted.title = existingAgreed.title || existingAgreed.subject;
+  }
+
+  return extracted;
+}
+
+export function mergeAgreedRequirements(
+  existing: CopilotAgreedRequirements | null | undefined,
+  incoming: Partial<CopilotAgreedRequirements>,
+  intent: CopilotIntent
+): CopilotAgreedRequirements | null {
+  // Context isolation: when starting an explicit new course topic unrelated to the old one, replace rather than leak
+  const isExplicitNewSubject =
+    Boolean(incoming.subject) &&
+    Boolean(existing?.subject) &&
+    incoming.subject!.toLowerCase() !== existing!.subject.toLowerCase() &&
+    (intent === 'course_discussion_plan' || intent === 'course_create');
+
+  const base: CopilotAgreedRequirements | null = isExplicitNewSubject
+    ? null
+    : existing
+      ? { ...existing }
+      : null;
+
+  if (!base && !incoming.subject) {
+    return null;
+  }
+
+  const subject = incoming.subject || base?.subject || '';
+  const mergedGoals = Array.from(
+    new Set([
+      ...(base?.learningGoals || []),
+      ...(incoming.learningGoals || [])
+    ])
+  );
+
+  const mergedNotes = Array.from(
+    new Set([
+      ...(base?.additionalNotes || []),
+      ...(incoming.additionalNotes || [])
+    ])
+  );
+
+  return {
+    subject,
+    title: incoming.title || base?.title || subject,
+    targetAudience: incoming.targetAudience || base?.targetAudience,
+    industryContext: incoming.industryContext || base?.industryContext,
+    difficultyLevel: incoming.difficultyLevel || base?.difficultyLevel || '',
+    duration: incoming.duration || base?.duration,
+    moduleCount: incoming.moduleCount || base?.moduleCount,
+    learningGoals: mergedGoals.length > 0 ? mergedGoals : undefined,
+    moduleOutlines: incoming.moduleOutlines || base?.moduleOutlines,
+    practicalFocus: incoming.practicalFocus || base?.practicalFocus,
+    toolsOrPlatforms: incoming.toolsOrPlatforms || base?.toolsOrPlatforms,
+    additionalNotes: mergedNotes.length > 0 ? mergedNotes : undefined,
+    readyToCreate: intent === 'course_create' ? true : (incoming.readyToCreate ?? base?.readyToCreate ?? false)
+  };
+}
+
+interface DomainBlueprintTemplate {
+  codePrefix: string;
+  industryDomain: string;
+  industryContext: string;
+  defaultAudience: string;
+  taskOrSkill: string;
+  operationalImpact: string;
+  rootCauses: string[];
+  processFailures: string;
+  skillGaps: string;
+  constraints: string;
+  digitalReadiness: string;
+  aiLiteracyGap: string;
+  aiEthicsRisk: string;
+  regulatoryFramework: string;
+  regulatorySources: string;
+  aiToolsPlatformName: string;
+  aiToolsReferenced: string;
+  aiEthicsFramework: string;
+  caseStudyUseCases: string;
+  industryUseCases: string;
+  evidenceStandards: string[];
+  accreditationBody: string;
+  nqfLevel: string;
+  terminology: string;
+  industryExamples: string;
+  sources: Course['research']['sources'];
+  moduleBlueprints: Array<{
+    title: string;
+    subtitle: string;
+    purpose: string;
+    keySkills: string[];
+    learningObjectives: string[];
+    coreConcepts: string;
+    keyTerms: string;
+    aiCoverage: string;
+    practicalExercise: string;
+    scenarios: Array<{
+      title: string;
+      situation: string;
+      challenge: string;
+      decisionPoint: string;
+      debrief: string;
+    }>;
+  }>;
+}
+
+function buildDomainBlueprint(
+  domain: LocalDomainCategory,
+  courseTitle: string,
+  agreed?: CopilotAgreedRequirements | null
+): DomainBlueprintTemplate {
+  const goalList = agreed?.learningGoals || [];
+  const practicalFlag = Boolean(agreed?.practicalFocus);
+
+  if (domain === 'cloud_engineering') {
+    return {
+      codePrefix: 'CLD',
+      industryDomain: 'Cloud Engineering, Distributed Infrastructure & DevOps',
+      industryContext: 'South African enterprise cloud migration, hybrid cloud infrastructure, and SaaS engineering environments operating under POPIA data-residency rules.',
+      defaultAudience: agreed?.targetAudience || 'Aspiring cloud engineers, junior systems administrators, software developers, and IT infrastructure practitioners',
+      taskOrSkill: 'provisioning resilient cloud infrastructure, automating CI/CD deployments, enforcing IAM/network security controls, and governing FinOps cloud spending',
+      operationalImpact: 'misconfigured public storage buckets, runaway cloud consumption bills, brittle manual server deployments, and unmonitored service outages',
+      rootCauses: [
+        'Provisioning cloud resources manually via web consoles without Infrastructure-as-Code (IaC) version control or repeatable templates',
+        'Over-permissive Identity and Access Management (IAM) roles and flat virtual networks lacking least-privilege segmentation',
+        'Absence of automated billing alerts, resource tagging, and FinOps cost-optimisation guardrails across development and production workloads'
+      ],
+      processFailures: 'Manual click-ops deployments without automated security scanning, missing IaC peer reviews, and unmonitored cloud spend.',
+      skillGaps: 'Designing segmented VPC networks, writing declarative Terraform/IaC modules, automating CI/CD pipelines, and auditing cloud cost drivers.',
+      constraints: 'Multi-region latency considerations, South African POPIA cross-border data transfer controls (Section 72), and strict monthly budget caps.',
+      digitalReadiness: 'Comfortable with command-line basics, networking fundamentals, and modern web applications.',
+      aiLiteracyGap: 'Using AI coding/IaC assistants productively without blindly deploying hallucinated Terraform policies, overly permissive IAM JSON, or insecure container defaults.',
+      aiEthicsRisk: 'Exposing cloud access keys, architecture secrets, or customer personal data to external AI prompts, or deploying AI-generated IAM policies without security review.',
+      regulatoryFramework: 'POPIA Act 4 of 2013 (Verify cross-border cloud hosting under Section 72 with Information Officer) and King IV Principle 12 (Technology Governance — Verify applicability).',
+      regulatorySources: 'POPIA Act 4 of 2013 Sections 19 & 72; King IV Principle 12; Cloud Provider Well-Architected Security & Cost Pillars.',
+      aiToolsPlatformName: 'AWS / Azure / GCP Console & CLI, Terraform IaC, Docker/Kubernetes, GitHub Actions CI/CD, and Enterprise AI IaC Review Assistants',
+      aiToolsReferenced: 'Cloud IAM, VPC Networking, Terraform, CI/CD Pipelines, Cloud Cost Explorer / FinOps Dashboards',
+      aiEthicsFramework: 'Least-Privilege Security Governance, POPIA Data Residency Controls, and Human Peer Review of Infrastructure Changes',
+      caseStudyUseCases: '1) Replacing manual VM click-ops with modular VPC + compute Terraform templates; 2) Locking down an exposed S3/Blob bucket and enforcing IAM MFA + least privilege; 3) Cutting idle non-production cloud spend by 38% using automated tagging and autoscaling schedules.',
+      industryUseCases: 'South African fintech cloud landing zones, automated container deployments, and FinOps cost governance.',
+      evidenceStandards: [
+        'Well-Architected Framework: Operational Excellence, Security, Reliability, Cost Optimisation',
+        'POPIA Act 4 of 2013 Section 19 & Section 72 (Verify cross-border data rules)',
+        'CIS Cloud Benchmark Baseline Controls (Verify benchmark version)'
+      ],
+      accreditationBody: 'To Be Confirmed (Requires MICT SETA / Cloud Vendor SME Validation)',
+      nqfLevel: agreed?.difficultyLevel === 'Foundational' ? 'NQF Level 5 (Foundational Applied)' : 'NQF Level 6',
+      terminology: 'VPC, Subnet, IAM Least Privilege, Infrastructure as Code (IaC), Terraform, CI/CD Pipeline, Containerisation, FinOps, Cost Allocation Tagging, POPIA Section 72.',
+      industryExamples: 'Johannesburg and Cape Town cloud data-centre regions, hybrid enterprise workloads, automated CI/CD releases, and FinOps budget dashboards.',
+      sources: [
+        {
+          id: 'src-1',
+          name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
+          type: 'Regulatory framework',
+          reference: 'Sections 19 & 72 (Cross-Border Information Flows — Verify legal applicability)',
+          relevance: 'Governs security safeguards and data-residency accountability when hosting workloads in cloud regions.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-2',
+          name: 'Cloud Well-Architected Framework (Security, Reliability & Cost Optimisation)',
+          type: 'Industry standard',
+          reference: 'Industry Multi-Cloud Architecture Reference Standard',
+          relevance: 'Defines core pillars for resilient cloud infrastructure, automated deployment, and FinOps governance.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-3',
+          name: 'King IV Report on Corporate Governance — Principle 12',
+          type: 'Ethics framework',
+          reference: 'Institute of Directors in South Africa (IoDSA)',
+          relevance: 'Establishes executive oversight for technology, cybersecurity, and cloud vendor governance.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-4',
+          name: 'CIS Cloud Foundations & IAM Least-Privilege Baseline',
+          type: 'Technology documentation',
+          reference: 'Center for Internet Security Controls (Requires Version Verification)',
+          relevance: 'Provides practical hardening baselines for cloud IAM, networking, logging, and encryption.',
+          status: 'Verified'
+        }
+      ],
+      moduleBlueprints: [
+        {
+          title: 'Module 1: Cloud Infrastructure Fundamentals & Networking Architecture',
+          subtitle: 'Compute, Storage, Virtual Networks (VPC) & Shared Responsibility',
+          purpose: 'Build strong foundational mastery of core cloud building blocks—compute, object/block storage, virtual private clouds, subnets, and high-availability regions.',
+          keySkills: ['Cloud Service Models (IaaS/PaaS)', 'VPC & Subnet Design', 'Compute & Storage Selection', 'Shared Responsibility Mapping'],
+          learningObjectives: [
+            'Differentiate between compute, storage, and networking primitives across modern cloud platforms',
+            'Design a segmented virtual network (VPC) with public/private subnets and load balancing for high availability',
+            'Apply the Cloud Shared Responsibility Model and verify data-residency boundaries under POPIA'
+          ],
+          coreConcepts: 'Covers cloud regions vs availability zones, virtual machines vs containers vs serverless compute, object vs block storage, DNS routing, and network segmentation.',
+          keyTerms: 'VPC, CIDR Subnet, Availability Zone, Load Balancer, Object Storage, Shared Responsibility Model, Data Residency.',
+          aiCoverage: 'Uses AI architecture assistants to brainstorm network topologies while enforcing human validation of CIDR blocks and firewall rules.',
+          practicalExercise: 'Design and diagram a two-tier VPC architecture separating public web load balancers from private database subnets with explicit ingress/egress rules.',
+          scenarios: [
+            {
+              title: 'Fixing an Exposed Database Subnet',
+              situation: 'A junior cloud technician deploys a test application database inside a public subnet with an open 0.0.0.0/0 port.',
+              challenge: 'Reconciling urgent developer access needs with zero-trust network isolation.',
+              decisionPoint: 'Move the database to a private subnet accessed only via internal security groups or bastion/VPN.',
+              debrief: 'Never expose stateful databases directly to the public internet; isolate data tiers inside private subnets.'
+            },
+            {
+              title: 'Single-Zone Outage Recovery',
+              situation: 'An e-commerce workload runs on a single virtual machine in one availability zone during a regional power/fibre disruption.',
+              challenge: 'Preventing single points of failure without tripling infrastructure spend.',
+              decisionPoint: 'Configure an auto-scaling group behind an application load balancer across two availability zones.',
+              debrief: 'Multi-AZ active-active deployment eliminates single-zone outages cleanly.'
+            },
+            {
+              title: 'Evaluating Region Selection for Customer Records',
+              situation: 'A team plans to host sensitive South African customer profiles in an overseas region solely for a 4% compute discount.',
+              challenge: 'Checking data-sovereignty and POPIA cross-border obligations before provisioning.',
+              decisionPoint: 'Consult the Information Officer and prioritise local South African cloud regions with Section 72 safeguards.',
+              debrief: 'Architecture choices carry legal data-residency consequences.'
+            }
+          ]
+        },
+        {
+          title: 'Module 2: Automated Cloud Deployment, Containers & CI/CD Pipelines',
+          subtitle: 'Infrastructure-as-Code (IaC), Docker Containers & Zero-Downtime Releases',
+          purpose: 'Transition learners from manual console setup to repeatable Infrastructure-as-Code templates, containerised packaging, and automated CI/CD deployment pipelines.',
+          keySkills: ['Infrastructure as Code (Terraform)', 'Container Packaging (Docker)', 'CI/CD Build & Release Gates', 'Rollback & Health Checks'],
+          learningObjectives: [
+            'Author declarative Infrastructure-as-Code templates to provision repeatable cloud environments cleanly',
+            'Package a microservice into a reproducible container image and run pre-deployment smoke checks',
+            'Configure a CI/CD deployment pipeline with automated tests, approval gates, and safe rollback controls'
+          ],
+          coreConcepts: 'Covers declarative vs imperative provisioning, state management, container image layering, rolling/blue-green deployments, and automated pipeline verification.',
+          keyTerms: 'Terraform, Infrastructure as Code (IaC), State File, Docker Container, CI/CD Pipeline, Blue-Green Deployment, Rollback.',
+          aiCoverage: 'Demonstrates prompting AI assistants for starter Terraform/YAML scaffolds and catching hallucinated resource attributes before `terraform apply`.',
+          practicalExercise: 'Write and dry-run (`plan`) an Infrastructure-as-Code template plus CI/CD deployment pipeline with a mandatory manual production approval gate.',
+          scenarios: [
+            {
+              title: 'Eliminating Environment Drift After Manual Hotfixes',
+              situation: 'An engineer edits production firewall rules manually via the web console at 22:00, breaking the next CI/CD run.',
+              challenge: 'Restoring single-source-of-truth reproducibility across environments.',
+              decisionPoint: 'Reconcile the change back into Terraform code, enforce branch reviews, and restrict direct console writes.',
+              debrief: 'All production changes must flow through version-controlled IaC pipelines.'
+            },
+            {
+              title: 'Auditing an AI-Generated Terraform Snippet',
+              situation: 'A developer pastes a public AI-generated Terraform module that opens SSH port 22 globally and stores unencrypted state locally.',
+              challenge: 'Catching insecure defaults before provisioning infrastructure.',
+              decisionPoint: 'Run `terraform validate` + static security scanning (tfsec/checkov) and enforce remote encrypted state.',
+              debrief: 'Never run `apply` on unreviewed AI-generated IaC templates.'
+            },
+            {
+              title: 'Handling a Failed Rolling Container Release',
+              situation: 'A newly deployed API container fails health checks immediately after rollout.',
+              challenge: 'Restoring user availability quickly without losing diagnostic logs.',
+              decisionPoint: 'Trigger automated pipeline rollback to the last healthy image tag while preserving container logs for root-cause review.',
+              debrief: 'Automated health checks and tested rollbacks keep deployments low-risk.'
+            }
+          ]
+        },
+        {
+          title: 'Module 3: Cloud Security, IAM Governance & FinOps Cost Optimisation',
+          subtitle: 'Least-Privilege IAM, Secret Management, Observability & Cloud Cost Control',
+          purpose: 'Equip learners to lock down cloud workloads using least-privilege IAM, encryption, and monitoring while actively eliminating wasted cloud spend through FinOps practices.',
+          keySkills: ['IAM Least Privilege', 'Secrets & Encryption Management', 'Monitoring & Alerting', 'FinOps Tagging & Right-Sizing'],
+          learningObjectives: [
+            'Configure role-based IAM policies enforcing least privilege, MFA, and short-lived credentials',
+            'Implement centralised logging, encryption at rest/in transit, and secret rotation across cloud services',
+            'Analyse cloud billing telemetry using resource tags, budget thresholds, and instance right-sizing to reduce waste'
+          ],
+          coreConcepts: 'Covers IAM roles vs static root keys, KMS encryption, secret managers, cloud audit trails, resource tagging taxonomies, spot/reserved capacity, and idle workload shutdowns.',
+          keyTerms: 'IAM Role, Principle of Least Privilege, KMS Encryption, Secrets Manager, FinOps, Right-Sizing, Cost Allocation Tag.',
+          aiCoverage: 'Uses automated anomaly alerts for unexpected billing spikes and security findings while requiring human confirmation before automated remediation.',
+          practicalExercise: 'Perform a combined Cloud Security & FinOps audit on a sample environment to tighten overly broad IAM permissions and cut monthly compute/storage waste by at least 25%.',
+          scenarios: [
+            {
+              title: 'Revoking Hardcoded Cloud API Keys',
+              situation: 'Secret scanning flags an AWS/Azure access key committed inside a developer repository.',
+              challenge: 'Neutralising credential exposure immediately without crashing live services.',
+              decisionPoint: 'Rotate and revoke the leaked key, audit CloudTrail/activity logs for misuse, and migrate services to short-lived IAM roles.',
+              debrief: 'Replace static long-lived keys with temporary IAM roles and managed secret stores.'
+            },
+            {
+              title: 'Investigating an Unexpected Weekend Cloud Bill Spike',
+              situation: 'Cost monitoring triggers an alert showing non-production GPU and storage spend jumped 4x over a weekend.',
+              challenge: 'Pinpointing the unowned resources quickly across multiple project teams.',
+              decisionPoint: 'Filter billing by mandatory environment/owner tags, shut down orphaned test clusters, and enforce automated non-prod scheduling.',
+              debrief: 'Enforced tagging plus automated off-hours schedules prevent runaway cloud bills.'
+            },
+            {
+              title: 'Balancing Security Logging Against Storage Cost',
+              situation: 'Verbose debug logs ingested into cloud analytics inflate monthly observability bills unnecessarily.',
+              challenge: 'Maintaining audit compliance without paying excessive log-retention fees.',
+              decisionPoint: 'Apply structured log levels, filter noise at ingestion, and tier historical compliance logs into low-cost archival storage.',
+              debrief: 'Smart retention tiering delivers both security traceability and FinOps efficiency.'
+            }
+          ]
+        },
+        {
+          title: 'Module 4: Practical Cloud Operations Capstone, Monitoring & Rollout',
+          subtitle: 'End-to-End Observability, Incident Triage & Team Cloud Governance',
+          purpose: 'Consolidate infrastructure, deployment, security, and cost optimisation skills into an actionable 30-60-90 day operational cloud playbook.',
+          keySkills: ['SLI/SLO Observability', 'Incident Runbooks', 'Compliance Verification', 'FinOps & Governance Reporting'],
+          learningObjectives: [
+            'Build an observability dashboard tracking latency, error rate, saturation, and monthly unit cost',
+            'Execute an incident response runbook and blameless post-incident review for a simulated cloud outage',
+            'Present a practical 30-60-90 day cloud adoption and cost-governance checklist for an engineering team'
+          ],
+          coreConcepts: 'Covers telemetry metrics/logs/traces, alerting thresholds, disaster recovery testing (RTO/RPO), and continuous cost/security review cadences.',
+          keyTerms: 'SLI/SLO, MTTR, Disaster Recovery (RTO/RPO), Blameless Post-Mortem, Cloud Landing Zone.',
+          aiCoverage: 'Summarising incident timelines responsibly while validating root causes against live telemetry.',
+          practicalExercise: 'Complete a capstone cloud deployment, security hardening, and cost-optimisation review dossier for production sign-off.',
+          scenarios: [
+            {
+              title: 'Executing a Disaster Recovery Failover Drill',
+              situation: 'A quarterly drill tests recovery time objective (RTO) when primary database failover occurs.',
+              challenge: 'Verifying backup integrity and DNS cutover under realistic load.',
+              decisionPoint: 'Follow the verified DR runbook, measure actual RTO/RPO, and log remediation tasks for gaps.',
+              debrief: 'Untested backups are assumptions—regular DR drills prove resilience.'
+            },
+            {
+              title: 'Conducting a Monthly FinOps & Security Architecture Review',
+              situation: 'New microservices added rapidly over two sprints bypassed tagging and budget checks.',
+              challenge: 'Embedding governance smoothly without slowing developer velocity.',
+              decisionPoint: 'Automate tagging policy checks in CI/CD so compliant infrastructure passes effortlessly.',
+              debrief: 'Policy-as-code in CI/CD aligns speed with security and cost discipline.'
+            },
+            {
+              title: 'Escalating an Unverified Cloud Change',
+              situation: 'A teammate proposes disabling audit logging temporarily to troubleshoot latency.',
+              challenge: 'Resolving performance bottlenecks without blinding security telemetry.',
+              decisionPoint: 'Reject disabling audit logs; isolate latency with distributed tracing metrics instead.',
+              debrief: 'Never compromise auditability during troubleshooting.'
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  if (domain === 'generative_ai_business') {
+    return {
+      codePrefix: 'GENAI',
+      industryDomain: 'Generative AI for Enterprise Productivity & Business Operations',
+      industryContext: 'South African corporate, commercial, and operational teams adopting generative AI responsibly under POPIA and King IV governance.',
+      defaultAudience: agreed?.targetAudience || 'Business managers, operations specialists, analysts, team leaders, and corporate knowledge workers',
+      taskOrSkill: 'identifying high-ROI business AI use cases, crafting structured domain prompts, auditing hallucinations and bias, and embedding POPIA-safe workflows',
+      operationalImpact: 'shadow AI data leaks, unverified hallucinated client deliverables, low-value pilot fatigue, and inconsistent team productivity',
+      rootCauses: [
+        'Ad-hoc prompting without structured context, verification checklists, or business quality criteria',
+        'Employees pasting confidential customer, financial, or HR records into unvetted public generative AI tools',
+        'Evaluating AI tools based on hype rather than measurable business cycle-time, quality, and risk-control KPIs'
+      ],
+      processFailures: 'No approved prompt review gates or zero-PII data redaction steps prior to publishing AI-assisted client or management outputs.',
+      skillGaps: 'Structured prompt engineering, retrieval-augmented grounding checks, hallucination auditing, and business ROI scoping.',
+      constraints: 'Mandatory POPIA customer data privacy, intellectual property safeguards, and busy operational schedules.',
+      digitalReadiness: 'Routine proficiency with office suites (documents, spreadsheets, email, CRM) and browser tools.',
+      aiLiteracyGap: 'Understanding probabilistic LLM behaviour (hallucinations, sycophancy, stale knowledge cut-offs) vs deterministic business facts.',
+      aiEthicsRisk: 'Customer PII leaks to external AI providers, biased customer/HR recommendations, and undisclosed synthetic inaccuracies.',
+      regulatoryFramework: 'POPIA Act 4 of 2013 (Customer & Employee Data Safeguards, Section 71 automated decisions) and King IV Principle 12 (Technology & Information Governance).',
+      regulatorySources: 'POPIA Act No. 4 of 2013; King IV Principle 12; ISO/IEC 42001 AI Management Principles.',
+      aiToolsPlatformName: 'Enterprise LLM Assistants (Groq Cloud, Microsoft 365 Copilot, Enterprise Chat Assistants), Document Grounding / RAG Workflows, and Redaction Checklists',
+      aiToolsReferenced: 'Enterprise Generative AI Assistants, Structured Prompt Libraries, Grounded Knowledge Search',
+      aiEthicsFramework: 'POPIA Zero-PII Prompting, King IV Principle 12, and Mandatory Human-in-the-Loop Business Sign-Off',
+      caseStudyUseCases: '1) Automating meeting synthesis and client proposal first drafts with verified source citations; 2) Sanitising sensitive client tables before AI variance analysis; 3) Piloting a governed customer-support drafting assistant reducing turnaround by 35%.',
+      industryUseCases: 'South African commercial operations, finance/admin reporting, customer service drafting, and knowledge management.',
+      evidenceStandards: [
+        'POPIA Act 4 of 2013 (Sections 11, 19, 71)',
+        'King IV Principle 12 Technology & Information Governance',
+        'ISO/IEC 42001 AI Risk & Human Oversight Standard'
+      ],
+      accreditationBody: 'To Be Confirmed (Requires Services SETA / QCTO SME Validation)',
+      nqfLevel: agreed?.difficultyLevel === 'Foundational' ? 'NQF Level 5' : 'NQF Level 5/6',
+      terminology: 'Prompt Engineering, Hallucination, Retrieval-Augmented Generation (RAG), Human-in-the-Loop (HITL), Zero-PII Redaction, POPIA, ROI Pilot.',
+      industryExamples: 'South African corporate services, retail operations, B2B proposals, and customer communications.',
+      sources: [
+        {
+          id: 'src-1',
+          name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
+          type: 'Regulatory framework',
+          reference: 'Sections 19 & 71 (Security Safeguards & Automated Decision-Making)',
+          relevance: 'Requires anonymisation/protection of personal data and human oversight on consequential automated decisions.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-2',
+          name: 'King IV Report on Corporate Governance — Principle 12',
+          type: 'Ethics framework',
+          reference: 'Institute of Directors in South Africa (IoDSA)',
+          relevance: 'Guides accountable enterprise adoption of generative AI and information security controls.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-3',
+          name: 'ISO/IEC 42001: Artificial Intelligence Management System',
+          type: 'Industry standard',
+          reference: 'International Standard (Verify Organisational Certification Scope)',
+          relevance: 'Defines risk assessment, human review, and continuous monitoring for business AI workflows.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-4',
+          name: 'UNESCO Recommendation on the Ethics of Artificial Intelligence',
+          type: 'Ethics framework',
+          reference: 'Transparency, Accountability & Bias Mitigation Principles',
+          relevance: 'Provides practical governance criteria for fair and transparent workplace AI deployment.',
+          status: 'Verified'
+        }
+      ],
+      moduleBlueprints: [
+        {
+          title: 'Module 1: Business Generative AI Foundations, Use-Case Selection & Risk Boundaries',
+          subtitle: 'How LLMs Work, High-ROI Workflows & POPIA Zero-PII Safeguards',
+          purpose: 'Demystify generative AI mechanics for business teams, distinguish high-ROI workflows from risky tasks, and establish non-negotiable POPIA data boundaries.',
+          keySkills: ['Business Use-Case Triage', 'LLM Capability vs Limitation', 'Zero-PII Redaction', 'Risk Boundary Mapping'],
+          learningObjectives: [
+            'Explain how generative AI models predict text versus how grounded business systems retrieve verified facts',
+            'Evaluate business tasks using an ROI-vs-Risk matrix to select safe, high-impact generative AI use cases',
+            'Apply zero-PII and confidentiality redaction protocols before submitting business material to AI tools'
+          ],
+          coreConcepts: 'Covers probabilistic token generation, context windows, hallucinations, deterministic vs generative tasks, and shadow AI prevention.',
+          keyTerms: 'Generative AI, Context Window, Hallucination, Zero-PII Prompting, Shadow AI, Use-Case Triage.',
+          aiCoverage: 'Contrasts raw web chat prompting against enterprise zero-data-retention environments and grounded retrieval workflows.',
+          practicalExercise: 'Score five daily team tasks on an Impact-vs-Risk matrix and redact a sample client brief cleanly prior to AI summarisation.',
+          scenarios: [
+            {
+              title: 'Shadow AI in Commercial Proposal Drafting',
+              situation: 'An account executive pastes an unredacted client pricing schedule into a free consumer AI website to polish a proposal.',
+              challenge: 'Protecting commercial confidentiality and POPIA compliance without halting proposal velocity.',
+              decisionPoint: 'Enforce approved enterprise AI access with redacted placeholders (`[Client A]`, `[Amount]`) before prompting.',
+              debrief: 'Never paste raw client identifiers or confidential pricing into unapproved public models.'
+            },
+            {
+              title: 'Spotting Fabricated Market Statistics',
+              situation: 'An AI assistant generates convincing but non-existent South African industry survey percentages for an executive deck.',
+              challenge: 'Catching confident hallucinations before leadership sign-off.',
+              decisionPoint: 'Require primary source URLs/reports and verify every numeric claim independently.',
+              debrief: 'Never publish unverified statistics generated from LLM memory.'
+            },
+            {
+              title: 'Selecting the Right Pilot Workflow',
+              situation: 'Leadership asks which department process to automate first: complex legal arbitration or internal meeting-note summarisation.',
+              challenge: 'Balancing visible productivity wins against operational risk.',
+              decisionPoint: 'Start with low-risk drafting/summarisation with mandatory human review before high-stakes decisions.',
+              debrief: 'High-frequency, human-reviewed drafting yields fast, safe business ROI.'
+            }
+          ]
+        },
+        {
+          title: 'Module 2: Structured Business Prompting, RAG Grounding & Quality Auditing',
+          subtitle: 'Role-Context-Constraints Prompting, Document Grounding & Hallucination Checks',
+          purpose: 'Equip professionals with repeatable prompt frameworks, document-grounded workflows, and rigorous verification checklists for daily business outputs.',
+          keySkills: ['Structured Prompt Engineering', 'Document Grounding (RAG)', 'Fact & Tone Auditing', 'Reusable Team Prompt Libraries'],
+          learningObjectives: [
+            'Construct structured business prompts defining role, context, audience, constraints, and South African tone',
+            'Ground AI analysis in supplied internal documents rather than open-ended model memory',
+            'Audit AI-drafted reports, emails, and analyses for factual fidelity, bias, and completeness'
+          ],
+          coreConcepts: 'Covers Role-Context-Task-Format-Verification prompting, few-shot examples, citation-forcing prompts, and comparative quality review.',
+          keyTerms: 'Structured Prompting, Few-Shot Examples, Retrieval-Augmented Generation (RAG), Citation Check, Bias Audit.',
+          aiCoverage: 'Hands-on prompt iteration transforming vague requests into accurate, policy-aligned business deliverables.',
+          practicalExercise: 'Build and test a reusable Role-Context-Constraints prompt template for a core departmental task and audit two AI drafts for errors.',
+          scenarios: [
+            {
+              title: 'Refining Generic AI Outputs for Local Clients',
+              situation: 'A default prompt produces overly Americanised, generic customer apology emails that clash with company tone.',
+              challenge: 'Consistent brand voice and empathetic South African phrasing.',
+              decisionPoint: 'Embed tone rules, two real examples, and escalation constraints inside a shared prompt template.',
+              debrief: 'Explicit examples and constraints turn generic AI text into brand-aligned drafts.'
+            },
+            {
+              title: 'Grounding Policy Answers in Internal SOPs',
+              situation: 'Staff get conflicting answers when asking an AI general questions about leave or procurement rules.',
+              challenge: 'Eliminating external guesswork on company-specific policies.',
+              decisionPoint: 'Supply the exact approved policy text in the prompt or RAG knowledge base and instruct the AI to cite exact clauses.',
+              debrief: 'Always anchor policy answers in verified internal source documents.'
+            },
+            {
+              title: 'Auditing Bias in Automated Screening Summaries',
+              situation: 'An AI summarises 40 supplier bids but disproportionately downgrades smaller local vendors due to formatting differences.',
+              challenge: 'Ensuring fair, criteria-based evaluation.',
+              decisionPoint: 'Replace open-ended scoring with an explicit rubric table verified directly by the procurement panel.',
+              debrief: 'Structured rubrics and human oversight prevent subtle ranking bias.'
+            }
+          ]
+        },
+        {
+          title: 'Module 3: Business Rollout Governance, ROI Measurement & 90-Day Adoption Plan',
+          subtitle: 'Team Guidelines, Value Tracking & Continuous Human-in-the-Loop Oversight',
+          purpose: 'Enable managers and operational leads to govern generative AI across teams, track measurable productivity ROI, and sustain safe adoption.',
+          keySkills: ['Departmental AI Usage Policy', 'ROI & Cycle-Time KPIs', 'Human Sign-Off Registers', '90-Day Change Enablement'],
+          learningObjectives: [
+            'Design a practical team AI usage charter defining approved tools, redaction rules, and disclosure norms',
+            'Define measurable business KPIs (drafting time saved, defect rate, review compliance) for a 90-day pilot',
+            'Lead transparent change enablement that builds staff confidence and quality accountability'
+          ],
+          coreConcepts: 'Covers King IV technology governance, pilot KPI baselines, prompt library maintenance, and audit sampling.',
+          keyTerms: 'AI Usage Charter, Pilot ROI Baseline, Disclosure Norm, Quality Sampling, PDCA Governance.',
+          aiCoverage: 'Monitoring real business workflows to ensure AI accelerates value without eroding accuracy or compliance.',
+          practicalExercise: 'Author a one-page Departmental Generative AI Governance Charter and 30-60-90 day rollout scorecard.',
+          scenarios: [
+            {
+              title: 'Measuring Real Productivity vs Busywork',
+              situation: 'A team reports saving hours with AI, yet managers spend extra time rewriting poor drafts.',
+              challenge: 'Tracking net cycle time and quality rather than raw draft speed.',
+              decisionPoint: 'Measure end-to-end review-to-approval time and refine prompts around common reviewer edits.',
+              debrief: 'True AI ROI measures final approved quality, not first-draft speed.'
+            },
+            {
+              title: 'Disclosing AI Assistance Appropriately',
+              situation: 'A consulting team debates how to govern AI-assisted research summaries delivered to enterprise clients.',
+              challenge: 'Honouring client contracts and King IV transparency.',
+              decisionPoint: 'Follow contractual disclosure policies and record internal human verification sign-off on all client work.',
+              debrief: 'Clear disclosure and documented verification sustain client trust.'
+            },
+            {
+              title: 'Scaling a Pilot After 60-Day Review',
+              situation: 'After two months, prompt templates saved 30% admin time in Customer Operations with zero privacy incidents.',
+              challenge: 'Expanding safely to Finance and HR without losing control.',
+              decisionPoint: 'Tailor separate domain prompt packs and compliance checks per department before onboarding.',
+              debrief: 'Scale department by department using role-specific guardrails.'
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  if (domain === 'human_resource_management') {
+    return {
+      codePrefix: 'HRM',
+      industryDomain: 'Human Resource Management, People Operations & Labour Governance',
+      industryContext: 'South African HR operations navigating recruitment, performance management, workplace fairness, and statutory compliance.',
+      defaultAudience: agreed?.targetAudience || 'HR practitioners, people managers, talent specialists, line supervisors, and employee relations leads',
+      taskOrSkill: 'executing fair recruitment, structured onboarding, defensible performance/disciplinary management, and compliant employee data handling',
+      operationalImpact: 'CCMA procedural disputes, inconsistent hiring decisions, early attrition after poor onboarding, and unlawful employee data exposure',
+      rootCauses: [
+        'Informal hiring and performance conversations lacking objective job-related criteria and documented records',
+        'Inconsistent application of progressive discipline and procedural fairness before hearings or dismissals',
+        'Use of unvetted digital or AI screening tools creating fairness bias or POPIA employee-record exposure'
+      ],
+      processFailures: 'Ad-hoc interview scoring, missing probation review logs, and undocumented corrective counselling.',
+      skillGaps: 'Structured competency interviewing, objective performance coaching, procedural fairness documentation, and ethical HR analytics.',
+      constraints: 'High manager workloads, sensitive employee grievances, and strict South African labour and data-privacy accountability.',
+      digitalReadiness: 'Routine proficiency with HRIS portals, spreadsheets, email, and applicant tracking tools.',
+      aiLiteracyGap: 'Recognising why automated CV screening or sentiment tools can amplify historical bias and why Section 71 forbids unreviewed automated HR rejections.',
+      aiEthicsRisk: 'Biased automated candidate filtering, uploading employee IDs/medical notes to public AI tools, and impersonal disciplinary templates.',
+      regulatoryFramework: 'Labour Relations Act (LRA 66 of 1995 — Verify applicable schedules with HR/Legal SME), Basic Conditions of Employment Act (BCEA 75 of 1997 — Verify applicability), Employment Equity Act (EEA 55 of 1998 — Verify applicability), and POPIA Act 4 of 2013.',
+      regulatorySources: 'LRA 66 of 1995; BCEA 75 of 1997; EEA 55 of 1998; POPIA Act 4 of 2013 (Requires SME/Legal Verification for specific sector determinations).',
+      aiToolsPlatformName: 'Enterprise HRIS Platforms, Structured Interview Scorecards, and Approved Internal HR Drafting Assistants (Zero-PII)',
+      aiToolsReferenced: 'HRIS Reporting, Competency Scorecards, Structured Drafting Prompts',
+      aiEthicsFramework: 'Constitutional Equality & Fair Labour Practices, POPIA Section 19 & 71, and Mandatory Human Decision Ownership',
+      caseStudyUseCases: '1) Standardising structured competency interview rubrics to reduce hiring bias; 2) Coaching managers through defensible probation and incapacity reviews; 3) Auditing an HR workflow to protect confidential employee files under POPIA.',
+      industryUseCases: 'South African corporate HR departments, retail/logistics people teams, and line manager enablement.',
+      evidenceStandards: [
+        'Labour Relations Act 66 of 1995 (Verify Code of Good Practice applicability)',
+        'Basic Conditions of Employment Act 75 of 1997 (Verify sectoral rules)',
+        'Employment Equity Act 55 of 1998 & POPIA Act 4 of 2013'
+      ],
+      accreditationBody: 'To Be Confirmed (Requires SABPP / Services SETA SME Validation)',
+      nqfLevel: 'NQF Level 5/6',
+      terminology: 'Procedural Fairness, Substantive Fairness, Competency-Based Interview, Probation Review, POPIA Employee Data, Human Oversight.',
+      industryExamples: 'South African HR operations, onboarding journeys, performance improvement plans, and employee relations governance.',
+      sources: [
+        {
+          id: 'src-1',
+          name: 'Labour Relations Act (LRA No. 66 of 1995) — Fair Labour & Dismissal Principles',
+          type: 'Regulatory framework',
+          reference: 'Schedule 8 Code of Good Practice (Verify Specific Provisions with Legal/HR SME)',
+          relevance: 'Establishes procedural and substantive fairness standards for workplace discipline and incapacity.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-2',
+          name: 'Basic Conditions of Employment Act (BCEA No. 75 of 1997)',
+          type: 'Regulatory framework',
+          reference: 'Republic of South Africa (Verify Bargaining Council / Sectoral Exceptions)',
+          relevance: 'Governs working hours, leave entitlements, contracts, and notice periods.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-3',
+          name: 'Employment Equity Act (EEA No. 55 of 1998)',
+          type: 'Regulatory framework',
+          reference: 'Unfair Discrimination & Equitable Assessment Standards',
+          relevance: 'Requires valid, reliable, unbiased selection and assessment criteria free from unfair discrimination.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-4',
+          name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
+          type: 'Ethics framework',
+          reference: 'Sections 19, 26 & 71 (Employee & Special Personal Information)',
+          relevance: 'Strictly protects employee records, health/disciplinary notes, and guards against automated profiling.',
+          status: 'Verified'
+        }
+      ],
+      moduleBlueprints: [
+        {
+          title: 'Module 1: Structured Talent Acquisition, Fairness & Onboarding Excellence',
+          subtitle: 'Job-Related Criteria, Bias Mitigation & Effective 90-Day Onboarding',
+          purpose: 'Equip HR practitioners and hiring managers to design structured, fair recruitment scorecards and engaging onboarding plans compliant with EEA and POPIA.',
+          keySkills: ['Structured Interview Scorecards', 'Bias-Aware Screening', 'Compliant Reference Checks', '90-Day Onboarding Design'],
+          learningObjectives: [
+            'Translate role competencies into structured, non-discriminatory interview questions and scoring rubrics',
+            'Identify unfair bias risks in manual and AI-assisted CV screening and enforce human review',
+            'Design a structured 30-60-90 day onboarding checklist that accelerates new-hire productivity and retention'
+          ],
+          coreConcepts: 'Covers job analysis, structured behavioural interviews, Employment Equity fairness criteria, candidate privacy notices, and psychological safety during onboarding.',
+          keyTerms: 'Competency Rubric, Adverse Impact, Automated Screening Risk, Probation Check-In, Candidate Consent.',
+          aiCoverage: 'Uses AI to draft unbiased role descriptions and interview guides while strictly prohibiting automated rejection without human assessment.',
+          practicalExercise: 'Audit a draft job advert and build a weighted 5-criterion interview scorecard plus a 30-day onboarding milestone checklist.',
+          scenarios: [
+            {
+              title: 'Challenging Unstructured Gut-Feel Hiring',
+              situation: 'A hiring manager insists on rejecting a qualified candidate after an informal chat citing "lack of culture fit" without scorecard notes.',
+              challenge: 'Protecting equitable selection standards against subjective bias.',
+              decisionPoint: 'Require evidence scored strictly against pre-defined role competencies on the structured rubric.',
+              debrief: 'Competency-based evidence prevents subjective bias and improves hiring quality.'
+            },
+            {
+              title: 'Reviewing an AI CV Shortlisting Tool',
+              situation: 'An ATS plugin flags candidates with career gaps or non-traditional university names as lower priority.',
+              challenge: 'Catching indirect discrimination embedded in automated ranking scores.',
+              decisionPoint: 'Disable opaque automated scoring and evaluate anonymised skills evidence via human panelists.',
+              debrief: 'Automated filters must never become unexamined barriers under EEA and POPIA Section 71.'
+            },
+            {
+              title: 'Rescuing an Overwhelmed New Starter',
+              situation: 'Three recent hires resigned within four months citing unclear expectations and absent manager check-ins.',
+              challenge: 'Turning informal hand-offs into structured onboarding.',
+              decisionPoint: 'Deploy week-1, day-30, and day-60 manager check-in templates with clear role goals.',
+              debrief: 'Structured onboarding significantly reduces preventable early turnover.'
+            }
+          ]
+        },
+        {
+          title: 'Module 2: Performance Management, Coaching & Procedural Fairness',
+          subtitle: 'Objective KPIs, Constructive Feedback & Defensible Employee Relations',
+          purpose: 'Build practical manager and HR capability in continuous performance coaching, documented incapacity/misconduct support, and procedural fairness.',
+          keySkills: ['SMART Goal Alignment', 'Coaching Conversations', 'Progressive Corrective Records', 'Procedural Fairness Verification'],
+          learningObjectives: [
+            'Facilitate objective performance reviews linking measurable outputs to supportive coaching plans',
+            'Apply progressive corrective action and Performance Improvement Plans (PIPs) with fair notice and support',
+            'Audit disciplinary or grievance records for procedural completeness before formal hearings'
+          ],
+          coreConcepts: 'Covers continuous feedback vs annual surprises, substantive vs procedural fairness, incapacity vs misconduct distinction, and contemporaneous documentation.',
+          keyTerms: 'Substantive Fairness, Procedural Fairness, Performance Improvement Plan (PIP), Progressive Discipline, Contemporaneous Record.',
+          aiCoverage: 'Drafting neutral, structured meeting agendas using anonymised placeholders (`[Employee A]`) while reserving all judgement for HR and line leaders.',
+          practicalExercise: 'Convert a vague manager complaint into a factual, supportive 30-day Performance Improvement Plan with measurable milestones.',
+          scenarios: [
+            {
+              title: 'Addressing Sudden Underperformance Empathetically',
+              situation: 'A reliable team member misses three deadlines in a month and a supervisor demands an immediate final written warning.',
+              challenge: 'Distinguishing misconduct from incapacity, burnout, or unclear tools.',
+              decisionPoint: 'Hold a private exploratory coaching conversation first to diagnose root causes and agree on documented support.',
+              debrief: 'Diagnosing root causes and providing fair coaching is both humane and procedurally sound.'
+            },
+            {
+              title: 'Protecting Confidentiality in AI-Assisted HR Drafting',
+              situation: 'A line manager considers pasting a medical certificate and grievance email into a public AI chat to summarise timelines.',
+              challenge: 'Preventing severe POPIA special-personal-information violations.',
+              decisionPoint: 'Stop external upload immediately; anonymise identifiers completely or draft solely inside approved internal channels.',
+              debrief: 'Health and disciplinary records carry heightened legal protection under POPIA.'
+            },
+            {
+              title: 'Preparing a Procedurally Fair Hearing File',
+              situation: 'A manager submits a warning request without dates, witness statements, or prior counselling notes.',
+              challenge: 'Preventing indefensible procedural shortcuts.',
+              decisionPoint: 'Pause escalation until factual allegations, evidence, and right-to-be-heard steps are properly verified.',
+              debrief: 'Documentation discipline safeguards fairness for both employee and employer.'
+            }
+          ]
+        },
+        {
+          title: 'Module 3: HR Data Privacy, Workforce Analytics & People Governance',
+          subtitle: 'POPIA Employee Records, Ethical Retention & 90-Day People Operations Rollout',
+          purpose: 'Consolidate HR compliance, ethical people analytics, and a 30-60-90 day people-operations rollout plan.',
+          keySkills: ['POPIA HR Retention Governance', 'Ethical Workforce Metrics', 'Manager Enablement Rollout', 'Audit Readiness'],
+          learningObjectives: [
+            'Establish POPIA-compliant access controls and retention schedules for employee personal records',
+            'Interpret attrition, absenteeism, and engagement metrics responsibly without misleading profiling',
+            'Deploy a 30-60-90 day HR compliance and manager-enablement implementation plan'
+          ],
+          coreConcepts: 'Covers purpose limitation, least-access HR folders, ethical people metrics, and HR-line manager governance partnerships.',
+          keyTerms: 'Data Minimisation, HR Audit Trail, People Analytics, Retention Schedule, HR Governance Charter.',
+          aiCoverage: 'Aggregating anonymised workforce trends responsibly while escalating outlier risks for human review.',
+          practicalExercise: 'Complete an HR Data & People Process Audit Checklist and 30-60-90 day manager coaching rollout schedule.',
+          scenarios: [
+            {
+              title: 'Securing Shared HR Spreadsheets',
+              situation: 'Remuneration and ID-number spreadsheets are stored on an open departmental shared drive.',
+              challenge: 'Eliminating internal over-exposure without disrupting payroll deadlines.',
+              decisionPoint: 'Restrict access strictly to authorised HR/Payroll roles with encrypted storage and audit logging.',
+              debrief: 'Least-privilege access controls are foundational to POPIA Section 19 compliance.'
+            },
+            {
+              title: 'Interpreting Attrition Analytics Responsibly',
+              situation: 'A predictive dashboard flags a branch as high flight risk solely due to overtime patterns.',
+              challenge: 'Acting on workforce metrics constructively rather than punitively.',
+              decisionPoint: 'Conduct confidential listening sessions with managers and staff to address workload bottlenecks.',
+              debrief: 'Use people analytics to improve working conditions, never to penalise individuals automatically.'
+            },
+            {
+              title: 'Standardising Manager Onboarding Across Branches',
+              situation: 'Regional branches apply inconsistent leave and probation rules.',
+              challenge: 'Rolling out one consistent policy playbook cleanly.',
+              decisionPoint: 'Run concise 30-60-90 day manager briefing clinics backed by standardised HR checklists.',
+              debrief: 'Consistent toolkits and briefings turn HR policy into daily practice.'
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  if (domain === 'mechanical_engineering') {
+    return {
+      codePrefix: 'MECH-AI',
+      industryDomain: 'Mechanical Engineering, Industrial Manufacturing, Mining & Asset Reliability',
+      industryContext: 'South African manufacturing, mining, energy, automotive, and heavy engineering sectors operating under ECSA, OHS Act, and SANS standards.',
+      defaultAudience: agreed?.targetAudience || 'Mechanical engineers, design engineers, reliability & maintenance engineers, CAD/CAE specialists, and manufacturing technical leads',
+      taskOrSkill: 'integrating AI-driven generative design, Finite Element Analysis (FEA) surrogate modelling, predictive maintenance diagnostics, and automated technical documentation while enforcing rigorous human engineering verification and SANS/ECSA safety compliance',
+      operationalImpact: 'extended CAD/CAE design iteration cycles, unplanned plant equipment downtime, unverified AI calculation errors in safety-critical mechanical tolerances, and non-compliance with ECSA and OHS Act standards',
+      rootCauses: [
+        'Engineers rely on manual CAD/FEA trial-and-error cycles or use general-purpose LLMs without structured engineering verification protocols',
+        'Absence of standardised workflows connecting sensor telemetry (vibration, thermal, acoustic data) to predictive maintenance models',
+        'Lack of clear governance on protecting proprietary CAD geometries, intellectual property, and safety-critical calculations under ECSA and POPIA standards'
+      ],
+      processFailures: 'Design sign-off workflows lack formal AI verification gates for generative CAD topology optimisation, FEA boundary conditions, and predictive maintenance thresholds.',
+      skillGaps: 'Limited proficiency in engineering-grade AI prompting, Physics-Informed Neural Networks (PINNs), interpreting predictive maintenance anomaly scores, and auditing AI-generated BOMs and tolerance stacks against SANS/ISO standards.',
+      constraints: 'Strict safety-critical engineering tolerances, legacy plant machinery with noisy sensor telemetry, proprietary intellectual property restrictions, and ECSA professional sign-off accountability.',
+      digitalReadiness: 'High technical proficiency in CAD/CAM/CAE suites (SolidWorks, Autodesk Inventor, ANSYS) and Excel/MATLAB, with basic to intermediate exposure to generative AI and machine learning pipelines.',
+      aiLiteracyGap: 'Distinguishing between probabilistic LLM text generation (which can hallucinate thermodynamic or structural formulas) and physics-constrained engineering simulation / predictive maintenance models.',
+      aiEthicsRisk: 'Uploading confidential client CAD schematics or plant vulnerability data to public cloud AI models (breaching IP and POPIA Act 4 of 2013), or deploying unverified AI structural/pressure-vessel calculations in violation of the OHS Act and ECSA Code of Conduct.',
+      regulatoryFramework: 'Engineering Council of South Africa (ECSA) Code of Conduct, Occupational Health and Safety Act (OHS Act 85 of 1993), SANS 347 (Pressure Equipment), ISO 55000 (Asset Management), King IV Principle 12, and POPIA Act 4 of 2013.',
+      regulatorySources: 'ECSA Professional Engineering Standards; OHS Act 85 of 1993 Driven Machinery & Pressure Equipment Regulations; SANS/ISO 9001 Quality Management.',
+      aiToolsPlatformName: 'Autodesk Fusion Generative Design, ANSYS SimAI, Siemens Senseye Predictive Maintenance, MATLAB Predictive Maintenance Toolbox, and Enterprise LLM Assistants',
+      aiToolsReferenced: 'ANSYS SimAI, Autodesk Generative Design, Python/MATLAB anomaly detection, Enterprise AI technical documentation assistants',
+      aiEthicsFramework: 'ECSA Professional Engineering Accountability (Pr Eng Human-in-the-Loop Sign-Off), King IV Principle 12, and POPIA Zero-IP/Zero-PII Cloud Ingestion Policy',
+      caseStudyUseCases: '1) Generative topology optimisation of a heavy-duty mining conveyor bracket reducing mass by 28% while passing FEA fatigue limits; 2) AI vibration & thermal anomaly detection on industrial centrifugal pumps preventing catastrophic bearing seizure; 3) Automated FMEA and maintenance SOP drafting with Pr Eng human verification.',
+      industryUseCases: 'Predictive maintenance in South African mining & manufacturing plants; generative CAD lightweighting; automated FMEA & technical specification auditing.',
+      evidenceStandards: [
+        'Engineering Council of South Africa (ECSA) Competency Standards for Professional Engineers',
+        'Occupational Health and Safety Act 85 of 1993 & Driven Machinery Regulations',
+        'ISO 13374 / ISO 55000 Condition Monitoring & Asset Management Standards',
+        'POPIA Act 4 of 2013 & King IV Principle 12 Information Governance'
+      ],
+      accreditationBody: 'ECSA (Engineering Council of South Africa) CPD & MerSETA (Verify Accreditation Alignment)',
+      nqfLevel: 'NQF Level 6',
+      terminology: 'Generative CAD, Topology Optimisation, FEA/CFD Surrogate, Predictive Maintenance, FFT Vibration, FMEA, ECSA Pr Eng, OHS Act, POPIA.',
+      industryExamples: 'South African mining concentrators, automotive assembly, industrial pump & conveyor systems, pressure equipment (SANS 347), and CAD design offices.',
+      sources: [
+        {
+          id: 'src-1',
+          name: 'Engineering Council of South Africa (ECSA) Code of Conduct & Overarching Engineering Standards',
+          type: 'Regulatory framework',
+          reference: 'Engineering Profession Act 46 of 2000 / ECSA Board Notice',
+          relevance: 'Establishes non-delegable professional accountability (Pr Eng / Pr Tech Eng) when using automated or AI-assisted engineering design tools.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-2',
+          name: 'Occupational Health and Safety Act (OHS Act No. 85 of 1993) & Driven Machinery Regulations',
+          type: 'Regulatory framework',
+          reference: 'Republic of South Africa Department of Employment and Labour',
+          relevance: 'Governs mechanical safety factors, pressure equipment integrity (SANS 347), and machinery maintenance compliance.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-3',
+          name: 'ISO 13374 & ISO 55000: Condition Monitoring, Diagnostics of Machines & Asset Management',
+          type: 'Industry standard',
+          reference: 'SANS / ISO 13374-1 & ISO 55001',
+          relevance: 'Provides the international engineering architecture for AI-driven predictive maintenance, sensor fusion, and prognostic health management.',
+          status: 'Verified'
+        },
+        {
+          id: 'src-4',
+          name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013) & King IV Principle 12',
+          type: 'Ethics framework',
+          reference: 'Republic of South Africa Government Gazette No. 37067 & IoDSA King IV',
+          relevance: 'Mandates strict cybersecurity, intellectual property protection, and governance over AI technology deployed in industrial enterprises.',
+          status: 'Verified'
+        }
+      ],
+      moduleBlueprints: [
+        {
+          title: 'Module 1: Foundations of AI in Mechanical Engineering & Generative CAD/CAE',
+          subtitle: 'Physics-Informed AI, Generative Topology Optimisation & First-Principles Verification',
+          purpose: 'Establish a rigorous engineering foundation in how AI algorithms (generative design, physics-informed neural networks, and LLMs) operate in mechanical engineering and how to prevent physical or calculation failures.',
+          keySkills: ['Generative CAD Constraint Setup', 'Physics-Informed AI Literacy', 'First-Principles Hand-Calculation Audits', 'IP & POPIA Data Sanitization'],
+          learningObjectives: [
+            'Differentiate between probabilistic Large Language Models (LLMs), physics-informed neural networks (PINNs), and topology optimisation solvers in mechanical engineering',
+            'Configure accurate load cases, boundary conditions, material constraints, and safety factors for AI-assisted generative CAD design',
+            'Verify AI-generated mechanical concepts and calculations against classical mechanics, finite element analysis (FEA), and SANS/ISO standards'
+          ],
+          coreConcepts: 'Mechanical engineering requires deterministic safety margins, whereas many AI models produce probabilistic predictions. Covers Generative Design & Topology Optimisation, Surrogate CAE Modelling, and why unverified AI outputs can violate thermodynamic, fatigue, or structural limits.',
+          keyTerms: 'Topology Optimisation, FEA Surrogate Model, Von Mises Stress, Factor of Safety (FoS), PINNs, ECSA Pr Eng Accountability.',
+          aiCoverage: 'Demystifies how AI surrogate models approximate FEA/CFD stress and thermal fields in seconds, and contrasts them with general LLMs.',
+          practicalExercise: 'Set up a complete boundary-condition specification sheet (loads, fixed constraints, keep-out zones, yield strength, minimum safety factor = 2.0) for an industrial mounting bracket and audit an AI-generated design proposal.',
+          scenarios: [
+            {
+              title: 'The Unmanufacturable Generative Bracket',
+              situation: 'A junior mechanical engineer uses AI generative design to lightweight a steel pump mounting bracket, achieving 35% mass reduction.',
+              challenge: 'The organic lattice geometry cannot be fabricated with 3-axis CNC/MIG welding and omitted dynamic fatigue load cases.',
+              decisionPoint: 'Reject for fabrication and re-run topology optimisation with 2.5D milling constraints and fatigue limits.',
+              debrief: 'Re-running with proper manufacturing and fatigue constraints produces a safe, manufacturable part.'
+            },
+            {
+              title: 'Pressure Vessel Wall-Thickness Calculation Audit',
+              situation: 'An engineer asks a conversational AI chatbot to calculate minimum wall thickness for a 16-bar compressed air receiver under SANS 347.',
+              challenge: 'The LLM omitted the joint efficiency factor, under-sizing wall thickness.',
+              decisionPoint: 'Perform an independent deterministic calculation against SANS 347 / ASME VIII rather than trusting LLM math.',
+              debrief: 'Pressure equipment under the OHS Act requires deterministic code calculations verified by a competent person.'
+            },
+            {
+              title: 'Thermal Surrogate Screening vs Full CFD',
+              situation: 'Your design team uses an AI surrogate model to screen 40 heat-exchanger baffle designs in 10 minutes.',
+              challenge: 'The top candidate sits near the maximum pressure-drop boundary where surrogate uncertainty is ±12%.',
+              decisionPoint: 'Run full high-fidelity RANS CFD validation on the top two candidates before tooling freeze.',
+              debrief: 'AI surrogates accelerate screening, while boundary limits always require full solver validation.'
+            }
+          ]
+        },
+        {
+          title: 'Module 2: AI-Driven Predictive Maintenance, Condition Monitoring & Diagnostics',
+          subtitle: 'Vibration, Thermal & Acoustic Telemetry, Anomaly Detection & Root-Cause Failure Analysis',
+          purpose: 'Enable mechanical and reliability engineers to configure, interpret, and validate AI-driven condition monitoring and predictive maintenance models for industrial machinery.',
+          keySkills: ['Vibration & Sensor Telemetry Triage', 'Remaining Useful Life (RUL) Interpretation', 'False-Positive Diagnostics', 'AI-Assisted FMEA Drafting'],
+          learningObjectives: [
+            'Prepare and validate mechanical condition-monitoring data (vibration FFT spectra, bearing temperatures, oil debris) for AI anomaly detection',
+            'Evaluate AI Remaining Useful Life (RUL) predictions against physical failure modes (imbalance, misalignment, bearing spalling, cavitation)',
+            'Construct structured engineering prompts to generate draft FMEA tables and maintenance SOPs with human verification'
+          ],
+          coreConcepts: 'Covers ISO 13374 condition-monitoring architecture, FFT feature extraction, anomaly detection vs RUL regression, and physical verification of sensor alerts.',
+          keyTerms: 'FFT Vibration Spectrum, Bearing Pass Frequency, RUL, FMEA Risk Priority Number (RPN), Sensor Drift.',
+          aiCoverage: 'Covers ML anomaly detection on rotating equipment telemetry and structured prompting for FMEA/RCFA drafting.',
+          practicalExercise: 'Triage an AI vibration anomaly alert on a 250 kW mine dewatering pump by cross-checking FFT harmonic peaks, bearing temperature trends, and alignment logs.',
+          scenarios: [
+            {
+              title: 'The False-Positive Crusher Bearing Alarm',
+              situation: 'An AI dashboard flags 92% probability of imminent main-bearing failure on a jaw crusher after an ore-grade change.',
+              challenge: 'Avoid an unnecessary R1.8M shutdown while preventing a real bearing seizure.',
+              decisionPoint: 'Inspect FFT bearing fault frequencies, temperature, and feed-rate logs before ordering shutdown.',
+              debrief: 'Physical FFT cross-checking distinguishes load shifts from true bearing defects.'
+            },
+            {
+              title: 'Catching Cavitation on a Cooling-Water Pump',
+              situation: 'An AI condition-monitoring model flags rising high-frequency acoustic noise and discharge fluctuation.',
+              challenge: 'Overall RMS vibration is still inside green ISO limits.',
+              decisionPoint: 'Inspect suction strainer differential pressure and NPSH margins immediately.',
+              debrief: 'Early acoustic signatures catch cavitation before impeller erosion destroys the pump.'
+            },
+            {
+              title: 'Closing the Loop in the CMMS After Maintenance',
+              situation: 'A maintenance crew replaces a worn coupling but closes the SAP PM work order with only "Fixed".',
+              challenge: 'Missing ground-truth failure codes corrupt predictive maintenance retraining.',
+              decisionPoint: 'Enforce ISO 14224 failure-mode codes and alignment measurements on closure.',
+              debrief: 'Accurate CMMS failure logs sustain predictive model reliability.'
+            }
+          ]
+        },
+        {
+          title: 'Module 3: Engineering Implementation, Quality Governance & ECSA/OHS Compliance',
+          subtitle: '30-60-90 Day Engineering Rollout, Risk Matrices & Professional Sign-Off',
+          purpose: 'Equip engineering leaders to roll out sustainable AI-augmented mechanical engineering workflows, enforce ECSA/OHS Act compliance, and measure engineering ROI.',
+          keySkills: ['Engineering Change Management (ECM)', 'ECSA & OHS Act Governance', 'ROI & OEE KPI Tracking', 'Cross-Functional Rollout Leadership'],
+          learningObjectives: [
+            'Design a 30-60-90 day engineering implementation plan integrating AI tools into CAD/CAE or plant maintenance workflows',
+            'Establish formal Engineering Change Management (ECM) and Pr Eng sign-off gates compliant with ECSA, SANS, and OHS Act',
+            'Define and track measurable engineering KPIs (design lead time, OEE availability, and zero safety non-conformances)'
+          ],
+          coreConcepts: 'Covers Engineering Change Management (ECM), ISO 9001/55000 governance, ECSA statutory sign-off responsibilities, and 30-60-90 day scaling.',
+          keyTerms: 'Engineering Change Management (ECM), PLM Audit Trail, OEE, Pr Eng Sign-Off, Model Drift.',
+          aiCoverage: 'Long-term governance of engineering AI models, dataset version control, and periodic drift reviews.',
+          practicalExercise: 'Build a complete 30-60-90 Day Engineering AI Rollout & Risk Governance Charter for your design office or plant maintenance department.',
+          scenarios: [
+            {
+              title: 'Shadow AI in the Drawing Office',
+              situation: 'Two draughtsmen use an unapproved browser AI plugin to auto-generate welding symbols on fabrication drawings.',
+              challenge: 'Stopping non-standard SANS welding callouts before shop-floor fabrication.',
+              decisionPoint: 'Issue an Engineering Change Notice hold, re-verify drawings, and provide an approved verified workflow.',
+              debrief: 'Immediate ECN verification protects structural weld integrity.'
+            },
+            {
+              title: 'Overcoming Artisan Resistance to Predictive Alerts',
+              situation: 'Plant millwrights distrust the new AI predictive dashboard, viewing it as management surveillance.',
+              challenge: 'Securing shop-floor buy-in and accurate physical inspection feedback.',
+              decisionPoint: 'Involve senior millwrights in co-validating alert thresholds and crediting physical inspections.',
+              debrief: 'Positioning AI as a diagnostic aid amplifies artisan expertise.'
+            },
+            {
+              title: 'Quarterly Engineering AI Governance Audit',
+              situation: 'At day 90, pump failures dropped 30%, but a new supplier batch of bearings shows shifted vibration signatures.',
+              challenge: 'Preventing model drift across changed hardware.',
+              decisionPoint: 'Initiate a controlled baseline recalibration for the new bearing series.',
+              debrief: 'Component or speed changes require proactive model recalibration.'
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  // General / EQ / Financial / Cybersecurity adaptive template
+  const isEQ = domain === 'emotional_intelligence';
+  const isFin = domain === 'financial_services';
+  const isCyber = domain === 'cybersecurity_it';
+
+  const customGoals = goalList.length > 0
+    ? goalList
+    : [
+        `Foundational Principles & Problem Diagnostics in ${courseTitle}`,
+        `Applied Workflows, Tools & Practical Execution in ${courseTitle}`,
+        `Governance, Quality Assurance & 30-60-90 Day Rollout in ${courseTitle}`
+      ];
+
+  const baseModules = [
+    {
+      title: isEQ
+        ? 'Module 1: Emotional Self-Awareness, Triggers & Workplace Dynamics'
+        : isFin
+          ? 'Module 1: Foundations of AI & Risk Governance in Financial Literacy'
+          : isCyber
+            ? 'Module 1: Threat Landscape, Zero-Trust Foundations & Cyber Hygiene'
+            : `Module 1: Foundations, Core Principles & Diagnostics in ${courseTitle}`,
+      subtitle: 'Foundational Frameworks, Root Causes & Governance Baselines',
+      purpose: `Establish strong foundational literacy in ${courseTitle}, diagnosing root causes of recurring operational errors and defining clear quality boundaries.`,
+      keySkills: ['Core Concept Mastery', 'Root-Cause Diagnostics', 'Quality Gate Verification', 'Privacy & Ethical Safeguards'],
+      learningObjectives: [
+        `Explain the foundational principles, roles, and success criteria governing ${courseTitle}`,
+        `Diagnose systemic root causes and early warning signs of performance or quality breakdown in ${courseTitle}`,
+        `Apply responsible AI verification and confidentiality safeguards when working with workplace data`
+      ],
+      coreConcepts: `Examines core theoretical and operational drivers of ${courseTitle}, highlighting why ad-hoc shortcuts create downstream rework and risk.`,
+      keyTerms: isEQ
+        ? 'Self-Awareness, Emotional Hijack, Psychological Safety, De-Escalation, Active Empathy'
+        : isCyber
+          ? 'Zero Trust, Least Privilege, Phishing Vectors, POPIA Section 22, Incident Triage'
+          : `Root Cause Analysis, Standard Operating Procedure, Human-in-the-Loop, Quality Gate`,
+      aiCoverage: `Clarifies how AI tools assist analysis and drafting in ${courseTitle} while requiring human verification against authoritative standards.`,
+      practicalExercise: `Audit an existing ${courseTitle} workflow brief, identify two root causes of rework, and document verification checkpoints.`,
+      scenarios: [
+        {
+          title: `Operational Quality Shortcut in ${courseTitle}`,
+          situation: `Under tight delivery pressure, a team member proposes skipping baseline verification checks in ${courseTitle}.`,
+          challenge: `Balancing rapid delivery against preventable downstream defects and compliance exposure.`,
+          decisionPoint: `Pause to run the baseline verification checklist and communicate realistic turnaround expectations.`,
+          debrief: `Consistent quality gates protect long-term delivery reliability.`
+        },
+        {
+          title: `Resolving Incomplete Hand-Off Records`,
+          situation: `A cross-functional hand-off arrives with missing source assumptions and unverified metrics.`,
+          challenge: `Preventing cascading errors across departments.`,
+          decisionPoint: `Hold execution briefly until primary evidence and sign-off are attached.`,
+          debrief: `Documented hand-off verification prevents rework.`
+        },
+        {
+          title: `Safeguarding Confidential Data in AI Prompts`,
+          situation: `A colleague prepares to paste confidential client records into an external web AI chat.`,
+          challenge: `Protecting personal and proprietary information under POPIA.`,
+          decisionPoint: `Strip all personal identifiers and process only inside approved enterprise environments.`,
+          debrief: `Zero-PII hygiene prevents unlawful data exposure.`
+        }
+      ]
+    },
+    {
+      title: `Module 2: Applied Tools, ${practicalFlag ? 'Hands-On Workflows' : 'Procedures'} & Quality Control in ${courseTitle}`,
+      subtitle: 'Step-by-Step Execution, Structured Prompting & Anomaly Review',
+      purpose: `Translate foundational principles into practical, repeatable day-to-day workflows, tool mastery, and quality review techniques for ${courseTitle}.`,
+      keySkills: ['Step-by-Step Procedure Execution', 'Structured Prompting', 'Output Auditing', 'Exception Escalation'],
+      learningObjectives: [
+        `Execute step-by-step operational procedures and checklists for ${courseTitle} accurately`,
+        `Design structured domain prompts grounded in real workplace inputs without exposing sensitive data`,
+        `Audit draft outputs and automated flags against primary evidence prior to stakeholder release`
+      ],
+      coreConcepts: `Focuses on repeatability, clear RACI accountability, structured tool inputs, and verification against objective criteria.`,
+      keyTerms: 'Workflow SOP, RACI Matrix, Grounded Verification, Anomaly Triage, Peer Review.',
+      aiCoverage: `Demonstrates structured Role-Context-Constraints prompting and systematic error checking for ${courseTitle}.`,
+      practicalExercise: `Execute a complete end-to-end applied task in ${courseTitle}, including input validation, deliverable drafting, and peer QA sign-off.`,
+      scenarios: [
+        {
+          title: `Triaging an Unexpected System Flag`,
+          situation: `An automated monitoring report flags multiple high-priority exceptions in a core ${courseTitle} process.`,
+          challenge: `Separating false positives from genuine operational incidents.`,
+          decisionPoint: `Inspect primary source logs manually before triggering corrective escalations.`,
+          debrief: `Primary evidence verification keeps interventions accurate.`
+        },
+        {
+          title: `Auditing an AI-Generated Procedure Draft`,
+          situation: `A polished AI-generated SOP draft omits a mandatory internal approval step.`,
+          challenge: `Detecting subtle omissions inside fluent text.`,
+          decisionPoint: `Review every step line by line against domain requirements before publishing.`,
+          debrief: `Fluent formatting never substitutes for specialist verification.`
+        },
+        {
+          title: `Closing the Loop with Structured Documentation`,
+          situation: `A team fixes a recurring bottleneck verbally without logging root cause or preventative controls.`,
+          challenge: `Ensuring durable organisational learning.`,
+          decisionPoint: `Record the root cause, resolution, and updated checklist inside the team repository.`,
+          debrief: `Structured closure prevents repeat failures.`
+        }
+      ]
+    },
+    {
+      title: `Module 3: Workplace Rollout, Governance & Continuous Improvement in ${courseTitle}`,
+      subtitle: '30-60-90 Day Implementation Plan, Risk Matrix & KPI Review',
+      purpose: `Enable practitioners and team leads to embed ${courseTitle} capabilities across teams using phased rollout milestones, governance controls, and KPI tracking.`,
+      keySkills: ['30-60-90 Day Rollout', 'Risk & Compliance Auditing', 'KPI Monitoring', 'Stakeholder Coaching'],
+      learningObjectives: [
+        `Develop an actionable 30-60-90 day implementation roadmap tailored to ${courseTitle}`,
+        `Apply a risk and governance matrix covering human accountability, ethics, and data protection`,
+        `Monitor operational KPIs and facilitate constructive post-implementation reviews`
+      ],
+      coreConcepts: `Covers change management, pilot-to-production scaling, PDCA continuous improvement, and clear sign-off accountability.`,
+      keyTerms: '30-60-90 Day Plan, PDCA Cycle, Governance Charter, KPI Scorecard, Human Sign-Off.',
+      aiCoverage: `Establishes ongoing oversight, prompt-library governance, and periodic compliance reviews.`,
+      practicalExercise: `Build a 30-60-90 Day Implementation Charter and Risk & KPI Scorecard for your department.`,
+      scenarios: [
+        {
+          title: `Building Team Buy-In During Workflow Rollout`,
+          situation: `Experienced colleagues hesitate to adopt standardised checklists, viewing them as extra bureaucracy.`,
+          challenge: `Fostering genuine adoption without top-down friction.`,
+          decisionPoint: `Co-refine checklists with senior staff and demonstrate how gates cut rework.`,
+          debrief: `Co-design drives lasting workplace adoption.`
+        },
+        {
+          title: `Managing Unapproved Tool Shortcuts`,
+          situation: `An internal check reveals staff using personal unvetted apps to speed up work.`,
+          challenge: `Restoring security and quality governance constructively.`,
+          decisionPoint: `Transition staff onto approved tools backed by clear quick-reference guides.`,
+          debrief: `Combine firm compliance boundaries with practical approved alternatives.`
+        },
+        {
+          title: `Conducting the 90-Day KPI & Governance Review`,
+          situation: `After three months, turnaround improved, yet new workflow exceptions emerged.`,
+          challenge: `Keeping checklists aligned with evolving operations.`,
+          decisionPoint: `Run a formal 90-day retrospective to recalibrate controls and training.`,
+          debrief: `Regular review keeps governance current.`
+        }
+      ]
+    }
+  ];
+
+  // If user agreed on specific learning goals and wanted 4 modules, adapt cleanly
+  if ((agreed?.moduleCount && agreed.moduleCount >= 4) || customGoals.length >= 4) {
+    baseModules.splice(2, 0, {
+      title: `Module 3: Specialised Implementation & Compliance in ${customGoals[2] || courseTitle}`,
+      subtitle: `Deep Dive: ${customGoals[2] || 'Risk Controls, Verification & Stakeholder Alignment'}`,
+      purpose: `Strengthen applied capability in ${customGoals[2] || courseTitle} with hands-on troubleshooting and domain verification gates.`,
+      keySkills: ['Deep-Dive Troubleshooting', 'Compliance Cross-Checking', 'Stakeholder Reporting'],
+      learningObjectives: [
+        `Apply specialised controls for ${customGoals[2] || courseTitle} in complex workplace cases`,
+        `Evaluate trade-offs between throughput, quality, and risk exposure`,
+        `Verify deliverables against documented audit criteria`
+      ],
+      coreConcepts: `Extends core applied skills into specialised decision-making and exception handling for ${courseTitle}.`,
+      keyTerms: 'Exception Handling, Audit Criteria, Risk Trade-Off, Escalation Matrix.',
+      aiCoverage: `Structured evaluation of complex edge cases with mandatory human judgement.`,
+      practicalExercise: `Solve a multi-variable workplace case focused on ${customGoals[2] || courseTitle} and justify controls.`,
+      scenarios: baseModules[1].scenarios
+    });
+    baseModules[3].title = `Module 4: Workplace Rollout, Governance & Continuous Improvement in ${courseTitle}`;
+  }
+
+  return {
+    codePrefix: isEQ ? 'EQ' : isFin ? 'FIN-AI' : isCyber ? 'CYB' : 'EST',
+    industryDomain: isEQ
+      ? 'Corporate Leadership, People Operations & Professional Services'
+      : isFin
+        ? 'Financial Services, Risk & Corporate Operations'
+        : isCyber
+          ? 'Cybersecurity, Information Assurance & IT Operations'
+          : `Corporate & Technical Operations — ${courseTitle}`,
+    industryContext: `South African workplace and organisational environments applying ${courseTitle} under applicable quality and data governance standards.`,
+    defaultAudience: agreed?.targetAudience || `Practitioners, specialists, and team leaders working in ${courseTitle}`,
+    taskOrSkill: `executing structured workflows, quality verification protocols, and responsible AI integration in ${courseTitle}`,
+    operationalImpact: `operational bottlenecks, compliance vulnerabilities, rework costs, and productivity losses in ${courseTitle}`,
+    rootCauses: [
+      `Absence of standardised procedural workflows and verification checklists for ${courseTitle}`,
+      `Insufficient practical, scenario-based training bridging theory and daily execution in ${courseTitle}`,
+      `Unclear governance and human-in-the-loop sign-off boundaries when using digital/AI tools`
+    ],
+    processFailures: `Operational workflows lack formal standard operating procedures and quality verification gates for ${courseTitle}.`,
+    skillGaps: `Gaps in applied procedural execution, structured prompting, and critical output verification for ${courseTitle}.`,
+    constraints: `Busy operational schedules requiring practical micro-learning; diverse baseline digital literacy; mandatory quality and privacy compliance.`,
+    digitalReadiness: `Intermediate corporate digital literacy: enterprise email, spreadsheets, collaborative tools, and browser-based workflows.`,
+    aiLiteracyGap: `Understanding how AI tools assist workflows in ${courseTitle} while catching hallucinations, bias, and verification gaps.`,
+    aiEthicsRisk: `Exposure of confidential organisational or personal data to unvetted external AI models and over-reliance on unverified automated outputs.`,
+    regulatoryFramework: isFin
+      ? 'FSCA Market Conduct Rules (Verify applicability), NCA Act 34 of 2005 (Verify applicability), King IV Principle 12, and POPIA Act 4 of 2013.'
+      : isCyber
+        ? 'Cybercrimes Act 19 of 2020 (Verify reporting sections), POPIA Act 4 of 2013 (Sections 19 & 22), and King IV Principle 12.'
+        : `South African POPIA Act 4 of 2013 (where personal data applies), King IV Principle 12, and applicable SETA/industry standards (Verify applicability).`,
+    regulatorySources: 'POPIA Act No. 4 of 2013; King IV Corporate Governance Code; Applicable Industry/SETA Standards.',
+    aiToolsPlatformName: 'Enterprise AI Workspace Assistants (Groq Cloud / Approved Enterprise Copilot) & Structured Verification Checklists',
+    aiToolsReferenced: 'Approved enterprise LLM assistants, structured prompt templates, and quality-check tools',
+    aiEthicsFramework: 'King IV Principle 12, POPIA Act 4 of 2013, and Mandatory Human-in-the-Loop Verification',
+    caseStudyUseCases: `1) End-to-end operational workflow optimisation in ${courseTitle}; 2) Detecting and remediating errors/hallucinations during analysis; 3) Deploying governed quality gates across teams.`,
+    industryUseCases: `Applied South African workplace case studies and scenario simulations for ${courseTitle}.`,
+    evidenceStandards: [
+      'Protection of Personal Information Act (POPIA Act 4 of 2013 — Verify applicability)',
+      'King IV Corporate Governance Code (Principle 12)',
+      'eStudy Master Instructional Design Standard v9.0'
+    ],
+    accreditationBody: 'To Be Confirmed (Requires SETA / QCTO SME Validation)',
+    nqfLevel: agreed?.difficultyLevel === 'Foundational' ? 'NQF Level 5' : 'NQF Level 5/6',
+    terminology: 'Standard Operating Procedure (SOP), Root Cause Analysis, Human-in-the-Loop, POPIA Act 4 of 2013, King IV Principle 12.',
+    industryExamples: `South African corporate, operational, and regulated workplace settings relevant to ${courseTitle}.`,
+    sources: [
+      {
+        id: 'src-1',
+        name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
+        type: 'Regulatory framework',
+        reference: 'Republic of South Africa Government Gazette No. 37067, Sections 19 & 71',
+        relevance: 'Mandates security safeguards over personal data and human oversight on automated decisions.',
+        status: 'Verified'
+      },
+      {
+        id: 'src-2',
+        name: 'King IV Report on Corporate Governance for South Africa',
+        type: 'Ethics framework',
+        reference: 'Institute of Directors in South Africa (IoDSA), Principle 12',
+        relevance: 'Establishes board and operational oversight for technology, information security, and ethical AI deployment.',
+        status: 'Verified'
+      },
+      {
+        id: 'src-3',
+        name: `Operational Benchmark & Quality Standard for ${courseTitle}`,
+        type: 'Industry standard',
+        reference: 'Requires SME Validation for Applicable Sector/SETA Unit Standards',
+        relevance: `Defines workplace competency outcomes, quality assurance gates, and practical performance criteria for ${courseTitle}.`,
+        status: 'Verified'
+      },
+      {
+        id: 'src-4',
+        name: 'ISO/IEC 42001 Artificial Intelligence Management System Standard',
+        type: 'Technology documentation',
+        reference: 'SANS / ISO/IEC 42001:2023',
+        relevance: 'Provides structured risk management and human-in-the-loop controls for workplace AI.',
+        status: 'Verified'
+      }
+    ],
+    moduleBlueprints: baseModules
+  };
+}
+
+function buildModuleObject(
+  bp: DomainBlueprintTemplate['moduleBlueprints'][number],
+  modNumber: number,
+  domainTemplate: DomainBlueprintTemplate,
+  courseTitle: string,
+  agreed?: CopilotAgreedRequirements | null
+): CourseModule {
+  const customOutline = agreed?.moduleOutlines?.find(o => o.number === modNumber);
+  const title = customOutline?.title
+    ? (customOutline.title.startsWith('Module') ? customOutline.title : `Module ${modNumber}: ${customOutline.title}`)
+    : bp.title.replace(/^Module \d+:\s*/i, `Module ${modNumber}: `);
+  const purpose = customOutline?.purpose || bp.purpose;
+
+  return {
+    id: `mod-${modNumber}`,
+    number: modNumber,
+    moduleNumber: modNumber,
+    title,
+    subtitle: bp.subtitle,
+    purpose,
+    keySkills: bp.keySkills,
+    learningObjectives: bp.learningObjectives,
+    learningOutcomes: bp.learningObjectives,
+    coreConcepts: bp.coreConcepts,
+    definitionsFrameworks: bp.keyTerms,
+    rootCausesExploration: domainTemplate.rootCauses.join('; '),
+    aiTopicCoverage: bp.aiCoverage,
+    practicalExercises: agreed?.practicalFocus
+      ? `${bp.practicalExercise} (Emphasising hands-on workplace practice & live execution labs)`
+      : bp.practicalExercise,
+    aiGovernanceElement: 'Mandatory human verification checklist, privacy/security guardrails, and accountable practitioner sign-off.',
+    sopTemplatesChecklists: `Module ${modNumber} Operational & Verification Checklist`,
+    implementationPlan: `Apply Module ${modNumber} workflow gates within team operations and log QA verification checks.`,
+    kpiMetrics: `100% checklist completion; measurable error reduction across ${courseTitle}.`,
+    status: 'Complete',
+    requirements: {
+      problemDefinition: bp.purpose,
+      workplaceContext: domainTemplate.industryContext,
+      keyTerms: bp.keyTerms,
+      causes: domainTemplate.rootCauses.join('; '),
+      warningSigns: `Ad-hoc execution shortcuts, missing verification logs, and unreviewed outputs in ${title}.`,
+      impactStatement: domainTemplate.operationalImpact,
+      aiDemystification: bp.aiCoverage,
+      aiInThisDomain: `Supports analysis, structured drafting, and anomaly screening inside ${title}.`,
+      aiToolsOverview: domainTemplate.aiToolsPlatformName,
+      responsibleAiPrinciples: 'Always protect confidential/personal records and verify every output against domain criteria.',
+      toolsAndTechniques: bp.keySkills.join(', '),
+      procedureSteps: `1. Validate inputs & privacy -> 2. Execute core workflow -> 3. Verify against criteria -> 4. Log human sign-off.`,
+      roleResponsibilities: `Practitioners execute and self-audit; Leads review verification gates.`,
+      communicationApproach: 'Clear, plain-language South African workplace documentation with explicit assumptions.',
+      supportMechanisms: 'Facilitator guides, peer review checklists, and reference standards.',
+      scenarios: bp.scenarios.map((sc, sIdx) => ({
+        id: `sc-${modNumber}-${sIdx + 1}`,
+        title: sc.title,
+        situation: sc.situation,
+        challenge: sc.challenge,
+        decisionPoint: sc.decisionPoint,
+        debrief: sc.debrief,
+        status: 'Complete'
+      })),
+      aiScenarios: [
+        {
+          id: `ai-sc-${modNumber}-1`,
+          title: `Human Verification & Governance in ${title}`,
+          isAiSpecific: true,
+          situation: `A team member uses an AI tool to accelerate a deliverable in ${title}, producing plausible but unchecked recommendations.`,
+          challenge: `Detecting subtle hallucinations, security/privacy exposures, or domain omissions before release.`,
+          decisionPoint: `What mandatory verification steps must be completed before approving the deliverable?`,
+          debrief: `Line-by-line factual/technical validation against authoritative standards and privacy redaction rules is mandatory.`,
+          status: 'Complete'
+        }
+      ],
+      implementationStrategy: `Embed Module ${modNumber} verification checklists into routine team operations.`,
+      rolloutMethod: 'Blended digital module with applied workplace scenarios and practical tasks.',
+      meApproach: `Track verification completion and rework reduction for ${title}.`,
+      improvementCycle: 'Quarterly PDCA review of operational metrics and checklist currency.',
+      implementationChecklistTitle: `${title} Verification Checklist`,
+      rolloutFrameworkTitle: `${title} Operational Rollout Standard`,
+      riskComplianceSectionTitle: `${title} Risk & Governance Matrix`,
+      continuousAiLearningApproach: 'Periodic prompt/tool calibration and domain standard updates.',
+      aiGovernanceFramework: domainTemplate.aiEthicsFramework,
+      aiFeedbackReviewMechanism: 'Peer & lead verification logs.'
+    }
+  };
 }
 
 // Generates complete, high-quality, authentic course data across all 9 v9.0 sections
+// Accepts optional currentCourse and agreedRequirements; NEVER spreads stale subject fields!
 export function generateComprehensiveCoursePatch(
   topicRaw: string,
-  currentCourse: Course
+  _currentCourse?: Course,
+  agreedRequirements?: CopilotAgreedRequirements | null
 ): { patch: Partial<Course>; brief: any; message: string } {
-  const cleanTopic = topicRaw.replace(/^[,\s.:"'“”]+|[,\s.:"'“”]+$/g, '').trim() || 'Applied AI in Workplace Operations';
-  const isEmotionalIntelligence = /(emotional|intelligence|eq|empathy|soft skill|interpersonal)/i.test(cleanTopic);
-  const isMechanicalOrEngineering = /(mechanical|engineering|cad|fea|cfd|manufacturing|maintenance|predictive|industrial|mechatronics|robotics|plant|structural|thermodynamics)/i.test(cleanTopic);
+  const effectiveRaw = (agreedRequirements?.title || agreedRequirements?.subject || topicRaw || '').trim();
+  const cleanTopic = effectiveRaw.replace(/^[,\s.:"'“”]+|[,\s.:"'“”]+$/g, '').trim() || 'Applied Workplace Operations & Governance';
 
-  const courseTitle = isEmotionalIntelligence
+  const domain = detectLocalDomain(cleanTopic);
+  const blueprint = buildDomainBlueprint(domain, cleanTopic, agreedRequirements);
+
+  const courseTitle = domain === 'emotional_intelligence'
     ? 'Emotional Intelligence for Workplace Leaders & High-Performing Teams'
     : cleanTopic.charAt(0).toUpperCase() + cleanTopic.slice(1);
 
-  const codePrefix = isEmotionalIntelligence
-    ? 'EQ'
-    : isMechanicalOrEngineering
-      ? 'MECH-AI'
-      : courseTitle
-          .replace(/[^a-zA-Z0-9\s]/g, '')
-          .split(/\s+/)
-          .filter(w => w.length > 2 && !/^(the|and|for|use|with|into)$/i.test(w))
-          .slice(0, 2)
-          .map(w => w.slice(0, 3).toUpperCase())
-          .join('-') || 'CRS';
+  const shortWords = courseTitle
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !/^(the|and|for|use|with|into)$/i.test(w))
+    .slice(0, 2)
+    .map(w => w.slice(0, 3).toUpperCase())
+    .join('-');
+  const courseCode = `EST-${blueprint.codePrefix || shortWords || 'CRS'}-01`;
 
-  const courseCode = `EST-${codePrefix}-01`;
+  const scratchBase = createScratchCourse(courseTitle);
+  const difficultyLevel = agreedRequirements?.difficultyLevel || 'Intermediate';
+  const duration = agreedRequirements?.duration || '16 Hours / 2 CPD Credits';
+  const targetGroup = agreedRequirements?.targetAudience || blueprint.defaultAudience;
+  const learningGoals = agreedRequirements?.learningGoals || [];
+  const practicalFocus = agreedRequirements?.practicalFocus;
+  const practicalFlag = Boolean(practicalFocus);
 
-  const targetGroup = isEmotionalIntelligence
-    ? 'People managers, team leaders, project heads, and cross-functional professionals in South African corporate and public environments'
-    : isMechanicalOrEngineering
-      ? 'Mechanical engineers, design engineers, reliability & maintenance engineers, CAD/CAE specialists, and manufacturing technical leads in South African industrial, mining, energy, and automotive sectors'
-      : `Practitioners, technical specialists, team leaders, and operational managers working in ${courseTitle}`;
+  const requestedModCount = agreedRequirements?.moduleCount
+    ? Math.max(2, Math.min(6, agreedRequirements.moduleCount))
+    : blueprint.moduleBlueprints.length;
 
-  const taskOrSkill = isEmotionalIntelligence
-    ? 'applying emotional self-awareness, active empathy, emotional self-regulation, and de-escalation during high-pressure workplace interactions'
-    : isMechanicalOrEngineering
-      ? 'integrating AI-driven generative design, Finite Element Analysis (FEA) surrogate modelling, predictive maintenance diagnostics, and automated technical documentation while enforcing rigorous human engineering verification and SANS/ECSA safety compliance'
-      : `executing structured workflows, quality verification protocols, and responsible AI integration in ${courseTitle}`;
+  const selectedBlueprints = [...blueprint.moduleBlueprints];
+  while (selectedBlueprints.length < requestedModCount) {
+    const nextIdx = selectedBlueprints.length + 1;
+    const goalFocus = learningGoals[nextIdx - 1] || `Applied Mastery & Governance Part ${nextIdx}`;
+    selectedBlueprints.push({
+      ...blueprint.moduleBlueprints[blueprint.moduleBlueprints.length - 1],
+      title: `Module ${nextIdx}: ${goalFocus}`,
+      subtitle: `Applied Implementation & Governance — ${goalFocus}`,
+      purpose: `Deepen practical mastery in ${goalFocus} within ${courseTitle}.`
+    });
+  }
 
-  const operationalImpact = isEmotionalIntelligence
-    ? 'interpersonal friction leading to project delays, preventable employee turnover, communication silos, customer dissatisfaction, and CCMA dispute escalations'
-    : isMechanicalOrEngineering
-      ? 'extended CAD/CAE design iteration cycles, unplanned plant equipment downtime, unverified AI calculation errors in safety-critical mechanical tolerances, and non-compliance with ECSA and OHS Act standards'
-      : `operational bottlenecks, compliance vulnerabilities, rework costs, and productivity losses stemming from unaddressed capability gaps in ${courseTitle}`;
+  const modules: CourseModule[] = selectedBlueprints
+    .slice(0, requestedModCount)
+    .map((bp, idx) => buildModuleObject(bp, idx + 1, blueprint, courseTitle, agreedRequirements));
 
-  const rootCauses = isEmotionalIntelligence
-    ? [
-        'Lack of formal emotional intelligence (EQ) training for technical and operational specialists transitioning into leadership roles',
-        'Workplace stressors, heavy workloads, and organisational change triggering defensive reactions rather than empathetic problem-solving',
-        'Absence of structured feedback loops and conflict de-escalation protocols across diverse cross-cultural teams'
-      ]
-    : isMechanicalOrEngineering
-      ? [
-          'Engineers rely on manual CAD/FEA trial-and-error cycles or use general-purpose LLMs without structured engineering verification protocols',
-          'Absence of standardised workflows connecting sensor telemetry (vibration, thermal, acoustic data) to predictive maintenance models',
-          'Lack of clear governance on protecting proprietary CAD geometries, intellectual property, and safety-critical calculations under ECSA and POPIA standards'
-        ]
-      : [
-          `Absence of standardised procedural workflows and verification checklists for ${courseTitle}`,
-          `Insufficient practical, scenario-based training bridging theoretical knowledge and daily workplace execution in ${courseTitle}`,
-          'Unclear governance and human-in-the-loop sign-off boundaries when using AI tools in daily operations'
-        ];
+  const goalsNarrative = learningGoals.length > 0
+    ? ` covering ${learningGoals.join(', ')}`
+    : '';
 
   const patch: Partial<Course> = {
     name: courseTitle,
@@ -529,1177 +2054,281 @@ export function generateComprehensiveCoursePatch(
     status: 'Draft',
     lastModified: 'Just now',
 
-    // Section 01 - Problem & Challenge
     problem: {
       targetGroup,
-      taskOrSkill,
-      operationalImpact,
-      rootCauses,
-      processFailures: isMechanicalOrEngineering
-        ? 'Design sign-off workflows lack formal AI verification gates for generative CAD topology optimisation, FEA boundary conditions, and predictive maintenance thresholds.'
-        : isEmotionalIntelligence
-          ? 'Performance reviews focus solely on output metrics without assessing team emotional climate, communication dignity, or psychological safety.'
-          : `Operational workflows lack formal standard operating procedures and quality verification gates for ${courseTitle}.`,
-      skillGaps: isMechanicalOrEngineering
-        ? 'Limited proficiency in engineering-grade AI prompting, Physics-Informed Neural Networks (PINNs), interpreting predictive maintenance anomaly scores, and auditing AI-generated BOMs and tolerance stacks against SANS/ISO standards.'
-        : isEmotionalIntelligence
-          ? 'Difficulty recognising personal emotional triggers under stress; reacting defensively to critique; inability to validate emotional states without conceding policy boundaries.'
-          : `Gaps in applied procedural execution, structured AI prompting, and critical output verification for ${courseTitle}.`,
-      constraints: isMechanicalOrEngineering
-        ? 'Strict safety-critical engineering tolerances, legacy plant machinery with noisy sensor telemetry, proprietary intellectual property restrictions, and ECSA professional sign-off accountability.'
-        : 'Busy operational schedules requiring practical micro-learning; diverse baseline digital literacy; mandatory regulatory and audit compliance.',
-      digitalReadinessLevel: isMechanicalOrEngineering
-        ? 'High technical proficiency in CAD/CAM/CAE suites (SolidWorks, Autodesk Inventor, ANSYS) and Excel/MATLAB, with basic to intermediate exposure to generative AI and machine learning pipelines.'
-        : 'Intermediate corporate digital literacy: enterprise email, spreadsheets, collaborative platforms (MS Teams), and browser-based productivity tools.',
-      aiLiteracyGap: isMechanicalOrEngineering
-        ? 'Distinguishing between probabilistic LLM text generation (which can hallucinate thermodynamic or structural formulas) and physics-constrained engineering simulation / predictive maintenance models.'
-        : `Understanding how AI tools can accelerate workflows in ${courseTitle} while recognising algorithmic hallucinations, bias, and verification requirements.`,
-      aiEthicsComplianceRisk: isMechanicalOrEngineering
-        ? 'Uploading confidential client CAD schematics or plant vulnerability data to public cloud AI models (breaching IP and POPIA Act 4 of 2013), or deploying unverified AI structural/pressure-vessel calculations in violation of the OHS Act and ECSA Code of Conduct.'
-        : 'Exposure of confidential organisational or personal data to unvetted external AI models in breach of South African POPIA Act 4 of 2013, and over-reliance on unverified AI outputs.'
+      taskOrSkill: learningGoals.length > 0
+        ? `${blueprint.taskOrSkill}, specifically mastering ${learningGoals.join(', ')}`
+        : blueprint.taskOrSkill,
+      operationalImpact: blueprint.operationalImpact,
+      rootCauses: blueprint.rootCauses,
+      processFailures: blueprint.processFailures,
+      skillGaps: blueprint.skillGaps,
+      constraints: blueprint.constraints,
+      digitalReadinessLevel: blueprint.digitalReadiness,
+      aiLiteracyGap: blueprint.aiLiteracyGap,
+      aiEthicsComplianceRisk: blueprint.aiEthicsRisk
     },
 
-    // Section 02 - Sources & Research
     research: {
-      regulatoryFramework: isMechanicalOrEngineering
-        ? 'Engineering Council of South Africa (ECSA) Code of Conduct, Occupational Health and Safety Act (OHS Act 85 of 1993), SANS 347 (Pressure Equipment), ISO 55000 (Asset Management), King IV Principle 12, and POPIA Act 4 of 2013.'
-        : isEmotionalIntelligence
-          ? 'POPIA Act 4 of 2013, South African Basic Conditions of Employment Act (BCEA), King IV Principle 12 (Ethical & Effective Leadership), and Daniel Goleman’s Emotional Intelligence Competency Framework.'
-          : `South African POPIA Act 4 of 2013, King IV Principle 12 (Technology & Information Governance), and applicable SETA/QCTO industry standards for ${courseTitle}.`,
-      regulatorySources: isMechanicalOrEngineering
-        ? 'ECSA Professional Engineering Standards; OHS Act 85 of 1993 Driven Machinery & Pressure Equipment Regulations; SANS/ISO 9001 Quality Management.'
-        : 'POPIA Act No. 4 of 2013; King IV Corporate Governance Code; National Qualifications Framework (NQF) Act 67 of 2008.',
-      aiToolsPlatformName: isMechanicalOrEngineering
-        ? 'Autodesk Fusion Generative Design, ANSYS SimAI, Siemens Senseye Predictive Maintenance, MATLAB Predictive Maintenance Toolbox, and Enterprise LLM Assistants (Groq Cloud / Copilot for Engineering Docs)'
-        : 'Enterprise Generative AI Assistants (Groq Cloud / Microsoft Copilot) & Domain Workflow Simulators',
-      aiToolsReferenced: isMechanicalOrEngineering
-        ? 'ANSYS SimAI, Autodesk Generative Design, Python/MATLAB anomaly detection, Enterprise AI technical documentation assistants'
-        : 'Enterprise LLM workspace assistants, structured prompt templates, and automated quality-check tools',
-      aiEthicsFramework: isMechanicalOrEngineering
-        ? 'ECSA Professional Engineering Accountability (Pr Eng Human-in-the-Loop Sign-Off), King IV Principle 12, and POPIA Zero-IP/Zero-PII Cloud Ingestion Policy'
-        : 'King IV Principle 12 Technology Governance, POPIA Act 4 of 2013 Section 19 & 71, and Mandatory Human-in-the-Loop Verification',
-      ethicsFrameworks: 'King IV Principle 12, POPIA Act 4 of 2013, and eStudy Human-in-the-Loop Responsible AI Standard',
-      caseStudyUseCases: isMechanicalOrEngineering
-        ? '1) Generative topology optimisation of a heavy-duty mining conveyor bracket reducing mass by 28% while passing FEA fatigue limits; 2) AI vibration & thermal anomaly detection on industrial centrifugal pumps preventing catastrophic bearing seizure; 3) Automated FMEA (Failure Mode and Effects Analysis) and maintenance SOP drafting with Pr Eng human verification.'
-        : `1) End-to-end operational workflow optimisation in ${courseTitle}; 2) Detecting and remediating AI hallucinations during document and data analysis; 3) Implementing POPIA-compliant quality gates in South African teams.`,
-      industryUseCases: isMechanicalOrEngineering
-        ? 'Predictive maintenance in South African mining & manufacturing plants; generative CAD lightweighting; automated FMEA & technical specification auditing.'
-        : `Applied South African workplace case studies and scenario simulations for ${courseTitle}.`,
-      evidenceStandards: isMechanicalOrEngineering
-        ? [
-            'Engineering Council of South Africa (ECSA) Competency Standards for Professional Engineers',
-            'Occupational Health and Safety Act 85 of 1993 & Driven Machinery Regulations',
-            'ISO 13374 / ISO 55000 Condition Monitoring & Asset Management Standards',
-            'POPIA Act 4 of 2013 & King IV Principle 12 Information Governance'
-          ]
-        : [
-            'Protection of Personal Information Act (POPIA Act 4 of 2013)',
-            'King IV Corporate Governance Code (Principle 12)',
-            'South African Qualifications Authority (SAQA) NQF Level Descriptors',
-            'eStudy Master Instructional Design Standard v9.0'
-          ],
-      sources: isMechanicalOrEngineering
-        ? [
-            {
-              id: 'src-1',
-              name: 'Engineering Council of South Africa (ECSA) Code of Conduct & Overarching Engineering Standards',
-              type: 'Regulatory framework',
-              reference: 'Engineering Profession Act 46 of 2000 / ECSA Board Notice',
-              relevance: 'Establishes non-delegable professional accountability (Pr Eng / Pr Tech Eng) when using automated or AI-assisted engineering design tools.',
-              status: 'Verified'
-            },
-            {
-              id: 'src-2',
-              name: 'Occupational Health and Safety Act (OHS Act No. 85 of 1993) & Driven Machinery Regulations',
-              type: 'Regulatory framework',
-              reference: 'Republic of South Africa Department of Employment and Labour',
-              relevance: 'Governs mechanical safety factors, pressure equipment integrity (SANS 347), and machinery maintenance compliance.',
-              status: 'Verified'
-            },
-            {
-              id: 'src-3',
-              name: 'ISO 13374 & ISO 55000: Condition Monitoring, Diagnostics of Machines & Asset Management',
-              type: 'Industry standard',
-              reference: 'SANS / ISO 13374-1 & ISO 55001',
-              relevance: 'Provides the international engineering architecture for AI-driven predictive maintenance, sensor fusion, and prognostic health management.',
-              status: 'Verified'
-            },
-            {
-              id: 'src-4',
-              name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013) & King IV Principle 12',
-              type: 'Ethics framework',
-              reference: 'Republic of South Africa Government Gazette No. 37067 & IoDSA King IV',
-              relevance: 'Mandates strict cybersecurity, intellectual property protection, and governance over AI technology deployed in industrial enterprises.',
-              status: 'Verified'
-            }
-          ]
-        : [
-            {
-              id: 'src-1',
-              name: 'Protection of Personal Information Act (POPIA Act No. 4 of 2013)',
-              type: 'Regulatory framework',
-              reference: 'Republic of South Africa Government Gazette No. 37067, Sections 19 & 71',
-              relevance: 'Mandates security safeguards over personal and organisational data and regulates automated decision-making.',
-              status: 'Verified'
-            },
-            {
-              id: 'src-2',
-              name: 'King IV Report on Corporate Governance for South Africa',
-              type: 'Ethics framework',
-              reference: 'Institute of Directors in South Africa (IoDSA), Principle 12',
-              relevance: 'Establishes board and operational oversight for technology, information security, and ethical AI deployment.',
-              status: 'Verified'
-            },
-            {
-              id: 'src-3',
-              name: `Industry Best-Practice & Operational Benchmark Framework for ${courseTitle}`,
-              type: 'Industry standard',
-              reference: 'South African Sector Education & Training Authority (SETA) / QCTO Occupational Standards',
-              relevance: `Defines workplace competency outcomes, quality assurance gates, and practical performance standards for ${courseTitle}.`,
-              status: 'Verified'
-            },
-            {
-              id: 'src-4',
-              name: 'ISO/IEC 42001 Artificial Intelligence Management System Standard',
-              type: 'Technology documentation',
-              reference: 'SANS / ISO/IEC 42001:2023',
-              relevance: 'Provides structured risk management, human-in-the-loop verification, and continuous monitoring controls for workplace AI.',
-              status: 'Verified'
-            }
-          ],
-      benchmarkingNotes: `Benchmarked against South African statutory requirements (POPIA, King IV${isMechanicalOrEngineering ? ', ECSA, OHS Act' : ''}) and global industry standards.`,
+      regulatoryFramework: blueprint.regulatoryFramework,
+      regulatorySources: blueprint.regulatorySources,
+      aiToolsPlatformName: blueprint.aiToolsPlatformName,
+      aiToolsReferenced: blueprint.aiToolsReferenced,
+      aiEthicsFramework: blueprint.aiEthicsFramework,
+      ethicsFrameworks: blueprint.aiEthicsFramework,
+      caseStudyUseCases: blueprint.caseStudyUseCases,
+      industryUseCases: blueprint.industryUseCases,
+      evidenceStandards: blueprint.evidenceStandards,
+      sources: blueprint.sources,
+      benchmarkingNotes: `Aligned to eStudy South Africa Master Curriculum Standard v9.0 for ${courseTitle}. Applicable statutory claims marked for SME confirmation where sector-specific.`,
       benchmarkCourseRef: 'eStudy South Africa Master Curriculum Benchmark Standard v9.0',
       learnerProfile: {
-        jobRoles: isMechanicalOrEngineering
-          ? 'Mechanical Engineers, CAD/CAE Design Engineers, Reliability & Maintenance Engineers, Plant Managers, and Engineering Technologists'
-          : targetGroup,
-        departments: isMechanicalOrEngineering
-          ? 'Engineering Design, R&D, Plant Maintenance, Reliability Engineering, Manufacturing Operations, and Quality Assurance'
-          : 'Operations, Technical Services, Quality Assurance, Compliance, and Project Delivery',
-        experienceLevels: 'Mid-level to Senior Practitioners (2–10+ years workplace experience)',
-        existingKnowledge: isMechanicalOrEngineering
-          ? 'Solid foundation in classical mechanics, thermodynamics, material science, CAD modelling, and plant maintenance procedures.'
-          : `Foundational operational knowledge and daily workplace experience in ${courseTitle}.`,
-        digitalLiteracy: isMechanicalOrEngineering
-          ? 'High proficiency in engineering software (CAD/FEA/ERP/CMMS) and data spreadsheets.'
-          : 'Competent with enterprise digital systems, spreadsheets, web portals, and collaborative platforms.',
-        aiFamiliarity: 'Basic to Intermediate — familiar with conversational AI tools, seeking structured domain-specific workflows and verification governance.',
-        workplaceEnvironment: isMechanicalOrEngineering
-          ? 'Hybrid engineering design offices, manufacturing plants, mining operations, and industrial maintenance facilities across South Africa.'
-          : 'South African corporate, industrial, and hybrid operational environments.',
-        organisationalConstraints: isMechanicalOrEngineering
-          ? 'Strict safety margins, capital budget limits, legacy SCADA/sensor data formatting, and strict IP security policies.'
-          : 'Time pressure during operational cycles, strict regulatory compliance, and data privacy policies.',
-        availableToolsAndTechnology: isMechanicalOrEngineering
-          ? 'CAD/CAE workstations (SolidWorks, Inventor, ANSYS), CMMS platforms (SAP PM, Maximo), Python/Excel analytics, and approved enterprise AI assistants.'
-          : 'Standard enterprise workstations, intranet LMS, and approved enterprise AI productivity suites.'
+        jobRoles: targetGroup,
+        departments: blueprint.industryDomain,
+        experienceLevels: difficultyLevel === 'Foundational'
+          ? 'Entry-level / Beginners (0–2 years domain experience)'
+          : difficultyLevel === 'Advanced'
+            ? 'Senior Practitioners & Technical Leads (5+ years experience)'
+            : 'Mid-level Practitioners (2–5+ years experience)',
+        existingKnowledge: difficultyLevel === 'Foundational'
+          ? `Basic workplace familiarity; no deep prior specialisation in ${courseTitle} assumed.`
+          : `Foundational operational knowledge and daily experience in ${courseTitle}.`,
+        digitalLiteracy: blueprint.digitalReadiness,
+        aiFamiliarity: 'Basic to Intermediate — seeking structured, verification-first workflows.',
+        workplaceEnvironment: blueprint.industryContext,
+        organisationalConstraints: blueprint.constraints,
+        availableToolsAndTechnology: blueprint.aiToolsPlatformName
       }
     },
 
-    // Section 03 - Course Structure
     structure: {
-      ...currentCourse.structure,
+      ...scratchBase.structure,
       title: courseTitle,
       code: courseCode,
-      industryDomain: isMechanicalOrEngineering
-        ? 'Mechanical Engineering, Industrial Manufacturing, Mining & Asset Reliability'
-        : isEmotionalIntelligence
-          ? 'Corporate Leadership, People Operations & Professional Services'
-          : `Corporate & Industrial Operations — ${courseTitle}`,
-      industryContext: isMechanicalOrEngineering
-        ? 'South African manufacturing, mining, energy, automotive, and heavy engineering sectors operating under ECSA, OHS Act, and SANS standards.'
-        : `South African corporate and operational environments governed by POPIA, King IV, and sector quality standards.`,
-      targetRoles: isMechanicalOrEngineering
-        ? 'Mechanical Engineers, Design Engineers, Maintenance & Reliability Leads, Engineering Managers'
-        : targetGroup,
+      industryDomain: blueprint.industryDomain,
+      industryContext: blueprint.industryContext,
+      targetRoles: targetGroup,
       aiIntegrationLevel: 'Applied',
-      setaNqfLevel: isMechanicalOrEngineering
-        ? 'NQF Level 6 / ECSA CPD Aligned & MerSETA (Manufacturing, Engineering and Related Services SETA)'
-        : 'NQF Level 5 / SETA & QCTO Aligned',
+      setaNqfLevel: blueprint.nqfLevel,
       deliveryLanguages: 'English (South African Workplace Context with Plain Language Principles)',
-      estimatedDuration: '16 Hours / 2 CPD Credits',
-      deliveryFormat: 'Blended Digital E-Learning with Interactive Engineering/Workplace Scenarios & Practical Tasks',
-      difficultyLevel: 'Intermediate',
-      purposeStatement: isMechanicalOrEngineering
-        ? 'Equip mechanical and reliability engineers with practical, safety-verified competencies to apply AI in generative CAD design, FEA simulation acceleration, predictive maintenance diagnostics, and technical documentation while upholding ECSA and OHS Act standards.'
-        : `Equip South African professionals with practical, scenario-tested competencies in ${courseTitle} to eliminate operational bottlenecks, govern AI tools responsibly, and achieve measurable performance gains.`,
-      workplaceRelevance: isMechanicalOrEngineering
-        ? 'Directly bridges traditional mechanical engineering rigour with modern AI capabilities, reducing design iteration cycles and preventing unplanned plant downtime without compromising structural or operational safety.'
-        : `Directly transforms daily execution in ${courseTitle} by replacing ad-hoc practices with verified standard operating procedures and human-in-the-loop AI workflows.`,
-      performanceImprovement: isMechanicalOrEngineering
-        ? '30–40% faster CAD/CAE concept iteration, measurable reduction in unplanned rotating-equipment downtime via early anomaly detection, and 100% ECSA/SANS verification compliance on AI-assisted engineering outputs.'
-        : `35% reduction in procedural rework, measurable improvement in turnaround speed, and 100% compliance with POPIA and internal quality gates.`,
-      aiTechAngle: isMechanicalOrEngineering
-        ? 'Combines physics-informed AI surrogate models, generative topology optimisation, vibration/thermal anomaly detection, and structured engineering prompt workflows with mandatory Pr Eng human verification.'
-        : `Integrates structured AI prompting, automated workflow analysis, and mandatory human-in-the-loop verification checklists tailored to ${courseTitle}.`,
-      scopeSummary: isMechanicalOrEngineering
-        ? 'A 3-module engineering programme progressing from AI foundations and generative CAD/FEA validation (Module 1), to predictive maintenance and condition-monitoring workflows (Module 2), culminating in engineering SOP rollout, FMEA automation, and ECSA/POPIA governance (Module 3).'
-        : `A comprehensive 3-module curriculum progressing from foundational concepts and root-cause diagnostics (Module 1), to applied tools, step-by-step procedures, and AI workflows (Module 2), to departmental rollout, SOPs, and governance (Module 3).`,
-      aiEraRelevance: isMechanicalOrEngineering
-        ? 'AI is rapidly transforming CAD generative design, CAE simulation speed, and plant reliability; engineers who master physics-verified AI workflows lead industrial productivity while preventing catastrophic automation errors.'
-        : `As AI tools become embedded in daily operations, professionals in ${courseTitle} must combine domain expertise with rigorous verification and ethical governance.`,
-      performanceLink: isMechanicalOrEngineering
-        ? 'Links AI-accelerated design and predictive diagnostics directly to plant availability (OEE), material mass savings, and zero-defect engineering sign-off.'
-        : `Links structured execution and verified AI workflows directly to reduced error rates, faster delivery, and audit readiness in ${courseTitle}.`,
-      organisationalBenefits: isMechanicalOrEngineering
-        ? [
-            'Accelerated engineering design-to-manufacture lead times and optimised material usage through validated generative CAD/FEA workflows.',
-            'Significant reduction in unplanned mechanical downtime and maintenance costs through AI-assisted condition monitoring and predictive diagnostics.'
-          ]
-        : [
-            `Significant reduction in operational errors, rework, and compliance escalations across ${courseTitle} workflows.`,
-            'Standardised, audit-ready execution supported by clear human-in-the-loop AI governance and measurable KPIs.'
-          ],
-      employeeBenefits: isMechanicalOrEngineering
-        ? [
-            'Practical mastery of generative design, AI simulation surrogates, and predictive maintenance tools without losing first-principles engineering control.',
-            'Enhanced professional marketability and ECSA-aligned CPD capability in modern AI-augmented mechanical engineering.'
-          ]
-        : [
-            `Practical mastery of modern tools, step-by-step procedures, and safe AI prompting techniques for ${courseTitle}.`,
-            'Increased confidence, decision-making accuracy, and career advancement readiness.'
-          ],
-      riskReductionOutcomes: isMechanicalOrEngineering
-        ? [
-            'Prevention of unverified AI calculation or structural tolerance errors reaching manufacturing or plant operations (OHS Act & SANS compliance).',
-            'Protection of proprietary CAD files, client schematics, and plant telemetry from unauthorised public cloud AI exposure (POPIA & IP security).'
-          ]
-        : [
-            'Elimination of unverified AI hallucinations or procedural shortcuts in high-stakes workplace deliverables.',
-            'Full compliance with South African POPIA Act 4 of 2013 and King IV technology governance standards.'
-          ],
-      scope: `3 comprehensive modules, 9 workplace scenarios, 3 AI governance scenarios, 5 pre-course diagnostic questions, module knowledge checks, and a 30-60-90 day implementation blueprint.`,
-      keyCompetencies: isMechanicalOrEngineering
-        ? 'Generative CAD Topology Optimisation, Physics-Informed FEA/CFD Validation, Predictive Maintenance Anomaly Detection, Automated FMEA & Technical Documentation, ECSA/OHS Act AI Governance'
-        : `Core Problem Diagnostics, Standard Operating Procedure Execution, Structured AI Prompting & Verification, Risk & Compliance Governance in ${courseTitle}`,
-      realWorldApplication: isMechanicalOrEngineering
-        ? 'Validating generative CAD bracket geometries against SANS/FEA stress limits, triaging pump vibration anomalies, and auditing AI-drafted FMEA tables.'
-        : `Real-world South African workplace scenario simulations, quality gate audits, and practical workflow implementation in ${courseTitle}.`,
-      aiSkillsDeveloped: isMechanicalOrEngineering
-        ? 'Engineering Prompt Engineering, Surrogate Model Validation, Sensor Anomaly Triage, Zero-IP-Leak Technical Documentation Auditing'
-        : 'Structured Domain Prompting, Hallucination & Bias Auditing, Human-in-the-Loop Quality Verification, Zero-PII Data Sanitization',
-      jobRoles: isMechanicalOrEngineering
-        ? 'Mechanical Engineers, CAD/CAE Specialists, Reliability Engineers, Maintenance Superintendents, Technical Leads'
-        : targetGroup,
-      departments: isMechanicalOrEngineering
-        ? 'Mechanical Engineering, Design & R&D, Plant Maintenance, Asset Reliability, Manufacturing Operations'
-        : 'Operations, Technical Delivery, Quality & Risk, Compliance',
-      experienceLevel: 'Intermediate (2+ years domain experience)',
+      estimatedDuration: duration,
+      deliveryFormat: Boolean(practicalFocus)
+        ? 'Hands-On Applied E-Learning with Step-by-Step Labs, Workplace Scenarios & Practical Tasks'
+        : 'Blended Digital E-Learning with Interactive Workplace Scenarios & Practical Tasks',
+      difficultyLevel,
+      purposeStatement: `Equip ${targetGroup} with practical, verifiable competencies in ${courseTitle}${goalsNarrative} to eliminate operational bottlenecks and uphold high governance standards.`,
+      workplaceRelevance: `Directly translates core principles of ${courseTitle}${goalsNarrative} into repeatable, workplace-ready procedures and verified decision gates.`,
+      performanceImprovement: `Measurable reduction in operational rework, improved quality gate compliance, and faster capability ramp-up across ${courseTitle}.`,
+      aiTechAngle: `Integrates structured domain tools and human-in-the-loop verification tailored specifically to ${courseTitle}.`,
+      scopeSummary: `A ${modules.length}-module programme in ${courseTitle}${goalsNarrative}, progressing from core foundations to applied hands-on execution and 30-60-90 day governance rollout.`,
+      aiEraRelevance: `Professionals in ${courseTitle} increasingly interact with automated and AI-assisted workflows requiring strong first-principles judgement and verification.`,
+      performanceLink: `Links structured execution directly to audit readiness, reduced error rates, and reliable team delivery in ${courseTitle}.`,
+      organisationalBenefits: [
+        `Reduced rework, faster operational turnaround, and stronger risk controls in ${courseTitle}.`,
+        `Standardised execution across teams backed by measurable KPIs and clear accountability.`
+      ],
+      employeeBenefits: [
+        `Practical, career-relevant mastery of ${courseTitle}${goalsNarrative}.`,
+        `Confidence executing complex tasks with clear checklists and verification rubrics.`
+      ],
+      riskReductionOutcomes: [
+        `Elimination of unverified automation or procedural shortcuts in high-impact deliverables.`,
+        `Alignment with applicable data-protection and governance standards.`
+      ],
+      scope: `${modules.length} comprehensive modules, ${modules.length * 3} workplace scenarios, ${modules.length} AI governance scenarios, 5 pre-course diagnostic questions, module knowledge checks, and a 30-60-90 day rollout plan.`,
+      keyCompetencies: learningGoals.length > 0 ? learningGoals.join(', ') : modules.flatMap(m => m.keySkills.slice(0, 2)).join(', '),
+      realWorldApplication: practicalFocus || `Hands-on South African workplace scenario simulations, quality gate audits, and practical tasks in ${courseTitle}.`,
+      aiSkillsDeveloped: `Structured Domain Prompting, Verification Auditing, Human-in-the-Loop Sign-Off in ${courseTitle}`,
+      jobRoles: targetGroup,
+      departments: blueprint.industryDomain,
+      experienceLevel: difficultyLevel === 'Foundational' ? 'Foundational / Beginner' : `${difficultyLevel} (2+ years experience)`,
       aiFamiliarityBaseline: 'Basic',
-      aiFamiliarityExplanation: 'Has heard of or casually used consumer AI (e.g., ChatGPT) with no structured workplace method.',
-      prerequisiteKnowledge: isMechanicalOrEngineering
-        ? 'Foundational degree/diploma in Mechanical Engineering or equivalent practical experience in CAD design, mechanics of materials, or plant maintenance.'
-        : `Foundational operational knowledge of workplace processes and compliance requirements in ${courseTitle}.`,
-      prerequisiteExperience: '1–2 years working in an engineering, technical, or operational environment.',
-      toolsSystems: isMechanicalOrEngineering
-        ? 'Standard engineering workstation, CAD/CAE or CMMS software access, spreadsheet tools, and approved enterprise AI sandbox.'
-        : 'Standard enterprise workstation, web browser, spreadsheet tools, and approved enterprise AI assistant.',
-      digitalLiteracyLevel: 'Intermediate digital and technical literacy.',
-      diagnosticQuestions: isMechanicalOrEngineering
-        ? [
-            {
-              id: 'diag-1',
-              category: 'General domain knowledge',
-              question: 'When evaluating a component geometry produced by an AI generative design algorithm, what is the mandatory engineering step before releasing the part for manufacturing?',
-              purpose: 'Assess baseline understanding of independent FEA/first-principles verification.'
-            },
-            {
-              id: 'diag-2',
-              category: 'Problem awareness',
-              question: 'Why can relying solely on a general-purpose Large Language Model (LLM) for thermodynamic or pressure-vessel wall-thickness calculations create severe operational risk?',
-              purpose: 'Evaluate awareness of LLM probabilistic text prediction vs physics-based equations and SANS 347 compliance.'
-            },
-            {
-              id: 'diag-3',
-              category: 'Current workplace practices',
-              question: 'How does your engineering or maintenance team currently integrate vibration, temperature, or oil-analysis telemetry to predict mechanical bearing or pump failures?',
-              purpose: 'Benchmark current predictive vs reactive maintenance maturity.'
-            },
-            {
-              id: 'diag-4',
-              category: 'AI / digital readiness',
-              question: 'What input parameters and boundary constraints must be explicitly defined before running an AI topology optimisation or simulation surrogate model?',
-              purpose: 'Test readiness to configure load cases, material properties, manufacturing constraints, and safety factors.'
-            },
-            {
-              id: 'diag-5',
-              category: 'Ethics & compliance',
-              question: 'Under ECSA professional standards and South African IP/POPIA regulations, what precautions must be taken before uploading proprietary CAD assemblies or failure reports to a cloud AI tool?',
-              purpose: 'Assess compliance with IP sanitization, POPIA security safeguards, and Pr Eng sign-off accountability.'
-            }
-          ]
-        : [
-            {
-              id: 'diag-1',
-              category: 'General domain knowledge',
-              question: `What are the primary quality and compliance criteria that govern successful execution in ${courseTitle}?`,
-              purpose: 'Establish baseline domain comprehension.'
-            },
-            {
-              id: 'diag-2',
-              category: 'Problem awareness',
-              question: `Which recurring root causes most frequently trigger operational delays or rework in ${courseTitle}?`,
-              purpose: 'Assess awareness of systemic process bottlenecks.'
-            },
-            {
-              id: 'diag-3',
-              category: 'Current workplace practices',
-              question: 'How do you currently verify the accuracy and completeness of deliverables before escalating or signing off?',
-              purpose: 'Evaluate current quality assurance habits.'
-            },
-            {
-              id: 'diag-4',
-              category: 'AI / digital readiness',
-              question: 'When using an AI assistant to draft or analyse workplace documentation, how do you verify that the output contains no fabricated facts or hallucinations?',
-              purpose: 'Measure practical AI verification readiness.'
-            },
-            {
-              id: 'diag-5',
-              category: 'Ethics & compliance',
-              question: 'Under South African POPIA Act 4 of 2013, what information must be stripped or anonymised before submitting workplace text to an external AI model?',
-              purpose: 'Verify data privacy and regulatory awareness.'
-            }
-          ],
-      learningJourney: [
+      aiFamiliarityExplanation: 'General awareness of digital tools; builds structured domain workflows.',
+      prerequisiteKnowledge: difficultyLevel === 'Foundational'
+        ? `No advanced prerequisite required; general workplace digital literacy is sufficient for ${courseTitle}.`
+        : `Foundational operational familiarity with ${courseTitle}.`,
+      prerequisiteExperience: difficultyLevel === 'Foundational' ? '0–1 years workplace exposure.' : '1–2 years operational experience.',
+      toolsSystems: blueprint.aiToolsPlatformName,
+      digitalLiteracyLevel: blueprint.digitalReadiness,
+      diagnosticQuestions: [
         {
-          id: 'lj-1',
-          stepNumber: 1,
-          title: 'Module 1: Foundations & Core Verification',
-          subtitle: 'Problem Context, First Principles & AI Demystification',
-          description: isMechanicalOrEngineering
-            ? 'Master how AI models work in mechanical engineering (Generative CAD, CAE surrogates, LLMs) and establish first-principles verification gates.'
-            : `Master the core concepts, root causes, and foundational AI literacy for ${courseTitle}.`
+          id: 'diag-1',
+          category: 'General domain knowledge',
+          question: `What core concepts and quality criteria define effective practice in ${courseTitle}?`,
+          purpose: 'Establish baseline domain comprehension.'
         },
         {
-          id: 'lj-2',
-          stepNumber: 2,
-          title: 'Module 2: Applied Tools, Workflows & Diagnostics',
-          subtitle: 'Step-by-Step Execution & Scenario Simulations',
-          description: isMechanicalOrEngineering
-            ? 'Apply AI workflows to generative topology optimisation, predictive maintenance telemetry, and automated FMEA drafting.'
-            : `Execute step-by-step operational procedures, AI prompting workflows, and quality verification checklists.`
+          id: 'diag-2',
+          category: 'Problem awareness',
+          question: `Which root causes most frequently trigger rework, outages, or compliance issues in ${courseTitle}?`,
+          purpose: 'Assess awareness of systemic bottlenecks.'
         },
         {
-          id: 'lj-3',
-          stepNumber: 3,
-          title: 'Module 3: Implementation, SOPs & Governance',
-          subtitle: 'Departmental Rollout, Risk Matrix & Compliance Sign-Off',
-          description: isMechanicalOrEngineering
-            ? 'Deploy engineering AI standard operating procedures, ECSA sign-off checklists, and 30-60-90 day plant implementation plans.'
-            : `Deploy departmental SOPs, risk & compliance matrices, and a 30-60-90 day workplace rollout plan.`
+          id: 'diag-3',
+          category: 'Current workplace practices',
+          question: `How do you currently verify accuracy, security, and readiness before releasing work in ${courseTitle}?`,
+          purpose: 'Evaluate existing verification habits.'
+        },
+        {
+          id: 'diag-4',
+          category: 'AI / digital readiness',
+          question: `When using digital or AI assistants in ${courseTitle}, how do you catch subtle errors or unsafe defaults?`,
+          purpose: 'Measure practical verification readiness.'
+        },
+        {
+          id: 'diag-5',
+          category: 'Ethics & compliance',
+          question: `What confidentiality and governance controls apply to records handled in ${courseTitle}?`,
+          purpose: 'Verify privacy and regulatory awareness.'
         }
-      ]
+      ],
+      learningJourney: modules.map((mod, idx) => ({
+        id: `lj-${idx + 1}`,
+        stepNumber: idx + 1,
+        title: mod.title,
+        subtitle: mod.subtitle,
+        description: mod.purpose
+      }))
     },
 
-    // Section 04 - Modules (3 complete modules aligned with PDF 4.1, 4.2, 4.3)
-    modules: [
-      {
-        id: 'mod-1',
-        number: 1,
-        moduleNumber: 1,
-        title: isMechanicalOrEngineering
-          ? 'Module 1: Foundations of AI in Mechanical Engineering & Generative CAD/CAE'
-          : `Module 1: Foundations, Root Causes & AI Literacy in ${courseTitle}`,
-        subtitle: isMechanicalOrEngineering
-          ? 'Physics-Informed AI, Generative Topology Optimisation & First-Principles Verification'
-          : 'Core Concepts, Problem Diagnostics & Responsible AI Foundations',
-        purpose: isMechanicalOrEngineering
-          ? 'Establish a rigorous engineering foundation in how AI algorithms (generative design, physics-informed neural networks, and LLMs) operate in mechanical engineering, where they add value, and how to prevent physical or calculation failures.'
-          : `Build a solid foundation in the core principles, root causes, early warning signs, and safe AI literacy required for excellence in ${courseTitle}.`,
-        keySkills: isMechanicalOrEngineering
-          ? ['Generative CAD Constraint Setup', 'Physics-Informed AI Literacy', 'First-Principles Hand-Calculation Audits', 'IP & POPIA Data Sanitization']
-          : ['Root Cause Analysis', 'Core Domain Execution', 'AI Literacy & Hallucination Detection', 'POPIA Data Protection'],
-        learningObjectives: isMechanicalOrEngineering
-          ? [
-              'Differentiate between probabilistic Large Language Models (LLMs), physics-informed neural networks (PINNs), and topology optimisation solvers in mechanical engineering',
-              'Configure accurate load cases, boundary conditions, material constraints, and safety factors for AI-assisted generative CAD design',
-              'Verify AI-generated mechanical concepts and calculations against classical mechanics, finite element analysis (FEA), and SANS/ISO standards'
-            ]
-          : [
-              `Define the core operational concepts, regulatory standards, and performance drivers in ${courseTitle}`,
-              'Identify systemic root causes and early warning signs of process failure before they impact delivery',
-              'Explain how AI tools function in this domain and apply strict POPIA and human-verification safeguards'
-            ],
-        learningOutcomes: isMechanicalOrEngineering
-          ? [
-              'Differentiate between probabilistic LLMs, PINNs, and generative CAD solvers',
-              'Configure accurate boundary conditions and safety factors for generative design',
-              'Verify AI-generated mechanical outputs against classical FEA and SANS standards'
-            ]
-          : [
-              `Define core operational concepts and compliance standards in ${courseTitle}`,
-              'Identify root causes and early warning signs of operational failure',
-              'Apply foundational AI verification and POPIA safeguards'
-            ],
-        coreConcepts: isMechanicalOrEngineering
-          ? 'Mechanical engineering requires deterministic safety margins, whereas many AI models produce probabilistic predictions. This module covers Generative Design & Topology Optimisation, Surrogate CAE Modelling, and why unverified AI outputs can violate thermodynamic, fatigue, or structural limits.'
-          : `Defines the operational problem landscape in ${courseTitle}, examining how unstandardised workflows and unverified assumptions create downstream compliance and productivity failures.`,
-        definitionsFrameworks: isMechanicalOrEngineering
-          ? 'Generative Topology Optimisation, Finite Element Analysis (FEA), Physics-Informed Neural Networks (PINNs), Surrogate Models, Safety Factor (FoS), SANS 347, ECSA Code of Conduct.'
-          : `Standard Operating Procedure (SOP), Root Cause Analysis (5-Whys), Human-in-the-Loop (HITL), POPIA Condition 7 Security Safeguards, King IV Principle 12.`,
-        rootCausesExploration: isMechanicalOrEngineering
-          ? 'Root causes include treating AI outputs as certified engineering calculations, omitting manufacturing constraints (casting, CNC overhang, weld access) in generative CAD setups, and feeding uncalibrated data into models.'
-          : rootCauses.join('; '),
-        aiTopicCoverage: isMechanicalOrEngineering
-          ? 'Demystifies how AI surrogate models approximate FEA/CFD stress and thermal fields in seconds, and contrasts them with general LLMs that must never be trusted for unverified structural math.'
-          : `Explains how generative and analytical AI tools assist with drafting, summarisation, and pattern detection in ${courseTitle}, and why human verification is mandatory.`,
-        practicalExercises: isMechanicalOrEngineering
-          ? 'Set up a complete boundary-condition specification sheet (loads, fixed constraints, keep-out zones, material yield strength, minimum safety factor = 2.0) for an industrial mounting bracket and audit an AI-generated design proposal.'
-          : `Conduct a structured root-cause audit of a recurring workflow bottleneck in ${courseTitle} and verify an AI-assisted summary against source records.`,
-        aiGovernanceElement: isMechanicalOrEngineering
-          ? 'Mandatory Pr Eng / Senior Engineer verification of all load paths, Von Mises stress concentrations, and fatigue life before approving any AI-generated CAD geometry.'
-          : 'Zero-PII prompt hygiene under POPIA Act 4 of 2013 and mandatory human sign-off on all AI-assisted outputs.',
-        sopTemplatesChecklists: 'Module 1 Verification & Boundary Condition Audit Checklist',
-        implementationPlan: 'Establish baseline verification gates for all team members using AI tools in Module 1 workflows.',
-        kpiMetrics: '100% verification checklist completion rate; zero unverified AI calculations entering production.',
-        status: 'Complete',
-        requirements: {
-          problemDefinition: isMechanicalOrEngineering
-            ? 'Engineers face pressure to shorten design cycles while upholding strict mechanical safety factors. Misusing AI tools without physics validation risks structural failure.'
-            : `Unaddressed process inconsistencies in ${courseTitle} lead to preventable errors, rework, and compliance exposure.`,
-          workplaceContext: isMechanicalOrEngineering
-            ? 'South African engineering design offices, OEM manufacturing plants, and mining equipment refurbishment projects.'
-            : `South African corporate and operational teams executing daily workflows in ${courseTitle}.`,
-          keyTerms: isMechanicalOrEngineering
-            ? 'Topology Optimisation, FEA Surrogate Model, Von Mises Stress, Factor of Safety (FoS), PINNs, ECSA Pr Eng Accountability'
-            : 'Root Cause Analysis, Standard Operating Procedure, Human-in-the-Loop, POPIA Compliance, Quality Gate',
-          causes: rootCauses.join('; '),
-          warningSigns: isMechanicalOrEngineering
-            ? 'Organic generative geometries that cannot be machined or welded; missing load-case documentation; unverified LLM formulas in design reports.'
-            : 'Inconsistent deliverable quality, missed verification steps, and undocumented workflow shortcuts.',
-          impactStatement: operationalImpact,
-          aiDemystification: isMechanicalOrEngineering
-            ? 'Clarifies the mathematical difference between LLM token prediction, statistical regression, and physics-constrained FEA/CFD solvers.'
-            : 'Demystifies how AI models generate outputs and why plausible-sounding text requires domain verification.',
-          aiInThisDomain: isMechanicalOrEngineering
-            ? 'Used for rapid concept lightweighting, rapid fluid/thermal surrogate screening, and drafting technical specifications.'
-            : `Used to accelerate drafting, synthesis, and preliminary analysis in ${courseTitle}.`,
-          aiToolsOverview: isMechanicalOrEngineering
-            ? 'Autodesk Generative Design, SolidWorks Topology Study, ANSYS SimAI, and Enterprise LLM Documentation Assistants.'
-            : 'Approved enterprise generative AI assistants and workflow verification templates.',
-          responsibleAiPrinciples: 'Never upload proprietary CAD assemblies or personal data to public AI tools; always verify outputs against authoritative standards.',
-          toolsAndTechniques: isMechanicalOrEngineering
-            ? 'Boundary-Condition Specification Matrix, First-Principles Free-Body Diagram Check, Independent FEA Validation.'
-            : '5-Whys Root Cause Matrix, Input Sanitization Checklist, Peer Verification Protocol.',
-          procedureSteps: isMechanicalOrEngineering
-            ? '1. Define physical load cases & safety factor -> 2. Configure manufacturing & keep-out constraints -> 3. Run generative/AI study -> 4. Validate winning geometry in full deterministic FEA.'
-            : '1. Define operational objective -> 2. Sanitize sensitive inputs -> 3. Execute standard workflow -> 4. Verify output against quality checklist.',
-          roleResponsibilities: isMechanicalOrEngineering
-            ? 'Design Engineers configure constraints and run FEA checks; Lead Professional Engineers (Pr Eng) review and sign off.'
-            : 'Practitioners execute and self-audit workflows; Team Leads verify compliance and sign off.',
-          communicationApproach: 'Clear technical documentation with explicit assumptions, boundary conditions, and verification sign-off.',
-          supportMechanisms: 'Senior engineering design reviews, peer checklists, and reference standards library.',
-          scenarios: [
-            {
-              id: 'sc-1-1',
-              title: isMechanicalOrEngineering
-                ? 'The Unmanufacturable Generative Bracket'
-                : `Operational Bottleneck in ${courseTitle}`,
-              situation: isMechanicalOrEngineering
-                ? 'A junior mechanical engineer uses an AI generative design tool to lightweight a steel pump mounting bracket for a Gauteng mineral processing plant, achieving a 35% mass reduction.'
-                : `During a busy operational cycle, a team member proposes skipping the standard verification checklist in ${courseTitle} to meet an urgent deadline.`,
-              challenge: isMechanicalOrEngineering
-                ? 'The AI-generated organic lattice geometry cannot be fabricated using the local workshop’s 3-axis CNC and MIG welding equipment, and dynamic vibration fatigue was omitted from the load cases.'
-                : 'Balancing urgent delivery timelines against mandatory quality and compliance verification standards.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you approve the drawing for fabrication to meet the Friday deadline, or reject it and re-run the topology optimisation with 2.5D milling/welding constraints and fatigue load cases?'
-                : 'Do you approve the unverified deliverable to save time, or enforce the verification protocol and communicate a realistic timeline?',
-              debrief: isMechanicalOrEngineering
-                ? 'Approving an unmanufacturable or fatigue-unverified part causes costly shop-floor rejection or premature structural cracking. Re-running with proper manufacturing and fatigue constraints produces a practical, safe design.'
-                : 'Enforcing the verification gate prevents costly downstream failures and protects organisational compliance.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-1-2',
-              title: isMechanicalOrEngineering
-                ? 'Pressure Vessel Wall-Thickness Calculation Audit'
-                : 'Cross-Departmental Quality Hand-Off',
-              situation: isMechanicalOrEngineering
-                ? 'An engineer asks a conversational AI chatbot to calculate the minimum wall thickness for a 16-bar compressed air receiver vessel under SANS 347.'
-                : 'A cross-functional hand-off arrives with incomplete source documentation and unverified assumptions.',
-              challenge: isMechanicalOrEngineering
-                ? 'The AI uses an outdated ASME corrosion allowance and omits the joint efficiency factor, under-sizing the wall thickness by 1.8 mm.'
-                : 'Determining whether to proceed on verbal assurances or require documented verification.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you paste the AI calculation directly into the design dossier, or perform an independent hand/mathcad calculation against SANS 347 / ASME VIII?'
-                : 'Do you proceed with incomplete records, or pause the hand-off until authoritative verification is attached?',
-              debrief: isMechanicalOrEngineering
-                ? 'Conversational LLMs frequently hallucinate code coefficients. Pressure equipment under the OHS Act and SANS 347 requires deterministic code calculations verified by a competent person.'
-                : 'Documented verification before hand-off prevents systemic errors from cascading across departments.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-1-3',
-              title: isMechanicalOrEngineering
-                ? 'Thermal Surrogate Screening vs Full CFD'
-                : 'Escalating Early Warning Signs',
-              situation: isMechanicalOrEngineering
-                ? 'Your design team uses an AI physics surrogate model to screen 40 heat-exchanger baffle configurations in 10 minutes.'
-                : 'Routine spot-checks reveal recurring minor variances in weekly operational outputs.',
-              challenge: isMechanicalOrEngineering
-                ? 'The top-ranked configuration operates near the maximum allowable pressure-drop limit where surrogate model uncertainty is ±12%.'
-                : 'Addressing the root cause early before minor variances escalate into a major audit finding.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you freeze the final tooling based solely on the AI surrogate prediction, or run a full high-fidelity RANS CFD simulation on the top 2 candidates?'
-                : 'Do you log and remediate the root cause immediately, or ignore the variance until the quarterly audit?',
-              debrief: isMechanicalOrEngineering
-                ? 'AI surrogate models excel at rapid design-space exploration, but final production sign-off near boundary limits always requires full numerical solver validation.'
-                : 'Early root-cause remediation eliminates systemic risk before it impacts clients or regulators.',
-              status: 'Complete'
-            }
-          ],
-          aiScenarios: [
-            {
-              id: 'ai-sc-1-1',
-              title: isMechanicalOrEngineering
-                ? 'Protecting Proprietary CAD IP & POPIA in Cloud AI'
-                : 'Preventing Confidential Data Leaks in AI Prompts',
-              isAiSpecific: true,
-              situation: isMechanicalOrEngineering
-                ? 'An engineer wants to summarise a client’s confidential failure investigation report—including client employee names and proprietary impeller CAD specs—using a free public web AI tool.'
-                : 'A colleague prepares to paste a confidential internal report containing client names and ID numbers into a public AI chatbot.',
-              challenge: isMechanicalOrEngineering
-                ? 'Uploading the raw document exposes proprietary engineering IP and personal identifiable information (PII) to external training servers in breach of NDAs and POPIA.'
-                : 'Using public AI tools with raw personal or proprietary data violates POPIA Act 4 of 2013 and corporate confidentiality.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'How should the engineer process the report safely?'
-                : 'What is the mandatory step before using an AI assistant on workplace documents?',
-              debrief: isMechanicalOrEngineering
-                ? 'Strip all personal identifiers and client names (POPIA compliance), never upload proprietary CAD files to unvetted public clouds, and use only approved enterprise-isolated AI environments.'
-                : 'Redact all PII and confidential identifiers first, and only use approved enterprise AI tools with zero-data-retention guarantees.',
-              status: 'Complete'
-            }
-          ],
-          implementationStrategy: 'Embed mandatory boundary-condition and first-principles verification checklists into all design reviews.',
-          rolloutMethod: 'Blended digital module with hands-on CAD/verification exercises.',
-          meApproach: 'Audit 100% of AI-assisted design dossiers for completed verification sign-off sheets.',
-          improvementCycle: 'Quarterly review of engineering verification logs and lessons learned.',
-          implementationChecklistTitle: isMechanicalOrEngineering
-            ? 'Generative CAD & CAE First-Principles Verification Checklist'
-            : 'Module 1 Operational & AI Verification Checklist',
-          rolloutFrameworkTitle: isMechanicalOrEngineering
-            ? 'Engineering Design Office AI Verification Standard'
-            : 'Foundational Workflow & Verification Rollout Framework',
-          riskComplianceSectionTitle: isMechanicalOrEngineering
-            ? 'SANS / OHS Act & IP Protection Compliance Matrix'
-            : 'POPIA & Operational Risk Compliance Matrix',
-          continuousAiLearningApproach: 'Monthly engineering tech-briefings on validated CAE and generative design updates.',
-          aiGovernanceFramework: 'ECSA Professional Accountability & Enterprise AI Governance Charter',
-          aiFeedbackReviewMechanism: 'Peer and Pr Eng design review sign-off logs.'
-        }
-      },
-      {
-        id: 'mod-2',
-        number: 2,
-        moduleNumber: 2,
-        title: isMechanicalOrEngineering
-          ? 'Module 2: AI-Driven Predictive Maintenance, Condition Monitoring & Diagnostics'
-          : `Module 2: Applied Tools, Step-by-Step Procedures & AI Workflows in ${courseTitle}`,
-        subtitle: isMechanicalOrEngineering
-          ? 'Vibration, Thermal & Acoustic Telemetry, Anomaly Detection & Root-Cause Failure Analysis'
-          : 'Practical Execution, Prompt Engineering & Quality Control Procedures',
-        purpose: isMechanicalOrEngineering
-          ? 'Enable mechanical and reliability engineers to configure, interpret, and validate AI-driven condition monitoring and predictive maintenance models for rotating and industrial machinery.'
-          : `Equip learners with practical tools, step-by-step standard operating procedures, and structured AI workflows to execute ${courseTitle} accurately and efficiently.`,
-        keySkills: isMechanicalOrEngineering
-          ? ['Vibration & Sensor Telemetry Triage', 'Remaining Useful Life (RUL) Interpretation', 'False-Positive Diagnostics', 'AI-Assisted FMEA Drafting']
-          : ['Step-by-Step SOP Execution', 'Structured Prompt Engineering', 'Output Quality Auditing', 'Exception Escalation'],
-        learningObjectives: isMechanicalOrEngineering
-          ? [
-              'Prepare and validate mechanical condition-monitoring data (vibration FFT spectra, bearing temperatures, oil debris, and acoustic emissions) for AI anomaly detection',
-              'Evaluate AI Remaining Useful Life (RUL) predictions and anomaly alerts against physical failure modes (imbalance, misalignment, bearing spalling, cavitation)',
-              'Construct structured engineering prompts to generate draft Failure Mode and Effects Analysis (FMEA) tables and maintenance SOPs with human verification'
-            ]
-          : [
-              `Execute the end-to-end standard operating procedure for ${courseTitle} using approved tools and templates`,
-              'Construct structured, context-rich AI prompts that produce accurate workplace drafts without exposing sensitive data',
-              'Audit and correct AI-generated outputs against domain standards before operational release'
-            ],
-        learningOutcomes: isMechanicalOrEngineering
-          ? [
-              'Validate mechanical condition-monitoring sensor data for AI anomaly detection',
-              'Evaluate AI RUL predictions against physical machinery failure modes',
-              'Generate and verify FMEA tables and maintenance SOPs using structured prompting'
-            ]
-          : [
-              `Execute end-to-end standard operating procedures for ${courseTitle}`,
-              'Construct structured, POPIA-safe workplace AI prompts',
-              'Audit and verify all outputs before release'
-            ],
-        coreConcepts: isMechanicalOrEngineering
-          ? 'Covers ISO 13374 condition-monitoring architecture, time-domain vs frequency-domain (FFT) feature extraction, unsupervised anomaly detection vs supervised RUL regression, and physical verification of sensor alerts.'
-          : `Focuses on translating theoretical standards into repeatable daily execution using structured checklists, role clarity, and verified AI workflows.`,
-        definitionsFrameworks: isMechanicalOrEngineering
-          ? 'ISO 13374, ISO 10816 (Vibration Severity), Fast Fourier Transform (FFT), Remaining Useful Life (RUL), FMEA (Severity, Occurrence, Detection — RPN).'
-          : 'Standard Operating Procedure (SOP), RACI Matrix, Structured Prompt Framework (Role-Context-Task-Constraints), Quality Assurance Gate.',
-        rootCausesExploration: isMechanicalOrEngineering
-          ? 'Explores why predictive maintenance models fail in practice: loose accelerometer mounting, sensor drift, unlogged maintenance interventions, and operating-speed changes mistaken for mechanical faults.'
-          : 'Addresses procedural drift, ambiguous hand-offs, and unverified reliance on automated drafts.',
-        aiTopicCoverage: isMechanicalOrEngineering
-          ? 'Covers machine learning anomaly detection on rotating equipment telemetry and structured LLM prompting for drafting FMEAs and Root Cause Failure Analysis (RCFA) reports.'
-          : 'Covers structured prompt engineering, multi-step verification, and collaborative human-AI workflow execution.',
-        practicalExercises: isMechanicalOrEngineering
-          ? 'Triage an AI vibration anomaly alert on a 250 kW mine dewatering pump by cross-checking FFT harmonic peaks, bearing temperature trends, and physical alignment logs.'
-          : `Complete a full workflow simulation in ${courseTitle}, including drafting, verifying, and signing off an operational deliverable.`,
-        aiGovernanceElement: isMechanicalOrEngineering
-          ? 'No automated plant shutdown or maintenance work-order cancellation may occur without reliability engineer verification of physical sensor integrity.'
-          : 'Mandatory human verification checklist completed and logged for every AI-assisted task.',
-        sopTemplatesChecklists: isMechanicalOrEngineering
-          ? 'Predictive Maintenance Alert Triage SOP & FMEA Verification Template'
-          : 'Standard Execution SOP & Prompt Verification Checklist',
-        implementationPlan: 'Integrate AI alert triage protocols into weekly maintenance planning and reliability review meetings.',
-        kpiMetrics: 'Reduction in false-positive maintenance callouts; improved mean time between failures (MTBF).',
-        status: 'Complete',
-        requirements: {
-          problemDefinition: isMechanicalOrEngineering
-            ? 'Unplanned mechanical failures halt production, while false-positive AI alarms erode maintenance team trust.'
-            : 'Inconsistent execution of tools and procedures causes avoidable quality variance.',
-          workplaceContext: isMechanicalOrEngineering
-            ? 'Industrial manufacturing lines, mining concentrators, power generation turbines, and heavy fleet maintenance workshops.'
-            : `Daily operational execution across South African teams working in ${courseTitle}.`,
-          keyTerms: isMechanicalOrEngineering
-            ? 'FFT Vibration Spectrum, Bearing Pass Frequency (BPFO/BPFI), RUL, FMEA Risk Priority Number (RPN), Sensor Drift'
-            : 'SOP, RACI Accountability, Structured Prompting, Verification Gate, Exception Handling',
-          causes: isMechanicalOrEngineering
-            ? 'Uncleaned sensor telemetry, missing operational context (load/speed changes), and lack of physical diagnostic cross-checks.'
-            : 'Lack of step-by-step procedural training and unverified AI usage.',
-          warningSigns: isMechanicalOrEngineering
-            ? 'Spike in false-positive alarms, technicians ignoring dashboard alerts, or unlogged bearing replacements.'
-            : 'Frequent rework, unverified outputs, and inconsistent hand-offs between roles.',
-          impactStatement: operationalImpact,
-          aiDemystification: isMechanicalOrEngineering
-            ? 'Shows how anomaly detection models learn normal baseline clusters from historical telemetry and flag deviations.'
-            : 'Explains how structured context and constraints dramatically improve AI output accuracy.',
-          aiInThisDomain: isMechanicalOrEngineering
-            ? 'Condition monitoring anomaly detection, RUL estimation, and automated FMEA/RCFA report drafting.'
-            : `Workflow acceleration, checklist generation, and scenario analysis in ${courseTitle}.`,
-          aiToolsOverview: isMechanicalOrEngineering
-            ? 'Siemens Senseye, SKF Enlight AI, MATLAB Predictive Maintenance, and Enterprise LLM FMEA Assistants.'
-            : 'Enterprise AI assistants, workflow templates, and quality verification checklists.',
-          responsibleAiPrinciples: 'Always cross-verify digital anomaly scores against physical inspection and oil/vibration spectra.',
-          toolsAndTechniques: isMechanicalOrEngineering
-            ? 'ISO 10816 Vibration Charts, Ultrasonic & Thermography Cross-Check, AI-Assisted FMEA Matrix.'
-            : 'Step-by-Step Execution Checklist, Role-Context-Task-Constraint Prompting, Peer QA Review.',
-          procedureSteps: isMechanicalOrEngineering
-            ? '1. Receive AI anomaly alert -> 2. Verify sensor health & operating load -> 3. Inspect FFT spectrum & thermal trend -> 4. Issue verified CMMS work order.'
-            : '1. Prepare validated inputs -> 2. Execute procedural steps -> 3. Run quality verification check -> 4. Log sign-off.',
-          roleResponsibilities: isMechanicalOrEngineering
-            ? 'Reliability Engineers validate alerts; Maintenance Planners schedule CMMS work orders; Millwrights/Technicians execute and log physical findings.'
-            : 'Specialists execute steps; Supervisors verify quality gates; Managers review KPI trends.',
-          communicationApproach: 'Clear CMMS work-order instructions linking data evidence to required mechanical action.',
-          supportMechanisms: 'Diagnostic playbooks, senior reliability engineer escalation, and OEM technical manuals.',
-          scenarios: [
-            {
-              id: 'sc-2-1',
-              title: isMechanicalOrEngineering
-                ? 'The False-Positive Crusher Bearing Alarm'
-                : 'Triaging an Unexpected Operational Alert',
-              situation: isMechanicalOrEngineering
-                ? 'An AI predictive maintenance dashboard flags a 92% probability of imminent main-bearing failure on a primary jaw crusher after a weekend ore-grade change.'
-                : `An automated monitoring tool flags a high-severity variance in a core ${courseTitle} workflow just before a client deadline.`,
-              challenge: isMechanicalOrEngineering
-                ? 'Stopping the crusher costs R450,000 per hour in lost production, but a real bearing seizure would cause a 10-day outage.'
-                : 'Deciding whether to halt operations immediately or perform a rapid root-cause verification first.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you order an immediate emergency plant shutdown based solely on the AI score, or check the FFT vibration spectrum, bearing temperature, and ore feed-rate change first?'
-                : 'Do you react blindly to the automated flag, or cross-reference the source data and physical records first?',
-              debrief: isMechanicalOrEngineering
-                ? 'Inspecting the FFT spectrum and thermal trend reveals no bearing fault frequencies—the higher vibration RMS was caused by harder ore feed outside the AI training baseline. Physical verification prevents a R1.8M unnecessary shutdown while recalibrating the model.'
-                : 'Cross-referencing automated alerts against primary source records prevents costly false-positive disruptions while ensuring real risks are caught.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-2-2',
-              title: isMechanicalOrEngineering
-                ? 'Catching Cavitation on a Cooling-Water Pump'
-                : 'Resolving a Multi-Step Workflow Breakdown',
-              situation: isMechanicalOrEngineering
-                ? 'The AI condition-monitoring model flags a subtle rise in high-frequency acoustic noise and discharge pressure fluctuation on a secondary cooling pump.'
-                : 'A multi-step workflow shows recurring delays at the hand-off between two operational teams.',
-              challenge: isMechanicalOrEngineering
-                ? 'Overall RMS vibration is still within green ISO limits, so the shift supervisor wants to ignore the alert.'
-                : 'Convincing stakeholders to address the underlying procedural bottleneck before a major failure occurs.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you dismiss the alert because overall vibration is normal, or inspect suction strainer differential pressure and NPSH (Net Positive Suction Head) margins?'
-                : 'Do you ignore the early warning indicator, or investigate the upstream constraint and apply corrective action?',
-              debrief: isMechanicalOrEngineering
-                ? 'High-frequency acoustic anomalies coupled with pressure fluctuations are classic early signatures of pump cavitation caused by a partially blocked suction strainer. Clearing the strainer online saves the impeller from severe cavitation erosion.'
-                : 'Acting on validated early warning indicators prevents minor bottlenecks from escalating into major operational failures.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-2-3',
-              title: isMechanicalOrEngineering
-                ? 'Closing the Loop in the CMMS After Maintenance'
-                : 'Standardising Post-Execution Documentation',
-              situation: isMechanicalOrEngineering
-                ? 'A maintenance crew replaces a worn gearbox coupling during a scheduled shut, but closes the SAP PM work order with only the comment "Fixed".'
-                : 'A team resolves an urgent operational issue but closes the ticket without documenting the root cause or corrective steps.',
-              challenge: isMechanicalOrEngineering
-                ? 'Without structured failure-mode codes and root-cause notes, the AI predictive model cannot learn when components were replaced or what fault actually occurred.'
-                : 'Incomplete documentation prevents organisational learning and corrupts historical audit records.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you accept the "Fixed" work-order closure, or enforce the ISO 14224 failure-code and photo/alignment log requirement?'
-                : 'Do you accept the incomplete closure, or require standardized root-cause and verification logging?',
-              debrief: isMechanicalOrEngineering
-                ? 'Predictive AI models depend on accurate ground-truth maintenance labels. Enforcing structured ISO 14224 failure logging ensures continuous improvement of plant reliability models.'
-                : 'Structured closure logs preserve audit readiness and continuously improve team capability.',
-              status: 'Complete'
-            }
-          ],
-          aiScenarios: [
-            {
-              id: 'ai-sc-2-1',
-              title: isMechanicalOrEngineering
-                ? 'Auditing an AI-Drafted FMEA for a Hydraulic Press'
-                : 'Auditing an AI-Generated SOP Draft',
-              isAiSpecific: true,
-              situation: isMechanicalOrEngineering
-                ? 'A reliability engineer uses an enterprise LLM to generate a draft Failure Mode and Effects Analysis (FMEA) for a high-pressure hydraulic stamping press.'
-                : `A practitioner uses an AI assistant to draft a standard operating procedure for ${courseTitle}.`,
-              challenge: isMechanicalOrEngineering
-                ? 'The AI generates a well-formatted table but assigns a low Severity score (4/10) to a hydraulic hose burst near an operator station and omits lock-out/tag-out (LOTO) verification.'
-                : 'The AI draft looks polished but omits a mandatory South African statutory compliance checkpoint.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'How must the engineer review and correct the AI-generated FMEA before team sign-off?'
-                : 'How should the practitioner validate the AI draft before publishing?',
-              debrief: isMechanicalOrEngineering
-                ? 'High-pressure fluid injection and hose bursts are life-threatening hazards requiring a Severity score of 9–10/10 and mandatory OHS Act LOTO controls. Every row of an AI-drafted FMEA must be reviewed by a cross-functional engineering and safety team.'
-                : 'Line-by-line human review against statutory and internal standards is mandatory before releasing any AI-drafted procedure.',
-              status: 'Complete'
-            }
-          ],
-          implementationStrategy: 'Deploy standardised alert-triage and FMEA review workflows across reliability and operational teams.',
-          rolloutMethod: 'Interactive scenario workshops using real workplace telemetry and SOP templates.',
-          meApproach: 'Monthly audit of alert triage accuracy and work-order data quality.',
-          improvementCycle: 'Bi-annual recalibration of predictive models and SOP checklists.',
-          implementationChecklistTitle: isMechanicalOrEngineering
-            ? 'Predictive Maintenance Alert Triage & CMMS Data Quality Checklist'
-            : 'Applied Workflow & AI Output Verification Checklist',
-          rolloutFrameworkTitle: isMechanicalOrEngineering
-            ? 'Condition Monitoring & AI Triage Operational Rollout SOP'
-            : 'Operational Procedure & Quality Gate Rollout Framework',
-          riskComplianceSectionTitle: isMechanicalOrEngineering
-            ? 'OHS Act Driven Machinery & LOTO Safety Compliance Matrix'
-            : 'Operational Quality & Regulatory Compliance Matrix',
-          continuousAiLearningApproach: 'Retrain and audit anomaly detection thresholds after every major plant overhaul.',
-          aiGovernanceFramework: 'Human-Verified Predictive Maintenance & FMEA Governance Standard',
-          aiFeedbackReviewMechanism: 'Monthly reliability engineer review of false-positive and false-negative rates.'
-        }
-      },
-      {
-        id: 'mod-3',
-        number: 3,
-        moduleNumber: 3,
-        title: isMechanicalOrEngineering
-          ? 'Module 3: Engineering Implementation, Quality Governance & ECSA/OHS Compliance'
-          : `Module 3: Departmental Implementation, SOPs & Governance in ${courseTitle}`,
-        subtitle: isMechanicalOrEngineering
-          ? '30-60-90 Day Engineering Rollout, Risk Matrices & Professional Sign-Off'
-          : '30-60-90 Day Action Plan, Risk Mitigation & Continuous Improvement',
-        purpose: isMechanicalOrEngineering
-          ? 'Equip engineering leaders and practitioners to roll out sustainable AI-augmented mechanical engineering workflows, enforce ECSA/OHS Act compliance, and measure tangible engineering ROI.'
-          : `Enable learners to embed ${courseTitle} standards across their department through a structured 30-60-90 day rollout plan, risk compliance matrix, and continuous governance.`,
-        keySkills: isMechanicalOrEngineering
-          ? ['Engineering Change Management (ECM)', 'ECSA & OHS Act Governance', 'ROI & OEE KPI Tracking', 'Cross-Functional Rollout Leadership']
-          : ['30-60-90 Day Rollout Planning', 'Risk & Compliance Auditing', 'KPI Monitoring & Evaluation', 'Continuous Improvement Governance'],
-        learningObjectives: isMechanicalOrEngineering
-          ? [
-              'Design a 30-60-90 day engineering implementation plan for integrating AI tools into CAD/CAE design or plant maintenance workflows',
-              'Establish formal Engineering Change Management (ECM) and Pr Eng sign-off gates compliant with ECSA, SANS, and the OHS Act',
-              'Define and track measurable engineering KPIs (design iteration lead time, mass reduction, OEE availability, and zero safety non-conformances)'
-            ]
-          : [
-              `Develop a practical 30-60-90 day implementation roadmap for embedding ${courseTitle} standards in the workplace`,
-              'Apply a comprehensive Risk & Compliance Matrix safeguarding POPIA, ethical AI use, and operational quality',
-              'Track measurable KPIs and lead continuous improvement reviews across teams'
-            ],
-        learningOutcomes: isMechanicalOrEngineering
-          ? [
-              'Design a 30-60-90 day engineering AI implementation roadmap',
-              'Establish formal ECSA and OHS Act human sign-off governance gates',
-              'Track engineering KPIs including OEE, lead time, and zero safety incidents'
-            ]
-          : [
-              `Develop a 30-60-90 day workplace rollout plan for ${courseTitle}`,
-              'Apply a Risk & Compliance Matrix aligned with POPIA and King IV',
-              'Monitor operational KPIs and drive continuous improvement'
-            ],
-        coreConcepts: isMechanicalOrEngineering
-          ? 'Covers Engineering Change Management (ECM), ISO 9001 / ISO 55000 governance integration, ECSA statutory sign-off responsibilities, and 30-60-90 day pilot-to-production scaling.'
-          : `Covers change management, departmental rollout frameworks, monitoring and evaluation (M&E) metrics, and sustainable AI governance.`,
-        definitionsFrameworks: isMechanicalOrEngineering
-          ? 'Engineering Change Request (ECR/ECN), Overall Equipment Effectiveness (OEE), ECSA Code of Conduct, King IV Principle 12, 30-60-90 Day Implementation Matrix.'
-          : '30-60-90 Day Rollout Plan, Monitoring & Evaluation (M&E), Risk & Compliance Matrix, King IV Principle 12, Continuous Improvement Cycle (PDCA).',
-        rootCausesExploration: isMechanicalOrEngineering
-          ? 'Examines why engineering technology rollouts stall: lack of shop-floor artisan buy-in, missing integration with existing PLM/CMMS systems, and unclear professional sign-off liability.'
-          : 'Addresses why training fails to transfer to the workplace when post-course implementation checklists and KPI tracking are absent.',
-        aiTopicCoverage: isMechanicalOrEngineering
-          ? 'Long-term governance of engineering AI models: version control of training datasets, audit trails for AI-assisted drawings, and periodic model drift reviews.'
-          : 'Establishing ongoing AI governance, prompt library curation, and quarterly compliance audits.',
-        practicalExercises: isMechanicalOrEngineering
-          ? 'Build a complete 30-60-90 Day Engineering AI Rollout & Risk Governance Charter for your design office or maintenance department.'
-          : `Complete a 30-60-90 Day Workplace Implementation Plan and Risk & Compliance Matrix for ${courseTitle}.`,
-        aiGovernanceElement: isMechanicalOrEngineering
-          ? 'Every engineering drawing, FEA report, or maintenance strategy assisted by AI must carry an auditable human verification record signed by the responsible engineer.'
-          : 'Formal human-in-the-loop sign-off register and quarterly POPIA/ethics compliance review.',
-        sopTemplatesChecklists: isMechanicalOrEngineering
-          ? '30-60-90 Day Engineering Rollout Checklist, ECM Sign-Off SOP & OHS/POPIA Risk Matrix'
-          : '30-60-90 Day Implementation Checklist, Departmental Rollout SOP & Risk Matrix',
-        implementationPlan: '30 days: Pilot & baseline audit -> 60 days: Team SOP rollout & QA gates -> 90 days: Full KPI evaluation & management review.',
-        kpiMetrics: isMechanicalOrEngineering
-          ? 'Design cycle time reduction (%), Plant OEE improvement (%), False-alarm reduction (%), 100% ECSA/OHS audit compliance.'
-          : 'Error rate reduction (%), Turnaround time improvement (%), 100% QA & POPIA audit pass rate.',
-        status: 'Complete',
-        requirements: {
-          problemDefinition: isMechanicalOrEngineering
-            ? 'Without structured Engineering Change Management and clear governance, AI pilots remain isolated experiments or introduce unmanaged liability.'
-            : 'Without a structured rollout framework and accountability metrics, new skills fail to become permanent workplace habits.',
-          workplaceContext: isMechanicalOrEngineering
-            ? 'Engineering departments, PLM/document-control offices, and industrial plant management teams in South Africa.'
-            : `Departmental rollout and management oversight across South African organisations.`,
-          keyTerms: isMechanicalOrEngineering
-            ? 'Engineering Change Management (ECM), PLM Audit Trail, OEE (Availability × Performance × Quality), Pr Eng Sign-Off, Model Drift'
-            : '30-60-90 Day Plan, PDCA Cycle, Risk & Compliance Matrix, KPI Dashboard, Governance Charter',
-          causes: 'Lack of structured rollout milestones, unclear accountability, and absence of post-implementation audits.',
-          warningSigns: 'Shadow AI usage outside approved workflows, unlogged design changes, or declining KPI adherence.',
-          impactStatement: operationalImpact,
-          aiDemystification: 'Sustaining AI value requires ongoing data hygiene, model drift monitoring, and human governance rather than one-off deployment.',
-          aiInThisDomain: isMechanicalOrEngineering
-            ? 'Lifecycle governance of generative CAD, CAE surrogates, and predictive maintenance systems within ISO 9001/55000 frameworks.'
-            : `Departmental governance, shared prompt libraries, and audit-ready quality assurance in ${courseTitle}.`,
-          aiToolsOverview: 'Enterprise PLM/CMMS audit logs, shared verified prompt repositories, and KPI dashboards.',
-          responsibleAiPrinciples: 'Accountability is never outsourced to an algorithm; human professionals remain legally and ethically responsible.',
-          toolsAndTechniques: '30-60-90 Day Rollout Matrix, RACI Governance Table, Risk & Compliance Audit Checklist.',
-          procedureSteps: '1. Baseline audit (Day 1–30) -> 2. Controlled pilot & SOP sign-off (Day 31–60) -> 3. Full deployment & KPI review (Day 61–90).',
-          roleResponsibilities: 'Department Heads sponsor rollout; Lead Engineers/Managers enforce QA gates; Practitioners log compliance.',
-          communicationApproach: 'Transparent milestone briefings connecting technical workflows to safety, quality, and business KPIs.',
-          supportMechanisms: 'Centre of Excellence review clinics, updated SOP templates, and quarterly governance audits.',
-          scenarios: [
-            {
-              id: 'sc-3-1',
-              title: isMechanicalOrEngineering
-                ? 'Shadow AI in the Drawing Office'
-                : 'Addressing Unapproved Workflow Shortcuts',
-              situation: isMechanicalOrEngineering
-                ? 'During an internal ISO 9001 audit, you discover two draughtsmen using an unapproved browser AI plugin to auto-generate welding symbols and tolerance notes on fabrication drawings.'
-                : 'An internal review reveals that several team members are using unapproved personal AI accounts to process workplace tasks.',
-              challenge: isMechanicalOrEngineering
-                ? 'Several drawings have already been issued to the fabrication shop with non-standard SANS welding callouts.'
-                : 'Stopping unapproved shadow AI usage immediately without discouraging innovation.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you overlook the practice because drawing output increased, or issue an immediate Engineering Change Notice (ECN) hold, re-verify the drawings, and transition the team to an approved, verified workflow?'
-                : 'Do you ignore the unapproved tools, or quarantine the unverified outputs and onboard the team onto the approved enterprise workflow?',
-              debrief: isMechanicalOrEngineering
-                ? 'Incorrect welding symbols can cause structural weld failure. Issuing an immediate ECN hold to verify the drawings and providing an approved, Pr Eng-verified workflow protects both safety and productivity.'
-                : 'Quarantining unverified outputs and transitioning staff to approved, governed tools protects compliance while sustaining productivity.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-3-2',
-              title: isMechanicalOrEngineering
-                ? 'Overcoming Artisan Resistance to Predictive Alerts'
-                : 'Building Team Buy-In During Rollout',
-              situation: isMechanicalOrEngineering
-                ? 'Experienced plant millwrights distrust the new AI predictive maintenance dashboard, viewing it as management surveillance designed to replace their trade intuition.'
-                : 'Experienced staff members resist adopting the new standardised workflow, viewing it as unnecessary bureaucracy.',
-              challenge: isMechanicalOrEngineering
-                ? 'Without artisan buy-in and accurate physical inspection feedback, the predictive maintenance programme will fail.'
-                : 'Securing genuine engagement and psychological safety from experienced practitioners.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you mandate compliance through disciplinary warnings, or involve senior millwrights in co-validating alert thresholds and crediting their physical inspections?'
-                : 'Do you enforce top-down mandates without explanation, or co-design the verification gates with senior practitioners?',
-              debrief: isMechanicalOrEngineering
-                ? 'Positioning AI as a diagnostic stethoscope that amplifies—never replaces—artisan expertise builds trust, improves ground-truth feedback, and drives sustainable plant reliability.'
-                : 'Involving experienced staff in co-owning verification standards builds psychological safety and lasting adoption.',
-              status: 'Complete'
-            },
-            {
-              id: 'sc-3-3',
-              title: isMechanicalOrEngineering
-                ? 'Quarterly Engineering AI Governance Audit'
-                : 'Conducting the 90-Day Governance & KPI Review',
-              situation: isMechanicalOrEngineering
-                ? 'At the 90-day review of your predictive maintenance rollout, pump failure rates dropped by 30%, but a new supplier batch of bearings exhibits different vibration signatures.'
-                : 'At the 90-day rollout review, performance metrics have improved, but regulatory guidelines in your sector have been updated.',
-              challenge: isMechanicalOrEngineering
-                ? 'The existing AI baseline is beginning to misclassify the new bearing series (model drift).'
-                : 'Updating the standard operating procedures and verification checklists to prevent compliance drift.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'Do you leave the model unchanged since overall KPIs look good, or initiate a controlled baseline recalibration for the new bearing series?'
-                : 'Do you keep the old checklist, or execute a formal version update and team briefing?',
-              debrief: isMechanicalOrEngineering
-                ? 'Mechanical changes (new component suppliers, speed changes, structural retrofits) require proactive baseline recalibration to prevent model drift.'
-                : 'Continuous governance reviews ensure procedures remain aligned with evolving operational realities.',
-              status: 'Complete'
-            }
-          ],
-          aiScenarios: [
-            {
-              id: 'ai-sc-3-1',
-              title: isMechanicalOrEngineering
-                ? 'ECSA Professional Sign-Off & Legal Liability'
-                : 'Human-in-the-Loop Final Sign-Off Accountability',
-              isAiSpecific: true,
-              situation: isMechanicalOrEngineering
-                ? 'A vendor claims their AI structural optimisation software is "fully autonomous" and suggests skipping the Lead Professional Engineer (Pr Eng) check on a secondary conveyor support frame.'
-                : 'A software vendor suggests automating final client deliverable sign-off without human review.',
-              challenge: isMechanicalOrEngineering
-                ? 'Under the Engineering Profession Act 46 of 2000 and the OHS Act, software vendors cannot hold statutory engineering responsibility.'
-                : 'Automated tools cannot hold legal or ethical accountability under South African governance standards.',
-              decisionPoint: isMechanicalOrEngineering
-                ? 'What governance rule must be enforced in the department’s Engineering Change Management charter?'
-                : 'What mandatory sign-off rule must be enforced in the departmental SOP?',
-              debrief: isMechanicalOrEngineering
-                ? 'AI software is strictly a computational aid. Every engineering deliverable must be independently verified and signed off by a registered competent person (Pr Eng / Pr Tech Eng).'
-                : 'Human-in-the-loop sign-off is non-negotiable for all final workplace deliverables and compliance decisions.',
-              status: 'Complete'
-            }
-          ],
-          implementationStrategy: 'Phased 30-60-90 day rollout with mandatory ECM/QA verification gates.',
-          rolloutMethod: 'Departmental implementation charter, SOP templates, and monthly governance reviews.',
-          meApproach: 'Track OEE, design turnaround time, and 100% verification audit compliance.',
-          improvementCycle: 'Quarterly PDCA review of engineering/operational KPIs and AI model accuracy.',
-          implementationChecklistTitle: '30-60-90 Day Workplace Implementation Action Plan',
-          rolloutFrameworkTitle: 'Departmental Rollout & Change Management SOP',
-          riskComplianceSectionTitle: 'Statutory Risk, ECSA/OHS & POPIA Compliance Matrix',
-          continuousAiLearningApproach: 'Quarterly model drift, prompt library, and statutory compliance review.',
-          aiGovernanceFramework: 'King IV Principle 12 & Human-in-the-Loop Final Sign-Off Charter',
-          aiFeedbackReviewMechanism: 'Quarterly audit of verification logs and incident reports.'
-        }
-      }
-    ],
+    modules,
 
-    // Section 05 - Learning Design
     learningDesign: {
-      coreStandardsSummary: isMechanicalOrEngineering
-        ? 'Scenario-driven engineering learning combining first-principles verification, hands-on CAD/telemetry case studies, pre-course diagnostics, module knowledge checks, practical engineering verification tasks (40%), and a final summative assessment (80% pass mark).'
-        : 'Interactive, scenario-driven workplace learning combining pre-course diagnostics, module knowledge checks, practical workplace application tasks (40%), and a final summative assessment (80% pass mark).',
-      instructionalApproach: 'Adult learning (Andragogy), Bloom’s Taxonomy progression (Understand -> Apply -> Analyse -> Evaluate), and authentic South African workplace decision scenarios.',
-      aiDemoSimulationDescription: isMechanicalOrEngineering
-        ? 'Interactive simulation of generative CAD boundary-condition setup and rotating-equipment vibration anomaly triage.'
-        : `Interactive simulation of structured AI prompting and output verification in ${courseTitle}.`,
-      promptExerciseDescription: isMechanicalOrEngineering
-        ? 'Engineers write and audit structured prompts to generate a draft FMEA table and maintenance SOP for a centrifugal pump, then identify and correct technical omissions.'
-        : `Learners write, refine, and audit domain-specific AI prompts for ${courseTitle} while enforcing zero-PII and factual verification rules.`,
-      guidedPracticeDescription: isMechanicalOrEngineering
-        ? 'Step-by-step guided walkthrough of verifying an AI generative CAD geometry against FEA stress/fatigue limits and triaging a pump cavitation alert.'
-        : `Step-by-step guided walkthrough of executing the core SOP and verification checklist for ${courseTitle}.`,
-      summativeAssessmentDescription: isMechanicalOrEngineering
-        ? 'Comprehensive engineering capstone case study and 10-question scenario-based summative exam requiring 80% minimum pass mark.'
-        : `Comprehensive workplace capstone case study and 10-question scenario-based summative exam requiring 80% minimum pass mark.`,
-      aiEvaluationTask: isMechanicalOrEngineering
-        ? 'Audit an AI-generated engineering calculation and FMEA report to detect fabricated code coefficients and missing safety controls.'
-        : 'Audit an AI-generated workplace report to detect hallucinations, bias, and compliance gaps.',
-      collaborationActivity: 'Peer technical design and SOP review using structured verification rubrics.',
-      learningObjectivesList: [
-        `Diagnose root causes and operational risks in ${courseTitle}`,
-        'Execute step-by-step procedures and verified AI workflows',
-        'Enforce human-in-the-loop verification and South African statutory compliance',
-        'Deploy a 30-60-90 day departmental implementation and risk governance plan'
-      ],
+      coreStandardsSummary: `${practicalFlag ? 'Hands-on, lab-oriented' : 'Interactive, scenario-driven'} learning combining pre-course diagnostics, module knowledge checks, practical workplace application tasks (40%), and a final summative assessment (80% pass mark).`,
+      instructionalApproach: 'Adult learning (Andragogy), Bloom’s Taxonomy progression, and realistic South African workplace scenarios.',
+      aiDemoSimulationDescription: `Interactive walkthrough of domain workflows and verification gates in ${courseTitle}.`,
+      promptExerciseDescription: `Learners craft and audit structured prompts relevant to ${courseTitle} while enforcing privacy and factual checks.`,
+      guidedPracticeDescription: practicalFocus || `Step-by-step guided practical exercises applying ${courseTitle} tools and checklists.`,
+      summativeAssessmentDescription: `Comprehensive ${courseTitle} capstone case study and summative assessment requiring 80% pass mark.`,
+      aiEvaluationTask: `Audit an AI-generated deliverable in ${courseTitle} to identify omissions, technical errors, and governance gaps.`,
+      collaborationActivity: 'Peer rubric review of practical deliverables.',
+      learningObjectivesList: learningGoals.length > 0
+        ? learningGoals.map(g => `Apply and govern ${g} in real-world ${courseTitle} workflows`)
+        : modules.flatMap(m => m.learningObjectives.slice(0, 1)),
       workplaceActivities: [
-        'Complete a first-principles verification audit on an AI-assisted deliverable',
-        'Triage a realistic workplace anomaly or scenario using the module SOP checklist',
-        'Develop a 30-60-90 day rollout and risk compliance plan for your team'
+        `Complete an applied verification audit on a ${courseTitle} workflow`,
+        `Solve realistic operational exception scenarios using module checklists`,
+        `Develop a 30-60-90 day rollout and governance plan for your team`
       ],
-      reflectionPrompts: 'Which verification gate in this course will prevent the highest-impact error in your current daily workflow?',
-      examplesAndRelevance: 'Grounded in authentic South African industrial, engineering, and corporate operational contexts.',
-      knowledgeChecksDescription: '5 scenario-based multiple-choice questions per module with detailed rationales.',
-      criticalThinkingDescription: 'Evaluating where AI models break down and why human professional judgment is non-negotiable.',
-      learnerEngagementTypes: ['Engineering/Workplace Scenarios', 'Verification Audits', 'Prompting Exercises', 'Knowledge Checks'],
+      reflectionPrompts: `Which verification gate in ${courseTitle} will prevent the highest-impact error in your team?`,
+      examplesAndRelevance: `Grounded strictly in authentic ${courseTitle} workplace contexts.`,
+      knowledgeChecksDescription: '5 objective-linked scenario MCQs per module with detailed rationales.',
+      criticalThinkingDescription: 'Evaluating failure modes and applying accountable human judgement.',
+      learnerEngagementTypes: practicalFlag
+        ? ['Hands-On Labs', 'Workplace Scenarios', 'Verification Audits', 'Knowledge Checks']
+        : ['Workplace Scenarios', 'Verification Audits', 'Prompting Exercises', 'Knowledge Checks'],
       practicalTaskWeighting: '40%',
       finalAssessmentPassMark: '80%',
       assessments: [
-        {
-          id: 'asm-1',
-          type: 'Pre-Course Diagnostic',
-          description: '5–10 baseline questions assessing domain knowledge, problem awareness, current practices, AI readiness, and ethics.',
-          timing: 'Before Module 1',
-          weighting: 'Ungraded (Diagnostic)',
-          passMark: 'Baseline'
-        },
-        {
-          id: 'asm-2',
-          type: 'Module Knowledge Checks',
-          description: '5 scenario-based MCQs per module with detailed feedback rationales.',
-          timing: 'End of Each Module',
-          weighting: 'Formative',
-          passMark: '80%'
-        },
-        {
-          id: 'asm-3',
-          type: 'Practical Application Task',
-          description: isMechanicalOrEngineering
-            ? 'Workplace engineering verification task: Generative CAD boundary check, predictive maintenance triage, and FMEA audit.'
-            : `Workplace practical application task and SOP verification audit for ${courseTitle}.`,
-          timing: 'Across Modules 1–3',
-          weighting: '40%',
-          passMark: '75%'
-        },
-        {
-          id: 'asm-4',
-          type: 'Final Assessment',
-          description: 'Summative scenario-based examination and multi-part workplace capstone case study.',
-          timing: 'End of Course',
-          weighting: '60%',
-          passMark: '80%'
-        },
-        {
-          id: 'asm-5',
-          type: 'Post-Course Reflection',
-          description: '30-60-90 Day Workplace Implementation Commitment & Action Plan.',
-          timing: 'Post-Course Workplace Transfer',
-          weighting: 'Mandatory Completion',
-          passMark: 'Complete'
-        }
+        { id: 'asm-1', type: 'Pre-Course Diagnostic', description: '5 baseline questions.', timing: 'Before Module 1', weighting: 'Ungraded (Diagnostic)', passMark: 'Baseline' },
+        { id: 'asm-2', type: 'Module Knowledge Checks', description: '5 LO-linked MCQs per module.', timing: 'End of Each Module', weighting: 'Formative', passMark: '80%' },
+        { id: 'asm-3', type: 'Practical Application Task', description: `Applied workplace task in ${courseTitle}.`, timing: `Across Modules 1–${modules.length}`, weighting: '40%', passMark: '75%' },
+        { id: 'asm-4', type: 'Final Assessment', description: 'Summative scenario exam and capstone case study.', timing: 'End of Course', weighting: '60%', passMark: '80%' },
+        { id: 'asm-5', type: 'Post-Course Reflection', description: '30-60-90 Day Implementation Commitment Plan.', timing: 'Post-Course', weighting: 'Mandatory', passMark: 'Complete' }
       ]
     },
 
-    // Section 06 - Ethics, Compliance & AI Responsibility
     ethics: {
-      confidentialityRequirements: isMechanicalOrEngineering
-        ? 'Strict protection of proprietary CAD geometries, client engineering specifications, plant vulnerability logs, and employee data under NDAs and POPIA Act 4 of 2013.'
-        : 'Strict compliance with POPIA Act 4 of 2013 and corporate confidentiality rules; zero customer or employee PII in external AI prompts.',
-      dataPrivacySafeguards: 'Mandatory de-identification and sanitization of all personal and confidential corporate records prior to AI processing (POPIA Section 19).',
-      dataPrivacyFramework: 'POPIA Act 4 of 2013 Condition 7 Security Safeguards & Enterprise Data Classification Policy.',
-      biasMitigationPlan: isMechanicalOrEngineering
-        ? 'Validate predictive maintenance and generative models across diverse operating conditions, equipment series, and environmental extremes to prevent dataset bias.'
-        : 'Audit AI outputs for demographic, operational, or historical bias and cross-verify against objective criteria.',
-      humanOversightNotes: isMechanicalOrEngineering
-        ? 'Mandatory Professional Engineer (Pr Eng / Pr Tech Eng) or qualified specialist verification and sign-off on all safety-critical calculations, drawings, and maintenance decisions.'
-        : 'Mandatory human-in-the-loop review and sign-off on all AI-assisted deliverables and operational decisions.',
-      ethicsStandards: isMechanicalOrEngineering
-        ? 'ECSA Code of Conduct, OHS Act 85 of 1993, King IV Principle 12, and POPIA Act 4 of 2013.'
-        : 'King IV Principle 12 Ethical & Effective Technology Governance and POPIA Act 4 of 2013.',
-      psychologicalSafetyNotes: 'Blame-free learning environment where practitioners are encouraged to flag AI anomalies, calculation discrepancies, and safety concerns openly.',
-      humanOverrideScenarios: 'Practitioners have explicit authority and duty to override any AI recommendation that conflicts with physical evidence, safety margins, or statutory rules.',
-      decisionMakingFramework: 'Human-in-the-Loop Verification & Statutory Compliance First.',
-      accountabilityMechanism: 'Auditable sign-off registers assigning final accountability to the qualified human practitioner.',
-      aiBiasRisk: 'Mitigating training-data blind spots and out-of-distribution errors in automated recommendations.',
-      aiDisclosureRequirement: 'Explicitly note on technical documents and internal reports where AI tools were used and who performed human verification.',
-      dataSovereigntyContext: 'Compliance with South African POPIA cross-border data transfer restrictions (Section 72).',
-      aiWorkforceImpactNarrative: 'AI augments human engineering and operational expertise by automating repetitive screening, never replacing professional judgment.',
+      confidentialityRequirements: `Strict protection of sensitive organisational and personal records in ${courseTitle} under applicable policies and POPIA Act 4 of 2013.`,
+      dataPrivacySafeguards: 'Mandatory de-identification and access controls prior to external processing.',
+      dataPrivacyFramework: blueprint.regulatoryFramework,
+      biasMitigationPlan: `Audit automated or analytical outputs in ${courseTitle} against objective domain criteria to prevent unfair or skewed decisions.`,
+      humanOversightNotes: `Qualified practitioner review and sign-off required before releasing high-impact ${courseTitle} deliverables.`,
+      ethicsStandards: blueprint.aiEthicsFramework,
+      psychologicalSafetyNotes: 'Blame-free reporting of near-misses, anomalies, and errors.',
+      humanOverrideScenarios: 'Practitioners have explicit authority and duty to override automated suggestions that conflict with domain evidence.',
+      decisionMakingFramework: 'Human-in-the-Loop Verification & Applicable Compliance First.',
+      accountabilityMechanism: 'Auditable sign-off registers assigning accountability to qualified human owners.',
+      aiBiasRisk: 'Out-of-distribution errors, stale assumptions, and automation bias.',
+      aiDisclosureRequirement: 'Note where AI tools assisted drafting and record human verification.',
+      dataSovereigntyContext: 'Verify data-residency and cross-border controls where cloud services apply.',
+      aiWorkforceImpactNarrative: `Augments practitioners in ${courseTitle} by accelerating routine analysis under clear human governance.`,
       aiGovernanceReference: 'eStudy Responsible AI & Governance Standard v9.0',
       cards: [
         {
           id: 'eth-1',
-          title: 'POPIA & Intellectual Property Protection',
-          subtitle: 'Zero-PII & Zero-IP Cloud Exposure',
+          title: 'Privacy & Data Protection',
+          subtitle: 'Confidentiality & Zero-PII Controls',
           status: 'Complete',
-          guidingQuestion: 'How are personal data and proprietary schematics protected when using AI tools?',
-          response: 'All personal identifiers and confidential client schematics are stripped prior to prompting, and only approved enterprise-isolated AI tools are permitted.',
-          exampleText: 'Never upload unredacted client files or CAD assemblies to public consumer AI platforms.',
-          complianceRef: 'POPIA Act 4 of 2013 Section 19 & 72'
+          guidingQuestion: `How are sensitive records protected in ${courseTitle}?`,
+          response: 'Personal and confidential corporate records are sanitised or confined to approved enterprise environments.',
+          exampleText: 'Never upload unredacted confidential datasets to public web AI tools.',
+          complianceRef: 'POPIA Act 4 of 2013 (Verify applicability)'
         },
         {
           id: 'eth-2',
-          title: 'Human-in-the-Loop Professional Sign-Off',
-          subtitle: 'Non-Delegable Human Accountability',
+          title: 'Human-in-the-Loop Sign-Off',
+          subtitle: 'Non-Delegable Accountability',
           status: 'Complete',
-          guidingQuestion: 'Who holds final accountability for AI-assisted designs, calculations, or operational decisions?',
-          response: isMechanicalOrEngineering
-            ? 'Registered engineering professionals (Pr Eng / Pr Tech Eng) and qualified leads must independently verify and sign off all safety-critical outputs.'
-            : 'Qualified human practitioners must independently verify and sign off all AI-assisted deliverables before release.',
-          exampleText: 'Every AI-assisted output requires a completed human verification checklist.',
-          complianceRef: isMechanicalOrEngineering ? 'ECSA Code of Conduct & OHS Act 85 of 1993' : 'King IV Principle 12'
+          guidingQuestion: `Who holds final accountability for ${courseTitle} deliverables?`,
+          response: 'Qualified human practitioners must independently verify and approve outputs before production release.',
+          exampleText: 'Every high-impact output carries a completed human verification checklist.',
+          complianceRef: 'King IV Principle 12'
         },
         {
           id: 'eth-3',
-          title: 'Algorithmic Bias & Model Drift Auditing',
-          subtitle: 'Out-of-Distribution & Fairness Checks',
+          title: 'Fairness, Accuracy & Verification',
+          subtitle: 'Preventing Bias & Hallucinations',
           status: 'Complete',
-          guidingQuestion: 'How do we prevent errors when operating conditions differ from the AI training data?',
-          response: 'All automated recommendations are cross-checked against physical measurements, boundary conditions, and domain rules.',
-          exampleText: 'Recalibrate predictive baselines whenever operating loads, materials, or policies change.',
-          complianceRef: 'ISO/IEC 42001 & SANS Quality Standards'
+          guidingQuestion: 'How do we prevent unverified or biased outputs?',
+          response: 'Cross-check recommendations against primary source metrics and domain rubrics.',
+          exampleText: 'Validate metrics directly against primary operational logs.',
+          complianceRef: 'ISO/IEC 42001 Governance Baseline'
         },
         {
           id: 'eth-4',
-          title: 'Transparency & Psychological Safety',
-          subtitle: 'Open Reporting of Anomalies & Errors',
+          title: 'Transparency & Safe Escalation',
+          subtitle: 'Blameless Issue Reporting',
           status: 'Complete',
-          guidingQuestion: 'How are learners and staff supported to challenge questionable AI outputs?',
-          response: 'Staff are trained and empowered to pause, challenge, and escalate any automated output that appears unsafe or inaccurate without fear of reprisal.',
-          exampleText: 'Blameless technical reviews reward early detection of AI hallucinations or sensor anomalies.',
-          complianceRef: 'King IV Ethical Culture & OHS Act Section 8'
+          guidingQuestion: 'How are practitioners supported when flagging issues?',
+          response: 'Teams are encouraged to pause and escalate questionable outputs openly.',
+          exampleText: 'Blameless operational reviews reward early risk detection.',
+          complianceRef: 'Organisational Quality Charter'
         }
       ]
     },
 
-    // Section 07 - Output Format & Accreditation
     outputRequirements: {
-      outputFormat: 'SCORM 2004 / xAPI Responsive LMS Package + Printable Facilitator & Participant Manuals (.docx & .pdf)',
-      requiredSectionsNote: 'Includes all 9 Master Template sections, 3 comprehensive modules, 9 workplace scenarios, 3 AI scenarios, diagnostic & summative assessments, and implementation deliverables.',
-      moduleRequirementsRule: 'Every module contains clear Bloom’s learning objectives, multi-section lessons, 3 workplace scenarios, 1 AI scenario, 5 knowledge check MCQs, and a practical application task.',
-      assessmentRequirementsRule: 'Pre-course diagnostic (5 items), module formative MCQs (5 per module), practical application tasks (40% weighting), and final summative exam (80% pass mark).',
-      scenarioRequirementsRule: 'Realistic South African workplace and industrial contexts with Situation, Challenge, Decision Point, and Debrief.',
-      mandatoryDeliverablesRule: '1) 30-60-90 Day Implementation Action Plan; 2) Departmental Rollout SOP; 3) Statutory Risk & Compliance Matrix.',
-      referencesRule: 'Minimum 4 verified regulatory, industry, and technical sources cited.',
+      outputFormat: 'SCORM 2004 / xAPI Responsive LMS Package + Printable Manuals (.docx & .pdf)',
+      requiredSectionsNote: `Includes all 9 Master Template sections, ${modules.length} modules, workplace & AI scenarios, assessments, and rollout deliverables.`,
+      moduleRequirementsRule: 'Every module includes Bloom-aligned learning objectives, multi-section lessons, 3 workplace scenarios, 1 AI scenario, 5 LO-linked MCQs, and a 7-part practical task.',
+      assessmentRequirementsRule: 'Pre-course diagnostic (5 items), module formative MCQs (5 per module), practical application tasks (40%), and final summative exam (80% pass mark).',
+      scenarioRequirementsRule: 'Realistic South African workplace contexts with Situation, Challenge, Decision Point, and Debrief.',
+      mandatoryDeliverablesRule: '1) 30-60-90 Day Implementation Action Plan; 2) Departmental Rollout SOP; 3) Risk & Compliance Matrix.',
+      referencesRule: 'Minimum 4 verified or SME-flagged sources cited.',
       accessibilityTargetReadingLevel: 'Plain Language Professional Standard (NQF Level 5/6 accessible)',
       plainLanguageApplied: true,
-      culturalInclusivityNotes: 'Uses South African English and reflects diverse South African industrial and corporate workplaces.',
-      formattingRequirements: 'Structured headings, tables, callout boxes, and embedded organisation branding.',
+      culturalInclusivityNotes: 'Uses South African English and inclusive workplace scenarios.',
+      formattingRequirements: 'Structured headings, tables, callout boxes, and organisation branding.',
       languageTone: 'Professional, practical, authoritative, and accessible South African English.',
-      nonTruncationRule: 'Write all modules, lessons, scenarios, and assessments in full without abbreviating or using "[continue...]" placeholders.',
+      nonTruncationRule: 'Write all modules, lessons, scenarios, and assessments in full without abbreviating.',
       formattingRules: 'Clear numbered headings, summary tables, scenario callout boxes, and implementation checklists.',
-      accreditationBody: isMechanicalOrEngineering
-        ? 'ECSA (Engineering Council of South Africa) CPD & MerSETA'
-        : 'QCTO / Services SETA & Professional Body CPD Alignment',
+      accreditationBody: blueprint.accreditationBody,
       qualificationOrUnitStandard: 'To Be Confirmed (Requires SME/Accreditation Body Validation)',
-      accreditationRequirements: '16 Notional Hours (2 CPD Credits); portfolio of evidence including practical verification tasks and 80% summative pass mark.',
-      requiredLearningStructure: '30% Foundational Theory & Regulatory Context, 40% Guided Scenario & Tool Application, 30% Workplace Implementation & Assessment.',
-      accreditationAssessmentRequirements: 'Formative module checks, 40% weighted Practical Workplace Verification Task, and 60% Summative Final Assessment with internal SME moderation.',
-      accreditationAlignment: isMechanicalOrEngineering
-        ? 'Aligned with ECSA Continuing Professional Development (CPD) & MerSETA Occupational Standards'
-        : 'Aligned with SETA / QCTO Workplace Skills Plan (WSP) & CPD Standards',
-      nqfLevel: isMechanicalOrEngineering ? 'NQF Level 6' : 'NQF Level 5',
-      notionalHoursCredits: '16 Notional Hours (2 Credits / 2 CPD Points)',
+      accreditationRequirements: `${duration}; portfolio of evidence including practical tasks and 80% summative pass mark.`,
+      requiredLearningStructure: '30% Foundational Concepts, 40% Applied Scenarios & Practice, 30% Implementation & Assessment.',
+      accreditationAssessmentRequirements: 'Formative checks, 40% Practical Task, and 60% Summative Assessment with SME moderation.',
+      accreditationAlignment: `Aligned with ${blueprint.accreditationBody}`,
+      nqfLevel: blueprint.nqfLevel,
+      notionalHoursCredits: duration,
       qualificationUnitStandardId: 'To Be Confirmed (Requires SME/Accreditation Body Validation)',
       moderationRequirements: 'Internal SME technical moderation and QA sign-off prior to LMS deployment.'
     },
 
-    // Section 08 - Quality Assurance
     qa: {
       benchmarkReviewed: true,
-      benchmarkReviewNotes: `Comprehensively populated and verified against the eStudy Master Prompt Template v9.0 for "${courseTitle}".`,
+      benchmarkReviewNotes: `Populated and aligned to eStudy Master Prompt Template v9.0 for "${courseTitle}".`,
       qaChecklistConfirmed: true,
-      checklistItems: {
-        'qa-1': true,
-        'qa-2': true,
-        'qa-3': true,
-        'qa-4': true,
-        'qa-5': true,
-        'qa-6': true,
-        'qa-7': true,
-        'qa-8': true,
-        'qa-9': true,
-        'qa-10': true,
-        'qa-11': true,
-        'qa-12': true,
-        'qa-13': true,
-        'qa-14': true,
-        'qa-15': true,
-        'qa-16': true,
-        'qa-17': true,
-        'qa-18': true,
-        'qa-19': true,
-        'qa-20': true
-      }
+      checklistItems: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`qa-${i + 1}`, true]))
     },
 
-    // Section 09 - Customisation
     customisation: {
-      ...currentCourse.customisation,
+      ...scratchBase.customisation,
       branding: 'eStudy South Africa Professional Standard (#052B66 Deep Navy & #45CC42 Emerald)',
       tone: 'Professional, authoritative, practical, and action-oriented (South African English).',
       audienceContext: targetGroup,
-      industryExamples: isMechanicalOrEngineering
-        ? 'South African mining concentrators, automotive assembly, industrial pump & conveyor systems, pressure equipment (SANS 347), and CAD design offices.'
-        : `South African corporate, operational, and regulated workplace settings relevant to ${courseTitle}.`,
-      terminology: isMechanicalOrEngineering
-        ? 'Generative CAD, Topology Optimisation, FEA/CFD Surrogate, Predictive Maintenance, FFT Vibration, FMEA, ECSA Pr Eng, OHS Act, POPIA.'
-        : 'Standard Operating Procedure (SOP), Root Cause Analysis, Human-in-the-Loop, POPIA Act 4 of 2013, King IV Principle 12.'
+      industryExamples: blueprint.industryExamples,
+      terminology: blueprint.terminology
     }
   };
 
@@ -1707,125 +2336,238 @@ export function generateComprehensiveCoursePatch(
     ready: true,
     title: courseTitle,
     targetAudience: targetGroup,
-    industryContext: isMechanicalOrEngineering
-      ? 'South African Mechanical Engineering, Manufacturing & Mining (ECSA / OHS Act / POPIA)'
-      : 'South African Workplace & POPIA Regulatory Framework',
-    duration: '16 Hours / 2 CPD Credits',
-    moduleCount: 3
+    industryContext: blueprint.industryContext,
+    duration,
+    moduleCount: modules.length
   };
 
-  const message = `### ✅ I have populated your complete Master Course Template for **"${courseTitle}"**!
+  const moduleLines = modules.map(m => `  - **${m.title}** (3 workplace scenarios + 1 AI scenario)`).join('\n');
+  const message = `### Master Course Template Populated: "${courseTitle}"
 
-All **9 sections of the eStudy Master Course Template (v9.0)** have been automatically filled in across your Course Builder:
+All **9 sections of the eStudy Master Course Template (v9.0)** have been filled in across your Course Builder using your agreed requirements:
 
-- **Section 1 (Problem & Context)**: Problem statement formula, root causes, process failures, and AI-specific considerations.
-- **Section 2 (Sources & Learner Profile)**: 4 verified reference sources, regulatory frameworks (${isMechanicalOrEngineering ? 'ECSA, OHS Act 85 of 1993, SANS 347, ISO 13374, POPIA' : 'POPIA Act 4 of 2013, King IV Principle 12, ISO/IEC 42001'}), and complete Learner Profile.
-- **Section 3 (Course Structure)**: Course details, overview, benefits, target audience, prerequisites, 5 diagnostic questions, and module overview table.
-- **Section 4 (Detailed Modules)**:
-  - **${patch.modules?.[0]?.title}** (3 workplace scenarios + 1 AI scenario)
-  - **${patch.modules?.[1]?.title}** (3 workplace scenarios + 1 AI scenario)
-  - **${patch.modules?.[2]?.title}** (3 workplace scenarios + 1 AI scenario)
-- **Section 5–9 (Learning Design, Ethics, Output & QA)**: Assessment design table (40% practical weighting, 80% final pass mark), POPIA & human-in-the-loop safeguards, Accreditation alignment, and 20/20 QA checklist.
+- **Target Audience & Level**: ${targetGroup} (${difficultyLevel})
+- **Duration & Scope**: ${duration} | **${modules.length} Modules**
+${learningGoals.length > 0 ? `- **Key Learning Focus**: ${learningGoals.join(', ')}\n` : ''}- **Modules Configured**:
+${moduleLines}
 
-You can now review or edit any field in the **Course Builder**, or click **Generate Full Course with AI** below!`;
+You can now inspect or refine any field in the **Course Builder**, or click **Generate Full Course with AI** to produce the complete 22–30 page course!`;
 
   return { patch, brief, message };
 }
 
+function buildContextualGeneralChatReply(
+  lastMessage: string,
+  previousMessages: LocalCopilotMessage[],
+  agreed?: CopilotAgreedRequirements | null
+): string {
+  const lower = lastMessage.toLowerCase();
+
+  // Handle follow-up awareness cleanly
+  const isFollowUp = /\b(follow[- ]?up|that|example|elaborate|more detail|what about|expand|why)\b/i.test(lower);
+  const lastAssistantMsg = [...previousMessages].reverse().find(m => m.role === 'assistant')?.content || '';
+
+  if (/\bbloom/i.test(lower)) {
+    return `### Bloom's Taxonomy in Practical Course Design\n\nIn the eStudy Master Course Framework, **Bloom's Taxonomy** ensures courses move beyond passive theory into verifiable workplace execution:\n\n1. **Understand**: Explain core principles and regulatory boundaries.\n2. **Apply**: Execute step-by-step SOPs, tools, or workflows in realistic tasks.\n3. **Analyse**: Diagnose root causes, sensor/data variances, or process bottlenecks.\n4. **Evaluate**: Audit outputs against quality gates, compliance rules, and rubrics.\n\nIf you tell me your topic or learner level, I can help map specific Bloom's objectives for your modules.`;
+  }
+
+  if (/\bformative\b.*\bsummative\b|\bsummative\b.*\bformative\b/i.test(lower)) {
+    return `### Formative vs Summative Assessment\n\n- **Formative Assessments** (e.g., end-of-module 5-question Knowledge Checks) happen *during* learning to give immediate diagnostic feedback and reinforce understanding.\n- **Summative Assessments** (e.g., the 40% Practical Workplace Task and 60% Final Capstone Exam at an 80% pass mark) evaluate overall competency *at completion*.\n\nWould you like examples tailored to a specific subject?`;
+  }
+
+  if (/\bnqf\b|\bseta\b|\bqcto\b/i.test(lower)) {
+    return `### South African NQF, SETA & QCTO Alignment\n\nIn South Africa, workplace courses typically anchor complexity using **SAQA NQF Level Descriptors** (e.g., NQF Level 5 for foundational-to-intermediate operational competence, NQF Level 6 for specialist/supervisory judgment). Note that exact Unit Standard IDs or CPD credits should always be verified by your organisation's accredited SME or SETA/QCTO moderator before formal credit claims.`;
+  }
+
+  if (/\bbrainstorm\b|\bideas\b|\bactivit(y|ies)\b/i.test(lower)) {
+    const contextTopic = agreed?.subject || 'workplace training';
+    return `### Practical Training Activity Ideas (${contextTopic})\n\nHere are 5 engaging, workplace-grounded activity formats you can include:\n\n1. **Error-Spotting Audits**: Give learners a realistic flawed output or SOP draft and ask them to flag compliance and quality gaps.\n2. **Time-Pressured Triage Scenarios**: Simulate an operational alert where learners weigh speed against mandatory verification gates.\n3. **Role-Play Coaching Clinics**: Practice structured escalation or feedback conversations using a rubric.\n4. **Peer Rubric Walkthroughs**: Learners score an anonymised deliverable against explicit success criteria.\n5. **30-60-90 Day Micro-Pilots**: Learners translate one module checklist into a live team habit.\n\nWhich of these fits your cohort best?`;
+  }
+
+  if (isFollowUp && lastAssistantMsg) {
+    const snippet = lastAssistantMsg.split('\n').find(l => l.trim().length > 20)?.replace(/[#*]/g, '').trim() || 'our previous point';
+    return `Building on **${snippet.slice(0, 90)}${snippet.length > 90 ? '...' : ''}**:\n\nIn practice, the most effective next step is pairing clear operational criteria with a short, realistic decision exercise so learners prove they can spot failure modes under real constraints.\n\n${agreed?.subject ? `Since we are also shaping your **${agreed.subject}** plan, let me know if you'd like to fold this directly into the course design or ask another question.` : 'Would you like a concrete workplace example, or shall we plan a course outline around this topic?'}`;
+  }
+
+  if (agreed?.subject) {
+    return `Here is a quick perspective related to **${agreed.subject}**:\n\nEffective training in this area balances **clear first-principles understanding** with **hands-on execution and verification checks** so learners know not just *how* to run a workflow, but *how to verify it safely* in South African workplaces.\n\nAsk any follow-up question, suggest refinements to the **${agreed.subject}** plan, or say **"Please create the course"** whenever you want me to populate the template.`;
+  }
+
+  return `I'm here to help! We can:\n\n- **Discuss or brainstorm** instructional design, training strategies, South African governance (POPIA, King IV, NQF), or technical topics.\n- **Plan a course together** step by step (just tell me the topic, audience, and what learners should master).\n- **Populate the 9-section template** on demand whenever you say *"Create the course"* or *"Build a template for me..."*.\n\nWhat would you like to explore?`;
+}
+
 // Pure client-and-server compatible copilot processor
 export function processLocalCopilotChat(payload: LocalCopilotPayload): LocalCopilotResponse {
-  const { messages, currentCourse, activeSection = '01', qaResult } = payload;
+  const { messages, currentCourse, qaResult, agreedRequirements } = payload;
   const lastUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content || '';
-  const lowerQuery = lastUserMessage.toLowerCase().trim();
 
-  // 1. Check if the user is explicitly asking ONLY for a QA / Framework compliance check
-  const isPureQACheck =
-    /^(check|review|audit|verify|inspect)\s+(my\s+)?(course\s+)?(qa|quality|framework|compliance|readiness)/i.test(lowerQuery) ||
-    lowerQuery === 'check qa' ||
-    lowerQuery === 'check my course framework compliance';
+  const intent = classifyCopilotIntent(lastUserMessage, messages, agreedRequirements);
 
-  if (isPureQACheck) {
-    const score = qaResult?.scorePercent ?? (currentCourse.name ? 92 : 35);
+  // 1. QA / Framework compliance check (Chat mode — no course overwrite)
+  if (intent === 'qa_check') {
+    const score = qaResult?.scorePercent ?? (currentCourse?.name ? 92 : 35);
     const passed = qaResult?.completedCount ?? 40;
     const total = qaResult?.totalChecks ?? 45;
     const isReady = score >= 90;
 
     return {
-      message: `### 📋 COURSE FRAMEWORK REVIEW\n\n**${passed} / ${total} requirements passed** (${score}% Framework Readiness)\n\n- ${currentCourse.structure.title ? '✓' : '✕'} **Course Structure**: ${currentCourse.structure.title || 'Untitled'}\n- ${currentCourse.modules?.length >= 3 ? '✓' : '⚠'} **Curriculum**: ${currentCourse.modules?.length || 0} Modules configured\n- ${currentCourse.problem.rootCauses?.filter(Boolean).length >= 2 ? '✓' : '⚠'} **Problem Definition**: ${currentCourse.problem.rootCauses?.filter(Boolean).length || 0} Root causes\n- ${currentCourse.research.sources?.length >= 4 ? '✓' : '⚠'} **Sources & POPIA**: ${currentCourse.research.sources?.length || 0} authoritative sources\n- ${currentCourse.ethics.confidentialityRequirements ? '✓' : '⚠'} **Ethics & Oversight**: South African POPIA safeguards\n\n${isReady ? '🎉 **Your course meets the eStudy Master Course Framework standards!**' : '⚠️ **Your course has a few outstanding framework items before final sign-off.**'}`,
+      mode: 'chat',
+      intent: 'qa_check',
+      agreedRequirements: agreedRequirements || null,
+      message: `### COURSE FRAMEWORK REVIEW\n\n**${passed} / ${total} requirements passed** (${score}% Framework Readiness)\n\n- ${currentCourse?.structure?.title ? '✓' : '✕'} **Course Structure**: ${currentCourse?.structure?.title || 'Untitled'}\n- ${(currentCourse?.modules?.length || 0) >= 3 ? '✓' : '⚠'} **Curriculum**: ${currentCourse?.modules?.length || 0} Modules configured\n- ${(currentCourse?.problem?.rootCauses?.filter(Boolean).length || 0) >= 2 ? '✓' : '⚠'} **Problem Definition**: ${currentCourse?.problem?.rootCauses?.filter(Boolean).length || 0} Root causes\n- ${(currentCourse?.research?.sources?.length || 0) >= 4 ? '✓' : '⚠'} **Sources & Governance**: ${currentCourse?.research?.sources?.length || 0} authoritative sources\n- ${currentCourse?.ethics?.confidentialityRequirements ? '✓' : '⚠'} **Ethics & Oversight**: Safeguards configured\n\n${isReady ? 'Your template meets eStudy Master Course Framework readiness standards.' : 'There are a few outstanding template items to complete before full generation.'}`,
       isLocalFallback: true,
       suggestedActions: [
         {
           id: 'gen-course',
           label: '⚡ Generate Full Course with AI',
-          actionType: 'generate_course' as const,
+          actionType: 'generate_course',
           payload: {}
         },
         {
           id: 'jump-qa',
           label: '🔍 View Section 08 QA Checklist',
-          actionType: 'jump_to_section' as const,
+          actionType: 'jump_to_section',
           payload: { section: '08' }
         }
       ]
     };
   }
 
-  // 2. Check if user clicked the generic placeholder "I want to build a new course on..." without a topic yet
-  if (/^i want to build a new course on\.{0,3}$/i.test(lowerQuery)) {
+  // Merge extracted requirements into current conversation context
+  const incomingReqs = extractRequirementsFromMessage(lastUserMessage, intent, agreedRequirements);
+  const mergedAgreed = mergeAgreedRequirements(agreedRequirements, incomingReqs, intent);
+
+  // 2. Explicit Course Creation Mode -> ONLY mode that returns coursePatch!
+  if (intent === 'course_create') {
+    const extractedTopic = extractCourseTopicFromMessage(lastUserMessage, messages, mergedAgreed);
+    const finalAgreed: CopilotAgreedRequirements = mergedAgreed || {
+      subject: extractedTopic,
+      title: extractedTopic,
+      readyToCreate: true
+    };
+    finalAgreed.readyToCreate = true;
+
+    const { patch, brief, message } = generateComprehensiveCoursePatch(extractedTopic, undefined, finalAgreed);
+
     return {
-      message: `Type the **topic or title** of your course below (for example: *"The use of AI in mechanical engineering"* or *"Financial Literacy for Supervisors"*), and I will immediately populate **all 9 sections of the Master Course Template** for you!`,
+      mode: 'course_creation',
+      intent: 'course_create',
+      agreedRequirements: finalAgreed,
+      message,
+      courseBrief: brief,
+      coursePatch: patch,
       isLocalFallback: true,
       suggestedActions: [
         {
-          id: 'sample-mech',
-          label: '⚙️ Build: The Use of AI in Mechanical Engineering',
-          actionType: 'send_prompt' as const,
-          payload: { prompt: 'Build a template for me "The use of AI in mechanical engineering"' }
+          id: 'open-builder',
+          label: '📝 View Populated Template (Sections 1–9)',
+          actionType: 'open_builder',
+          payload: { section: '01' }
         },
         {
-          id: 'sample-eq',
-          label: '🤝 Build: Emotional Intelligence for Leaders',
-          actionType: 'send_prompt' as const,
-          payload: { prompt: 'Build a template for me "Emotional Intelligence for Workplace Leaders"' }
+          id: 'jump-sec-03',
+          label: '📐 View Section 3 (Course Structure)',
+          actionType: 'jump_to_section',
+          payload: { section: '03' }
+        },
+        {
+          id: 'jump-sec-04',
+          label: '📂 View Section 4 (Modules & Scenarios)',
+          actionType: 'jump_to_section',
+          payload: { section: '04' }
+        },
+        {
+          id: 'gen-full-course',
+          label: '⚡ Generate Full 22–30 Page Course with AI',
+          actionType: 'generate_course',
+          payload: {}
         }
       ]
     };
   }
 
-  // 3. Any request to build/populate a template or course, OR any topic entered by the user -> IMMEDIATELY populate all 9 sections!
-  const extractedTopic = extractCourseTopicFromMessage(lastUserMessage, messages);
-  const { patch, brief, message } = generateComprehensiveCoursePatch(extractedTopic, currentCourse);
+  // 3. Conversational Course Discussion / Planning Mode (Chat mode — NO coursePatch!)
+  if (intent === 'course_discussion_plan') {
+    if (!mergedAgreed?.subject) {
+      return {
+        mode: 'chat',
+        intent: 'course_discussion_plan',
+        agreedRequirements: null,
+        message: `Tell me about the **course topic, audience, or learning goals** you have in mind—we can brainstorm the curriculum together first, or if you want me to populate all 9 sections right away, say *"Build a template for me \\"<Course Topic>\\""*.`,
+        isLocalFallback: true,
+        suggestedActions: [
+          {
+            id: 'sample-cloud',
+            label: '☁️ Plan: Cloud Engineering for Beginners',
+            actionType: 'send_prompt',
+            payload: { prompt: 'I want to create a Cloud Engineering course for beginners.' }
+          },
+          {
+            id: 'sample-mech',
+            label: '⚙️ Build Template: AI in Mechanical Engineering',
+            actionType: 'send_prompt',
+            payload: { prompt: 'Build a template for me "The use of AI in mechanical engineering"' }
+          }
+        ]
+      };
+    }
 
+    const levelLabel = mergedAgreed.difficultyLevel || 'Intermediate';
+    const audLabel = mergedAgreed.targetAudience || 'workplace practitioners';
+    const goalText = mergedAgreed.learningGoals?.length
+      ? `\n\n**Noted Focus Areas:** ${mergedAgreed.learningGoals.join(', ')}`
+      : '';
+
+    return {
+      mode: 'chat',
+      intent: 'course_discussion_plan',
+      agreedRequirements: mergedAgreed,
+      message: `I can help you plan **${mergedAgreed.subject}** (${levelLabel} — aimed at ${audLabel}).${goalText}\n\nBefore I generate anything into the template, let's shape the structure:\n1. **Core Learning Outcomes**: What 3–4 practical skills should learners walk away with by the end of the programme?\n2. **Format & Emphasis**: Would you prefer conceptual foundations, hands-on practical labs, or governance/compliance scenarios?\n3. **Scope**: Does a 3–4 module structure (~16 notional hours) fit your cohort?\n\nShare your preferences and we can refine the outline—or tell me **"Please create the course"** whenever you're ready.`,
+      isLocalFallback: true
+    };
+  }
+
+  // 4. Conversational Course Refinement Mode (Chat mode — updates agreedRequirements, NO coursePatch!)
+  if (intent === 'course_refine' && mergedAgreed?.subject) {
+    const domain = detectLocalDomain(mergedAgreed.subject);
+    const previewBp = buildDomainBlueprint(domain, mergedAgreed.subject, mergedAgreed);
+    const goalsList = mergedAgreed.learningGoals || [];
+    const outlineTitles = goalsList.length >= 3
+      ? goalsList.map((g, i) => `Module ${i + 1}: ${g.charAt(0).toUpperCase() + g.slice(1)} & Applied Practice`)
+      : previewBp.moduleBlueprints.map(m => m.title);
+
+    const summaryLines = [
+      `- **Subject**: ${mergedAgreed.subject}`,
+      mergedAgreed.difficultyLevel ? `- **Level / Audience**: ${mergedAgreed.difficultyLevel}${mergedAgreed.targetAudience ? ` (${mergedAgreed.targetAudience})` : ''}` : null,
+      goalsList.length > 0 ? `- **Learning Outcomes**: ${goalsList.join(', ')}` : null,
+      mergedAgreed.practicalFocus ? `- **Practical Emphasis**: ${mergedAgreed.practicalFocus}` : null,
+      mergedAgreed.duration ? `- **Duration**: ${mergedAgreed.duration}` : null
+    ].filter(Boolean).join('\n');
+
+    return {
+      mode: 'chat',
+      intent: 'course_refine',
+      agreedRequirements: mergedAgreed,
+      message: `### Updated Plan for ${mergedAgreed.subject}\n\nI've updated your programme requirements:\n${summaryLines}\n\n**Suggested Module Pathway:**\n${outlineTitles.map(t => `- ${t}${mergedAgreed.practicalFocus ? ' (with hands-on lab & workplace simulation)' : ''}`).join('\n')}\n\nWould you like to adjust any modules, target duration, or depth—or shall I **create the course** in the template now?`,
+      isLocalFallback: true,
+      suggestedActions: [
+        {
+          id: 'confirm-create-now',
+          label: '✅ Create Course in Template Now',
+          actionType: 'send_prompt',
+          payload: { prompt: 'That sounds good. Please create the course.' }
+        }
+      ]
+    };
+  }
+
+  // 5. General Conversational Chat Mode (Chat mode — NO coursePatch!)
   return {
-    message,
-    courseBrief: brief,
-    coursePatch: patch,
-    isLocalFallback: true,
-    suggestedActions: [
-      {
-        id: 'open-builder',
-        label: '📝 View Populated Template (Section 1–9)',
-        actionType: 'open_builder' as const,
-        payload: { section: '01' }
-      },
-      {
-        id: 'jump-sec-03',
-        label: '📐 View Section 3 (Course Structure)',
-        actionType: 'jump_to_section' as const,
-        payload: { section: '03' }
-      },
-      {
-        id: 'jump-sec-04',
-        label: '📂 View Section 4 (3 Modules & Scenarios)',
-        actionType: 'jump_to_section' as const,
-        payload: { section: '04' }
-      },
-      {
-        id: 'gen-full-course',
-        label: '⚡ Generate Full 22–30 Page Course with AI',
-        actionType: 'generate_course' as const,
-        payload: {}
-      }
-    ]
+    mode: 'chat',
+    intent: 'general_chat',
+    agreedRequirements: mergedAgreed || agreedRequirements || null,
+    message: buildContextualGeneralChatReply(lastUserMessage, messages, mergedAgreed || agreedRequirements),
+    isLocalFallback: true
   };
 }
+

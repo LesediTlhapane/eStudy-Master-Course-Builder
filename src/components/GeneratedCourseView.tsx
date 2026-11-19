@@ -76,6 +76,17 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   } | null>(null);
 
   const isApproved = generatedCourse.qa?.status === 'approved' && Boolean(generatedCourse.approvedAt);
+  const qaVerdict: 'PASS' | 'WARNING' | 'FAIL' =
+    generatedCourse.qa?.overallVerdict ||
+    ((generatedCourse.qa?.criticalIssues?.length || 0) > 0 || generatedCourse.qa?.status === 'critical_issues'
+      ? 'FAIL'
+      : (generatedCourse.qa?.warnings?.length || 0) > 0
+        ? 'WARNING'
+        : 'PASS');
+  const hasBlockingQAFailures =
+    qaVerdict === 'FAIL' ||
+    (generatedCourse.qa?.criticalIssues?.length || 0) > 0 ||
+    generatedCourse.qa?.status === 'critical_issues';
 
   const toggleModule = (id: string) => {
     setExpandedModules(prev => ({
@@ -85,6 +96,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   };
 
   const handleApprove = () => {
+    if (hasBlockingQAFailures) return;
     const updated: GeneratedCourse = {
       ...generatedCourse,
       qa: {
@@ -310,16 +322,26 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
             </div>
 
             {/* Status Badge & Approve Action */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {isApproved ? (
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#45CC42]/20 border border-[#45CC42]/40 text-[#45CC42] text-xs font-bold">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Approved for LMS Deployment ({generatedCourse.approvedAt})</span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${
+                    qaVerdict === 'FAIL'
+                      ? 'bg-rose-500/20 border-rose-400/50 text-rose-200'
+                      : qaVerdict === 'PASS'
+                        ? 'bg-[#45CC42]/20 border-[#45CC42]/40 text-[#45CC42]'
+                        : 'bg-amber-400/20 border-amber-400/40 text-amber-300'
+                  }`}
+                >
                   <AlertTriangle className="w-4 h-4" />
-                  <span>AI Generated · Human Review Required</span>
+                  <span>
+                    QA Verdict: {qaVerdict} · {qaVerdict === 'FAIL' ? 'Critical Issues Block Approval' : 'Human Review Required'}
+                  </span>
                 </div>
               )}
 
@@ -327,10 +349,20 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
                 <button
                   id="approve-course-cta"
                   onClick={handleApprove}
-                  className="px-5 py-2 rounded-lg text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] transition-all shadow cursor-pointer flex items-center gap-1.5"
+                  disabled={hasBlockingQAFailures}
+                  title={
+                    hasBlockingQAFailures
+                      ? 'Final approval is blocked until critical FAIL issues in the Quality Scorecard are resolved.'
+                      : 'Sign off and approve course for deployment'
+                  }
+                  className={`px-5 py-2 rounded-lg text-xs font-bold transition-all shadow flex items-center gap-1.5 ${
+                    hasBlockingQAFailures
+                      ? 'bg-slate-600/60 text-slate-300 border border-slate-500/50 cursor-not-allowed opacity-75'
+                      : 'text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] cursor-pointer'
+                  }`}
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Approve Course</span>
+                  {hasBlockingQAFailures ? <Lock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                  <span>{hasBlockingQAFailures ? 'Approval Blocked (QA FAIL)' : 'Approve Course'}</span>
                 </button>
               )}
             </div>
@@ -966,23 +998,64 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
           <div className="space-y-6">
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-2xl bg-[#052B66] text-white flex flex-col items-center justify-center border-2 border-[#45CC42] shadow-sm">
-                  <span className="text-3xl font-extrabold font-mono text-[#45CC42]">
+                <div
+                  className={`w-24 h-24 rounded-2xl bg-[#052B66] text-white flex flex-col items-center justify-center border-2 shadow-sm shrink-0 ${
+                    qaVerdict === 'FAIL'
+                      ? 'border-rose-400'
+                      : qaVerdict === 'WARNING'
+                        ? 'border-amber-400'
+                        : 'border-[#45CC42]'
+                  }`}
+                >
+                  <span
+                    className={`text-3xl font-extrabold font-mono ${
+                      qaVerdict === 'FAIL'
+                        ? 'text-rose-300'
+                        : qaVerdict === 'WARNING'
+                          ? 'text-amber-300'
+                          : 'text-[#45CC42]'
+                    }`}
+                  >
                     {generatedCourse.qa.score}%
                   </span>
-                  <span className="text-[10px] font-bold text-slate-300 uppercase">Automated Review</span>
+                  <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wider">
+                    {qaVerdict}
+                  </span>
                 </div>
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-[#052B66]">Pedagogical & Content Review</h3>
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-xl font-bold text-[#052B66]">Pedagogical & Subject Alignment Review</h3>
+                    <span
+                      className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        qaVerdict === 'FAIL'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                          : qaVerdict === 'WARNING'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      }`}
+                    >
+                      Verdict: {qaVerdict}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-600">
-                    Heuristic checks cover lesson depth, repetition, task guidance, objective references, and supplied sources. They do not verify factual accuracy or legal compliance.
+                    Checks evaluate subject alignment, cross-domain contamination, template consistency, repetition/boilerplate, practical task executability, assessment linkage, and supplied sources.
                   </p>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {typeof generatedCourse.qa.subjectAlignmentScore === 'number' && (
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-slate-100 text-[#052B66] border border-slate-200">
+                        Subject Alignment: {generatedCourse.qa.subjectAlignmentScore}%
+                      </span>
+                    )}
+                    {typeof generatedCourse.qa.repetitionScore === 'number' && (
+                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-slate-100 text-[#052B66] border border-slate-200">
+                        Originality (Anti-Repetition): {generatedCourse.qa.repetitionScore}%
+                      </span>
+                    )}
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${generatedCourse.qa.popiaCompliant ? 'bg-[#45CC42]/20 text-[#052B66]' : 'bg-amber-100 text-amber-900'}`}>
-                      {generatedCourse.qa.popiaCompliant ? '✓ Privacy review complete' : 'Privacy/legal review required'}
+                      {generatedCourse.qa.popiaCompliant ? '✓ Privacy review grounded' : 'Privacy/legal review required'}
                     </span>
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${generatedCourse.qa.southAfricanContextVerified ? 'bg-blue-100 text-[#052B66]' : 'bg-amber-100 text-amber-900'}`}>
-                      {generatedCourse.qa.southAfricanContextVerified ? '✓ Context verified' : 'Context/source review required'}
+                      {generatedCourse.qa.southAfricanContextVerified ? '✓ Sources verified' : 'SME source review required'}
                     </span>
                   </div>
                 </div>
@@ -991,13 +1064,110 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
               {!isApproved && (
                 <button
                   onClick={handleApprove}
-                  className="px-6 py-3 rounded-xl text-xs font-bold text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] shadow-md transition-all cursor-pointer flex items-center gap-2 shrink-0"
+                  disabled={hasBlockingQAFailures}
+                  className={`px-6 py-3 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 shrink-0 ${
+                    hasBlockingQAFailures
+                      ? 'bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed'
+                      : 'text-[#052B66] bg-[#45CC42] hover:bg-[#3db83a] cursor-pointer'
+                  }`}
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Sign Off & Approve Course</span>
+                  {hasBlockingQAFailures ? <Lock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                  <span>{hasBlockingQAFailures ? 'Approval Blocked (Fix FAIL Issues)' : 'Sign Off & Approve Course'}</span>
                 </button>
               )}
             </div>
+
+            {hasBlockingQAFailures && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-900 flex items-start gap-3">
+                <Lock className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-rose-950">Final Course Approval Is Blocked Due to Critical QA Failures</div>
+                  <p>
+                    Use <strong>Edit Copy</strong> or <strong>Regenerate</strong> on the affected module or lesson in Tab 1 to fix cross-domain drift, missing structure, or duplicated content before final sign-off. You can still download drafts in the Export tab.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Critical Issues (FAIL) */}
+            {generatedCourse.qa.criticalIssues && generatedCourse.qa.criticalIssues.length > 0 && (
+              <div className="bg-white p-6 rounded-xl border border-rose-200 shadow-xs space-y-3">
+                <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider">
+                  Critical Issues — FAIL ({generatedCourse.qa.criticalIssues.length})
+                </h4>
+                <div className="space-y-2">
+                  {generatedCourse.qa.criticalIssues.map((issue, idx) => (
+                    <div key={idx} className="p-3 bg-rose-50 rounded-lg border border-rose-200 text-xs flex items-start gap-2.5 text-rose-900 font-medium">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <span>{issue}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {generatedCourse.qa.warnings && generatedCourse.qa.warnings.length > 0 && (
+              <div className="bg-white p-6 rounded-xl border border-amber-200 shadow-xs space-y-3">
+                <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                  Review Warnings ({generatedCourse.qa.warnings.length})
+                </h4>
+                <div className="space-y-2">
+                  {generatedCourse.qa.warnings.map((warn, idx) => (
+                    <div key={idx} className="p-3 bg-amber-50/80 rounded-lg border border-amber-200 text-xs flex items-start gap-2.5 text-amber-950">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <span>{warn}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Detailed QA Breakdown Cards */}
+            {generatedCourse.qa.qaChecks && generatedCourse.qa.qaChecks.length > 0 && (
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                <h4 className="text-xs font-bold text-[#052B66] uppercase tracking-wider">
+                  Section-Level QA Evidence ({generatedCourse.qa.qaChecks.length} Dimensions)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {generatedCourse.qa.qaChecks.map(chk => (
+                    <div
+                      key={chk.id}
+                      className={`p-4 rounded-xl border text-xs space-y-2 ${
+                        chk.status === 'FAIL'
+                          ? 'bg-rose-50/50 border-rose-200'
+                          : chk.status === 'WARNING'
+                            ? 'bg-amber-50/40 border-amber-200'
+                            : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[#052B66]">{chk.label}</span>
+                        <span
+                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase ${
+                            chk.status === 'FAIL'
+                              ? 'bg-rose-200 text-rose-900'
+                              : chk.status === 'WARNING'
+                                ? 'bg-amber-200 text-amber-900'
+                                : 'bg-emerald-200 text-emerald-900'
+                          }`}
+                        >
+                          {chk.status} · {chk.score}%
+                        </span>
+                      </div>
+                      <p className="text-slate-700">{chk.summary}</p>
+                      {chk.evidence && chk.evidence.length > 0 && (
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-600">
+                          {chk.evidence.map((ev, eIdx) => (
+                            <li key={eIdx}>{ev}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Passed Checks */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-3">
@@ -1078,6 +1248,14 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
         {/* Tab 5: Export & Deploy */}
         {activeTab === 'export' && (
           <div className="space-y-6">
+            {hasBlockingQAFailures && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-950 flex items-start gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Draft Export Notice:</strong> This course has critical QA findings ({qaVerdict}) and is not yet eligible for final approval. You may still export draft documents or templates for offline SME review.
+                </div>
+              </div>
+            )}
             {/* Download 1: Completed Master Course Template */}
             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-xs space-y-5">
               <div>

@@ -5,5 +5,6 @@ export * from './groqProvider.js';
 export * from './courseValidator.js';
 export * from './granularRegenerator.js';
 export * from './courseGenerator.js';
+export * from './curriculumBlueprint.js';
 export * from './copilotService.js';
 export * from './templateExtractor.js';

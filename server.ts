@@ -94,7 +94,16 @@ async function startServer() {
   // POST /api/copilot/chat
   app.post('/api/copilot/chat', async (req, res) => {
     try {
-      const { messages, currentCourse, activeSection, qaResult, provider, model } = req.body;
+      const {
+        messages,
+        currentCourse,
+        activeSection,
+        qaResult,
+        provider,
+        model,
+        agreedRequirements,
+        conversationId
+      } = req.body;
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: 'Missing messages array in request body.' });
       }
@@ -105,7 +114,9 @@ async function startServer() {
         activeSection: activeSection || '01',
         qaResult: qaResult || null,
         provider,
-        model
+        model,
+        agreedRequirements: agreedRequirements || null,
+        conversationId
       });
 
       return res.json({ success: true, ...response });

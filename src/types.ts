@@ -522,9 +522,24 @@ export interface GeneratedSource {
   url?: string;
 }
 
+export interface GeneratedQACheckDetail {
+  id: string;
+  label: string;
+  category?: string;
+  status: 'PASS' | 'WARNING' | 'FAIL';
+  score: number;
+  summary: string;
+  evidence?: string[];
+}
+
 export interface GeneratedCourseQA {
   score: number;
   status: 'approved' | 'review_required' | 'critical_issues';
+  overallVerdict?: 'PASS' | 'WARNING' | 'FAIL';
+  hasBlockingFailures?: boolean;
+  subjectAlignmentScore?: number;
+  repetitionScore?: number;
+  qaChecks?: GeneratedQACheckDetail[];
   passedChecks: string[];
   warnings: string[];
   criticalIssues: string[];
@@ -591,6 +606,14 @@ export interface GeneratedCourse {
   approvedAt?: string;
   approvedBy?: string;
   generationMetadata?: GenerationMetadata;
+  blueprintSummary?: {
+    subject: string;
+    domain: string;
+    moduleCount: number;
+    lessonCount: number;
+    coreConcepts: string[];
+    alignmentVerified: boolean;
+  };
 }
 
 export type SectionId =
@@ -620,3 +643,34 @@ export interface QACheckItem {
   issueDescription?: string;
   actionLabel?: string;
 }
+
+export type CopilotMode = 'chat' | 'course_creation';
+
+export type CopilotIntent =
+  | 'qa_check'
+  | 'general_chat'
+  | 'course_discussion_plan'
+  | 'course_refine'
+  | 'course_create';
+
+export interface CopilotAgreedRequirements {
+  subject: string;
+  title?: string;
+  targetAudience?: string;
+  industryContext?: string;
+  difficultyLevel?: 'Foundational' | 'Intermediate' | 'Advanced' | '';
+  duration?: string;
+  moduleCount?: number;
+  learningGoals?: string[];
+  moduleOutlines?: Array<{
+    number: number;
+    title: string;
+    purpose?: string;
+    topics?: string[];
+  }>;
+  practicalFocus?: string;
+  toolsOrPlatforms?: string[];
+  additionalNotes?: string[];
+  readyToCreate?: boolean;
+}
+

@@ -1,11 +1,20 @@
-import type { Course, AIProvider } from '../../types.js';
+import type {
+  Course,
+  AIProvider,
+  CopilotMode,
+  CopilotIntent,
+  CopilotAgreedRequirements
+} from '../../types.js';
+import type { AIRequest, AIResponse } from './types.js';
 import { aiRouter } from './aiRouter.js';
-import { getDefaultModelForProvider } from './modelRegistry.js';
 import { extractAndParseJSON } from './courseValidator.js';
 import {
   processLocalCopilotChat,
   extractCourseTopicFromMessage,
-  generateComprehensiveCoursePatch
+  generateComprehensiveCoursePatch,
+  classifyCopilotIntent,
+  extractRequirementsFromMessage,
+  mergeAgreedRequirements
 } from '../../utils/localCourseEngine.js';
 
 export interface CopilotMessage {
@@ -20,10 +29,15 @@ export interface CopilotChatPayload {
   qaResult?: any;
   provider?: AIProvider;
   model?: string;
+  agreedRequirements?: CopilotAgreedRequirements | null;
+  conversationId?: string;
 }
 
 export interface CopilotChatResponse {
+  mode: CopilotMode;
+  intent: CopilotIntent;
   message: string;
+  agreedRequirements?: CopilotAgreedRequirements | null;
   suggestedActions?: Array<{
     id: string;
     label: string;
@@ -57,15 +71,12 @@ function deepMergePatch<T extends Record<string, any>>(base: T, override: any): 
     if (Array.isArray(overVal)) {
       if (overVal.length === 0) continue;
       if (key === 'modules' && Array.isArray(baseVal) && baseVal.length > 0) {
-        // Merge each module with the base module so requirements/scenarios are never lost
         result[key] = overVal.map((mod: any, idx: number) => {
           const fallbackMod = baseVal[idx] || baseVal[0];
           const mergedMod = deepMergePatch(fallbackMod, mod);
-          // Sync learningObjectives and learningOutcomes
           if (Array.isArray(mod.learningObjectives) && mod.learningObjectives.length > 0 && !mod.learningOutcomes) {
             mergedMod.learningOutcomes = mod.learningObjectives;
           }
-          // Sync coreConcepts with requirements.problemDefinition
           if (mergedMod.requirements) {
             if (mod.coreConcepts && !mod.requirements?.problemDefinition) {
               mergedMod.requirements.problemDefinition = mod.coreConcepts;
@@ -95,129 +106,280 @@ function deepMergePatch<T extends Record<string, any>>(base: T, override: any): 
   return result;
 }
 
+function formatConversationTranscript(messages: CopilotMessage[]): string {
+  const recent = messages.slice(-12);
+  return recent
+    .map((m, idx) => `[Turn ${idx + 1} - ${m.role.toUpperCase()}]: ${m.content.trim()}`)
+    .join('\n\n');
+}
+
 export async function processAIAssistedCopilotChat(
-  payload: CopilotChatPayload
+  payload: CopilotChatPayload,
+  options?: { aiExecute?: (req: AIRequest) => Promise<AIResponse> }
 ): Promise<CopilotChatResponse> {
   const provider: AIProvider = 'groq';
-  // For Groq Copilot template building, use the fast 20B model bucket so we preserve 120B/70B TPM rate-limit quota for full Course Generation
   const model =
     payload.model && !payload.model.toLowerCase().includes('gemini')
       ? payload.model
       : 'openai/gpt-oss-20b';
 
-  const { messages, currentCourse, activeSection = '01', qaResult } = payload;
-  const lastUserMsg = (messages[messages.length - 1]?.content || '').trim();
-  const lowerMsg = lastUserMsg.toLowerCase();
+  const executeAI = options?.aiExecute || ((req: AIRequest) => aiRouter.execute(req));
 
-  // Check if user clicked the generic placeholder "I want to build a new course on..." without a topic yet
-  if (/^i want to build a new course on\.{0,3}$/i.test(lowerMsg)) {
+  const {
+    messages,
+    currentCourse,
+    activeSection = '01',
+    qaResult,
+    agreedRequirements: incomingStoredAgreed
+  } = payload;
+
+  const lastUserMsg = ([...messages].reverse().find(m => m.role === 'user')?.content || '').trim();
+  const intent = classifyCopilotIntent(lastUserMsg, messages, incomingStoredAgreed);
+
+  // 1. QA / compliance review stays lightweight and fast
+  if (intent === 'qa_check') {
     return processLocalCopilotChat({
       messages,
       currentCourse,
       activeSection,
-      qaResult
+      qaResult,
+      agreedRequirements: incomingStoredAgreed
     });
   }
 
-  // Check if this is purely a QA / compliance check request
-  const isPureQACheck =
-    /^(check|review|audit|verify|inspect)\s+(my\s+)?(course\s+)?(qa|quality|framework|compliance|readiness)/i.test(lowerMsg) ||
-    lowerMsg === 'check qa' ||
-    lowerMsg === 'check my course framework compliance';
+  // Merge user's latest message into agreedRequirements for this conversation
+  const extractedReqs = extractRequirementsFromMessage(lastUserMsg, intent, incomingStoredAgreed);
+  const mergedAgreed = mergeAgreedRequirements(incomingStoredAgreed, extractedReqs, intent);
 
-  if (isPureQACheck) {
-    return processLocalCopilotChat({
-      messages,
-      currentCourse,
-      activeSection,
-      qaResult
-    });
+  // 2. CONVERSATIONAL CHAT, BRAINSTORMING, PLANNING & REFINEMENT (NO premature course generation!)
+  if (intent === 'general_chat' || intent === 'course_discussion_plan' || intent === 'course_refine') {
+    const systemInstruction = `You are the eStudy South Africa AI Course Co-pilot — a helpful, knowledgeable conversational AI assistant and instructional design architect (similar to ChatGPT).
+
+CRITICAL CONVERSATIONAL RULES:
+1. You are currently in CHAT & PLANNING MODE (NOT full course generation mode).
+2. Answer natural questions about education, training, technology, instructional design, brainstorming, or South African workplace standards directly, clearly, and conversationally.
+3. Read the entire conversation transcript and current "agreedRequirements" JSON carefully so you answer follow-up questions accurately and NEVER forget prior user requirements (e.g., beginner level, specific topics, or "make it more practical").
+4. If the user is planning or refining a course:
+   - Help shape clear learning objectives, suggest realistic module outlines, or ask focused clarifying questions ONLY if critical info is missing.
+   - Refine the plan iteratively when they give feedback.
+   - Do NOT populate or overwrite the 9-section template yet, and do NOT generate a full course until the user explicitly confirms (e.g., "Please create the course").
+5. Never invent fake NQF unit standard numbers or statistics. Use South African English (Organisation, Programme, Customisation, Analyse).
+
+Return ONLY a valid JSON object matching this schema:
+{
+  "message": "Your helpful, well-formatted Markdown response to the user (natural conversation, explanations, brainstormed ideas, or suggested module outline).",
+  "updatedRequirements": {
+    "subject": "Active course subject if discussing/planning a course, else empty string",
+    "title": "Proposed course title if applicable",
+    "targetAudience": "Target learner profile if known",
+    "difficultyLevel": "Foundational | Intermediate | Advanced | ''",
+    "duration": "Estimated duration if discussed",
+    "moduleCount": 4,
+    "learningGoals": ["Goal 1", "Goal 2"],
+    "practicalFocus": "Practical/hands-on emphasis if discussed",
+    "moduleOutlines": [
+      { "number": 1, "title": "Suggested Module 1 Title", "purpose": "Brief focus" }
+    ]
+  }
+}`;
+
+    const prompt = `Conversation Transcript:
+${formatConversationTranscript(messages)}
+
+Current Agreed Course Requirements State (from THIS conversation only):
+${mergedAgreed ? JSON.stringify(mergedAgreed, null, 2) : 'None yet (general conversation or fresh topic).'}
+
+Current Detected Intent: ${intent}
+Active Course Builder Context (only reference if user asks about their workspace): "${currentCourse?.structure?.title || currentCourse?.name || 'Untitled Course'}" (Section ${activeSection})
+
+Respond naturally to the user's latest message: "${lastUserMsg}"`;
+
+    try {
+      const aiResponse = await executeAI({
+        provider,
+        model,
+        prompt,
+        systemInstruction,
+        responseFormat: 'json',
+        timeoutMs: 22000,
+        maxTokens: 2048
+      });
+
+      const parsed = extractAndParseJSON(aiResponse.text);
+      const replyMessage =
+        typeof parsed?.message === 'string' && parsed.message.trim().length > 0
+          ? parsed.message.trim()
+          : aiResponse.text.trim();
+
+      let finalAgreed = mergedAgreed;
+      if (parsed?.updatedRequirements && typeof parsed.updatedRequirements === 'object') {
+        const cleanedAIReqs: Partial<CopilotAgreedRequirements> = {};
+        if (typeof parsed.updatedRequirements.subject === 'string' && parsed.updatedRequirements.subject.trim()) {
+          cleanedAIReqs.subject = parsed.updatedRequirements.subject.trim();
+        }
+        if (typeof parsed.updatedRequirements.title === 'string' && parsed.updatedRequirements.title.trim()) {
+          cleanedAIReqs.title = parsed.updatedRequirements.title.trim();
+        }
+        if (typeof parsed.updatedRequirements.targetAudience === 'string' && parsed.updatedRequirements.targetAudience.trim()) {
+          cleanedAIReqs.targetAudience = parsed.updatedRequirements.targetAudience.trim();
+        }
+        if (['Foundational', 'Intermediate', 'Advanced'].includes(parsed.updatedRequirements.difficultyLevel)) {
+          cleanedAIReqs.difficultyLevel = parsed.updatedRequirements.difficultyLevel;
+        }
+        if (typeof parsed.updatedRequirements.duration === 'string' && parsed.updatedRequirements.duration.trim()) {
+          cleanedAIReqs.duration = parsed.updatedRequirements.duration.trim();
+        }
+        if (typeof parsed.updatedRequirements.moduleCount === 'number' && parsed.updatedRequirements.moduleCount >= 2) {
+          cleanedAIReqs.moduleCount = Math.min(6, parsed.updatedRequirements.moduleCount);
+        }
+        if (Array.isArray(parsed.updatedRequirements.learningGoals) && parsed.updatedRequirements.learningGoals.length > 0) {
+          cleanedAIReqs.learningGoals = parsed.updatedRequirements.learningGoals.filter((g: any) => typeof g === 'string' && g.trim());
+        }
+        if (typeof parsed.updatedRequirements.practicalFocus === 'string' && parsed.updatedRequirements.practicalFocus.trim()) {
+          cleanedAIReqs.practicalFocus = parsed.updatedRequirements.practicalFocus.trim();
+        }
+        if (Array.isArray(parsed.updatedRequirements.moduleOutlines) && parsed.updatedRequirements.moduleOutlines.length > 0) {
+          cleanedAIReqs.moduleOutlines = parsed.updatedRequirements.moduleOutlines;
+        }
+        if (Object.keys(cleanedAIReqs).length > 0) {
+          finalAgreed = mergeAgreedRequirements(mergedAgreed, cleanedAIReqs, intent);
+        }
+      }
+
+      const suggestedActions = finalAgreed?.subject
+        ? [
+            {
+              id: 'confirm-create-from-plan',
+              label: '✅ Create Course in Template Now',
+              actionType: 'send_prompt',
+              payload: { prompt: 'That sounds good. Please create the course.' }
+            }
+          ]
+        : undefined;
+
+      return {
+        mode: 'chat',
+        intent,
+        message: replyMessage,
+        agreedRequirements: finalAgreed,
+        suggestedActions,
+        providerUsed: aiResponse.provider || provider,
+        modelUsed: aiResponse.model || model,
+        fallbackUsed: false
+      };
+    } catch (err: any) {
+      console.warn(`Conversational Copilot AI error, falling back cleanly:`, err?.message || err);
+      const localResponse = processLocalCopilotChat({
+        messages,
+        currentCourse,
+        activeSection,
+        qaResult,
+        agreedRequirements: incomingStoredAgreed
+      });
+      return {
+        ...localResponse,
+        providerUsed: 'local_fallback',
+        modelUsed: 'local-copilot-engine',
+        fallbackUsed: true
+      };
+    }
   }
 
-  // Determine whether the user is asking to build/populate/fill a template/course or giving a course topic
-  const extractedTopic = extractCourseTopicFromMessage(lastUserMsg, messages);
-  const baseGenerated = generateComprehensiveCoursePatch(extractedTopic, currentCourse);
+  // 3. EXPLICIT COURSE CREATION MODE (User explicitly asked to build/populate/create the course or template)
+  const extractedTopic = extractCourseTopicFromMessage(lastUserMsg, messages, mergedAgreed);
+  const finalAgreed: CopilotAgreedRequirements = mergedAgreed || {
+    subject: extractedTopic,
+    title: extractedTopic,
+    readyToCreate: true
+  };
+  finalAgreed.readyToCreate = true;
+
+  const baseGenerated = generateComprehensiveCoursePatch(extractedTopic, undefined, finalAgreed);
 
   const systemInstruction = `You are eStudy South Africa's Master Course Architect Copilot (v9.0).
-CRITICAL NON-NEGOTIABLE RULE:
-- NEVER ask the user clarifying questions!
-- NEVER ask "What is your target audience?", "What modules would you like?", or "Could you provide more details?".
-- When the user gives you a course topic, title, or asks you to build/populate a template or course (for example: "${extractedTopic}"), you MUST IMMEDIATELY populate all 9 sections of the eStudy Master Course Template v9.0 by returning a comprehensive JSON "coursePatch" object.
-- Use South African English spelling and terminology throughout (e.g., Organisation, Programme, Customisation, Analyse, POPIA Act 4 of 2013, King IV, ECSA/SANS/NQF/SETA where relevant).
+The user has EXPLICITLY requested to build/create the 9-section Master Course Template for: "${extractedTopic}".
+
+CRITICAL NON-NEGOTIABLE RULES:
+1. Honour ALL agreed requirements from this conversation:
+   ${JSON.stringify(finalAgreed, null, 2)}
+2. Immediately populate all 9 sections in "coursePatch" cleanly without asking any more clarifying questions.
+3. Keep 100% subject fidelity to "${extractedTopic}" — ZERO drift into unrelated industries!
+4. Do NOT fabricate South African NQF unit standard numbers or statistics; mark unverified accreditation specifics as "To Be Confirmed (Requires SME Validation)".
+5. Use South African English spelling (Organisation, Programme, Customisation, Analyse).
 
 Return ONLY a valid JSON object matching this exact structure:
 {
-  "message": "A clear markdown summary confirming that all 9 sections of the Master Course Template have been populated for '${extractedTopic}' and are ready in the Course Builder.",
+  "message": "Markdown confirmation summarising the populated 9 sections and how agreed requirements were applied.",
   "courseBrief": {
     "ready": true,
     "title": "Full Course Title",
     "targetAudience": "Specific target roles",
-    "industryContext": "South African industry & regulatory context",
-    "duration": "16 Hours / 2 CPD Credits",
-    "moduleCount": 3
+    "industryContext": "South African industry context",
+    "duration": "${finalAgreed.duration || '16 Hours / 2 CPD Credits'}",
+    "moduleCount": ${baseGenerated.patch.modules?.length || 3}
   },
   "coursePatch": {
     "name": "Full Course Title",
     "code": "EST-XXX-01",
     "problem": {
-      "targetGroup": "Specific target roles and practitioners in South Africa",
-      "taskOrSkill": "Specific technical and operational skills they struggle to perform",
-      "operationalImpact": "Concrete operational, financial, safety, compliance, or productivity impact",
-      "rootCauses": ["Root Cause 1", "Root Cause 2", "Root Cause 3"],
-      "processFailures": "Specific process or system failures",
-      "skillGaps": "Specific skills or knowledge gaps",
-      "constraints": "Organisational or environmental constraints",
-      "aiLiteracyGap": "Specific AI literacy gap in this domain",
-      "digitalReadinessLevel": "Data and digital readiness level",
-      "aiEthicsComplianceRisk": "Ethical, IP, safety, or POPIA compliance risks introduced by AI use"
+      "targetGroup": "...",
+      "taskOrSkill": "...",
+      "operationalImpact": "...",
+      "rootCauses": ["...", "...", "..."],
+      "processFailures": "...",
+      "skillGaps": "...",
+      "constraints": "...",
+      "aiLiteracyGap": "...",
+      "digitalReadinessLevel": "...",
+      "aiEthicsComplianceRisk": "..."
     },
     "research": {
-      "regulatoryFramework": "Applicable South African regulations and industry standards",
-      "aiToolsPlatformName": "Specific AI tools and platforms used in this domain",
-      "aiEthicsFramework": "Governance and ethics framework (POPIA, King IV, domain body)",
-      "caseStudyUseCases": "3 specific industry use cases or case studies",
+      "regulatoryFramework": "...",
+      "aiToolsPlatformName": "...",
+      "aiEthicsFramework": "...",
+      "caseStudyUseCases": "...",
       "learnerProfile": {
-        "jobRoles": "Target job roles",
-        "departments": "Target departments",
-        "experienceLevels": "Experience levels",
-        "existingKnowledge": "Existing domain knowledge",
-        "digitalLiteracy": "Digital literacy baseline",
-        "aiFamiliarity": "AI familiarity baseline",
-        "workplaceEnvironment": "Workplace environment",
-        "organisationalConstraints": "Organisational constraints",
-        "availableToolsAndTechnology": "Available tools and technology"
+        "jobRoles": "...",
+        "departments": "...",
+        "experienceLevels": "...",
+        "existingKnowledge": "...",
+        "digitalLiteracy": "...",
+        "aiFamiliarity": "...",
+        "workplaceEnvironment": "...",
+        "organisationalConstraints": "...",
+        "availableToolsAndTechnology": "..."
       }
     },
     "structure": {
-      "title": "Full Course Title",
-      "code": "EST-XXX-01",
-      "industryDomain": "Industry / Domain",
-      "industryContext": "Industry context in South Africa",
-      "targetRoles": "Target roles",
+      "title": "...",
+      "code": "...",
+      "industryDomain": "...",
+      "industryContext": "...",
+      "targetRoles": "...",
       "aiIntegrationLevel": "Applied",
-      "setaNqfLevel": "NQF Level & SETA/professional alignment",
-      "estimatedDuration": "16 Hours / 2 CPD Credits",
-      "deliveryFormat": "Blended Digital E-Learning with Interactive Scenarios",
-      "difficultyLevel": "Intermediate",
-      "purposeStatement": "Clear purpose statement",
-      "workplaceRelevance": "Direct workplace relevance",
-      "performanceImprovement": "Expected measurable performance improvement",
-      "scopeSummary": "Summary of course scope",
-      "aiEraRelevance": "Why this course matters in the AI era",
-      "performanceLink": "How it links to workplace performance",
-      "organisationalBenefits": ["Benefit 1", "Benefit 2"],
-      "employeeBenefits": ["Benefit 1", "Benefit 2"],
-      "riskReductionOutcomes": ["Risk reduction 1", "Risk reduction 2"],
-      "scope": "Detailed scope",
-      "keyCompetencies": "Key competencies developed",
-      "realWorldApplication": "Real-world workplace application",
-      "aiSkillsDeveloped": "Specific AI skills developed",
-      "experienceLevel": "Intermediate (2+ years experience)",
+      "setaNqfLevel": "...",
+      "estimatedDuration": "${finalAgreed.duration || '16 Hours / 2 CPD Credits'}",
+      "deliveryFormat": "...",
+      "difficultyLevel": "${finalAgreed.difficultyLevel || 'Intermediate'}",
+      "purposeStatement": "...",
+      "workplaceRelevance": "...",
+      "performanceImprovement": "...",
+      "scopeSummary": "...",
+      "aiEraRelevance": "...",
+      "performanceLink": "...",
+      "organisationalBenefits": ["...", "..."],
+      "employeeBenefits": ["...", "..."],
+      "riskReductionOutcomes": ["...", "..."],
+      "scope": "...",
+      "keyCompetencies": "...",
+      "realWorldApplication": "...",
+      "aiSkillsDeveloped": "...",
+      "experienceLevel": "...",
       "aiFamiliarityBaseline": "Basic",
-      "aiFamiliarityExplanation": "Has heard of or casually used consumer AI with no structured workplace method.",
-      "prerequisiteKnowledge": "Required prior knowledge",
-      "prerequisiteExperience": "Required prior experience",
-      "toolsSystems": "Required tools and systems"
+      "aiFamiliarityExplanation": "...",
+      "prerequisiteKnowledge": "...",
+      "prerequisiteExperience": "...",
+      "toolsSystems": "..."
     },
     "modules": [
       {
@@ -229,76 +391,58 @@ Return ONLY a valid JSON object matching this exact structure:
         "purpose": "Module 1 Purpose",
         "keySkills": ["Skill 1", "Skill 2", "Skill 3"],
         "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-        "coreConcepts": "Detailed problem definition & core concepts",
-        "definitionsFrameworks": "Key terms, definitions & frameworks",
-        "rootCausesExploration": "Root causes, warning signs & impact",
-        "aiTopicCoverage": "AI demystification & domain AI applications",
-        "practicalExercises": "Step-by-step procedures, tools & techniques",
-        "aiGovernanceElement": "Responsible AI principles & human oversight"
-      },
-      {
-        "id": "mod-2",
-        "number": 2,
-        "moduleNumber": 2,
-        "title": "Module 2 Title",
-        "subtitle": "Module 2 Subtitle",
-        "purpose": "Module 2 Purpose",
-        "keySkills": ["Skill 1", "Skill 2", "Skill 3"],
-        "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-        "coreConcepts": "Core applied concepts",
-        "definitionsFrameworks": "Key terms & frameworks",
-        "rootCausesExploration": "Operational failure modes",
-        "aiTopicCoverage": "Applied AI tools & workflows",
-        "practicalExercises": "Step-by-step execution procedures",
-        "aiGovernanceElement": "Human-in-the-loop verification rules"
-      },
-      {
-        "id": "mod-3",
-        "number": 3,
-        "moduleNumber": 3,
-        "title": "Module 3 Title",
-        "subtitle": "Module 3 Subtitle",
-        "purpose": "Module 3 Purpose",
-        "keySkills": ["Skill 1", "Skill 2", "Skill 3"],
-        "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-        "coreConcepts": "Departmental implementation & governance",
-        "definitionsFrameworks": "Rollout & compliance frameworks",
-        "rootCausesExploration": "Change management & adoption barriers",
-        "aiTopicCoverage": "Ongoing AI governance & model monitoring",
-        "practicalExercises": "30-60-90 day rollout plan & risk matrix",
-        "aiGovernanceElement": "Final professional sign-off accountability"
+        "coreConcepts": "...",
+        "definitionsFrameworks": "...",
+        "rootCausesExploration": "...",
+        "aiTopicCoverage": "...",
+        "practicalExercises": "...",
+        "aiGovernanceElement": "..."
       }
     ]
   }
 }`;
 
-  const prompt = `User request: "${lastUserMsg}"
-Extracted Course Topic: "${extractedTopic}"
+  const prompt = `Conversation Context:
+${formatConversationTranscript(messages)}
 
-Immediately generate the complete 9-section eStudy Master Course Template v9.0 specification for "${extractedTopic}". Do NOT ask any questions. Populate all fields in "coursePatch".`;
+Agreed Course Requirements:
+${JSON.stringify(finalAgreed, null, 2)}
+
+Target Course Topic: "${extractedTopic}"
+
+Populate the complete 9-section eStudy Master Course Template v9.0 now, incorporating every agreed requirement.`;
 
   try {
-    const aiResponse = await aiRouter.execute({
+    const aiResponse = await executeAI({
       provider,
       model,
       prompt,
       systemInstruction,
       responseFormat: 'json',
-      timeoutMs: 28000
+      timeoutMs: 28000,
+      maxTokens: 3600
     });
 
     const parsed = extractAndParseJSON(aiResponse.text);
-
-    // Deep-merge AI's coursePatch on top of our complete 9-section base patch so NO field is ever left blank!
     const mergedPatch = deepMergePatch(baseGenerated.patch, parsed?.coursePatch || {});
+
+    // Enforce explicitly agreed requirements so AI never drops them
+    if (finalAgreed.difficultyLevel && mergedPatch.structure) {
+      mergedPatch.structure.difficultyLevel = finalAgreed.difficultyLevel;
+    }
+    if (finalAgreed.targetAudience && mergedPatch.problem && mergedPatch.structure) {
+      if (!mergedPatch.problem.targetGroup) mergedPatch.problem.targetGroup = finalAgreed.targetAudience;
+      if (!mergedPatch.structure.targetRoles) mergedPatch.structure.targetRoles = finalAgreed.targetAudience;
+    }
+
     const finalBrief = {
       ...baseGenerated.brief,
       ...(parsed?.courseBrief || {}),
       ready: true,
-      title: mergedPatch.structure?.title || mergedPatch.name || baseGenerated.brief.title
+      title: mergedPatch.structure?.title || mergedPatch.name || baseGenerated.brief.title,
+      moduleCount: mergedPatch.modules?.length || baseGenerated.brief.moduleCount
     };
 
-    // If the AI returned a message that looks like it's asking clarifying questions instead of confirming completion, use the confirmation message
     const aiMessageText = typeof parsed?.message === 'string' ? parsed.message : '';
     const looksLikeQuestionOnly =
       !parsed?.coursePatch ||
@@ -308,6 +452,9 @@ Immediately generate the complete 9-section eStudy Master Course Template v9.0 s
     const finalMessage = looksLikeQuestionOnly ? baseGenerated.message : aiMessageText;
 
     return {
+      mode: 'course_creation',
+      intent: 'course_create',
+      agreedRequirements: finalAgreed,
       message: finalMessage,
       suggestedActions: [
         {
@@ -324,7 +471,7 @@ Immediately generate the complete 9-section eStudy Master Course Template v9.0 s
         },
         {
           id: 'jump-sec-04',
-          label: '📂 View Section 4 (3 Modules & Scenarios)',
+          label: '📂 View Section 4 (Modules & Scenarios)',
           actionType: 'jump_to_section',
           payload: { section: '04' }
         },
@@ -337,18 +484,19 @@ Immediately generate the complete 9-section eStudy Master Course Template v9.0 s
       ],
       coursePatch: mergedPatch,
       courseBrief: finalBrief,
-      providerUsed: provider,
-      modelUsed: model,
+      providerUsed: aiResponse.provider || provider,
+      modelUsed: aiResponse.model || model,
       fallbackUsed: false
     };
   } catch (err: any) {
-    console.warn(`Copilot chat using ${provider}/${model} failed, engaging complete domain template generator:`, err?.message || err);
+    console.warn(`Copilot course creation with ${provider}/${model} failed, engaging local domain template generator:`, err?.message || err);
 
     const localResponse = processLocalCopilotChat({
       messages,
       currentCourse,
       activeSection,
-      qaResult
+      qaResult,
+      agreedRequirements: finalAgreed
     });
 
     return {
@@ -359,3 +507,4 @@ Immediately generate the complete 9-section eStudy Master Course Template v9.0 s
     };
   }
 }
+

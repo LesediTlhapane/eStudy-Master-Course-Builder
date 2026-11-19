@@ -170,77 +170,90 @@ export function enrichLessonToTextbookStandard(
   const s = sourceCourse.structure || ({} as any);
   const p = sourceCourse.problem || ({} as any);
   const r = sourceCourse.research || ({} as any);
-  const e = sourceCourse.ethics || ({} as any);
 
-  const courseTitle = s.title || sourceCourse.name || 'Corporate Training Programme';
-  const targetRoles = s.targetRoles || p.targetGroup || 'operational practitioners, specialists, and team leaders';
-  const domain = s.industryDomain || 'South African enterprise operations';
+  const courseTitle = s.title || sourceCourse.name || 'Training Programme';
+  const targetRoles = s.targetRoles || p.targetGroup || 'practitioners and team leads';
+  const domain = s.industryDomain || 'workplace operations';
   const taskSkill = p.taskOrSkill || modTitle;
-  const regFramework = r.regulatoryFramework || 'POPIA (Protection of Personal Information Act 4 of 2013) and King IV Governance Principles';
-  const rootCause = (Array.isArray(p.rootCauses) && p.rootCauses[0]) || p.processFailures || 'inconsistent execution of standard operating procedures and unverified outputs';
+  const regFramework = r.regulatoryFramework || 'applicable organisational standards and privacy rules (verify with SME)';
+  const focusAngles = [
+    {
+      heading: 'Foundations, Mental Models & Scope',
+      mechanism: 'explains the core architecture, key trade-offs, and foundational terminology needed before applying the technique',
+      city: 'Cape Town',
+      workplaceMetric: 'clarity of scope and fewer downstream defects'
+    },
+    {
+      heading: 'Applied Workflow, Tools & Execution Decisions',
+      mechanism: 'walks through step-by-step configuration, parameter choices, and verification checks in real tooling',
+      city: 'Johannesburg',
+      workplaceMetric: 'repeatable delivery quality and faster execution turnaround'
+    },
+    {
+      heading: 'Limitations, Edge Cases & Quality Governance',
+      mechanism: 'examines common failure modes, edge-case constraints, security/privacy boundaries, and human review gates',
+      city: 'Pretoria',
+      workplaceMetric: 'reliable risk mitigation and audit-ready outcomes'
+    },
+    {
+      heading: 'Integration, Scaling & Continuous Improvement',
+      mechanism: 'connects cross-team hand-offs, measurable KPIs, and long-term maintenance practices',
+      city: 'Durban',
+      workplaceMetric: 'sustained team adoption and measurable performance gains'
+    }
+  ];
+  const angle = focusAngles[lessonIndex % focusAngles.length];
 
   const currentWords = countWordsInText(lesson.contentBody);
-
   let enrichedBody = lesson.contentBody || '';
 
-  // Target ~340–420 words per lesson body so 12–15 lessons + scenarios + assessments = ~9,500–11,200 words (24–28 pages)
-  if (currentWords < 280) {
+  if (currentWords < 140) {
     const existingIntro = enrichedBody.trim().length > 20
       ? `${enrichedBody.trim()}\n\n`
-      : `### 1. Executive Context & Operational Foundation\nIn modern ${domain}, mastering **${lesson.title}** within **${modTitle}** is a core performance requirement for ${targetRoles}. Organisations across South Africa face operational pressure where ${rootCause} can trigger service delays and regulatory exposure. This lesson establishes the execution standard required for repeatable, audit-ready outcomes in ${courseTitle}.\n\n`;
+      : `### ${angle.heading}: ${lesson.title}\nWithin **${courseTitle}** (${domain}), **${lesson.title}** ${angle.mechanism} for ${targetRoles}. ${modPurpose ? modPurpose + ' ' : ''}\n\n`;
 
-    const section2 = `### 2. Core Principles & Step-by-Step Standard Operating Procedure (SOP)\nPractitioners must execute the following five-stage operational protocol when applying **${lesson.title}**:\n1. **Stage 1 — Pre-Execution Readiness & Scope Verification**: Review the governing brief, confirm prerequisite inputs are complete, and verify source data compliance with ${regFramework}.\n2. **Stage 2 — Baseline Structuring & Parameter Alignment**: Configure workflow templates to match the risk profile of ${taskSkill} and document operational constraints upfront.\n3. **Stage 3 — Controlled Execution & Monitoring**: Execute core procedural steps systematically. When using digital or AI platforms (${r.aiToolsPlatformName || 'enterprise productivity tools'}), sanitise all prompts of personal identifiers.\n4. **Stage 4 — Human-in-the-Loop Quality Audit**: Conduct a line-by-line review of outputs against authoritative policies, verifying calculations, statutory citations, and recommendations.\n5. **Stage 5 — Formal Sign-Off & Handover**: Log the completed deliverable in the departmental register, attach the verification checklist, and brief receiving stakeholders.\n\n`;
+    const section2 = `### Key Concepts & How They Apply\n1. **Primary Focus**: Grounded execution of ${taskSkill} specific to *${lesson.title}* rather than generic checklists.\n2. **Practical Mechanics**: Apply domain-appropriate methods${r.aiToolsPlatformName ? ` using ${r.aiToolsPlatformName}` : ''}, documenting assumptions and acceptance criteria.\n3. **Limitations & Safeguards**: Identify edge cases where automated outputs or heuristics fail; cross-check against ${regFramework}.\n\n`;
 
-    const section3 = `### 3. South African Statutory & POPIA Governance\nAll activities in **${lesson.title}** operate under **${regFramework}**:\n- **Lawful Processing (POPIA Conditions 1–3)**: Personal or proprietary corporate data may only be processed for authorised business purposes; never paste unmasked PII into external AI tools.\n- **Accountability & Section 71 Oversight**: Where automated tools assist in ${courseTitle}, ${e.humanOversightNotes || 'a qualified human practitioner must verify the underlying rationale and retain full authority to override automated recommendations'}.\n\n`;
+    const section3 = `### Subject-Specific Worked Example (${angle.city})\nA ${domain} practitioner team in ${angle.city} applied the principles of **${lesson.title}** while resolving a real bottleneck in ${modTitle}. By validating inputs, testing trade-offs explicitly, and recording decision rationale, the team achieved ${angle.workplaceMetric}.`;
 
-    const section4 = `### 4. Worked Case Example & Remediation Matrix\n**Worked Case**: A Johannesburg operational unit executing ${modTitle} under a 48-hour deadline caught three critical compliance discrepancies during Stage 4 human verification. By isolating anomalous records and applying the five-stage SOP above, the team achieved 100% audit compliance and reduced rework by 35%.\n- *Unverified Inputs* → Halt processing and log a data-quality exception.\n- *Automated/AI Hallucination Risk* → Cross-check every claim against primary policy documents before sign-off.`;
-
-    enrichedBody = `${existingIntro}${section2}${section3}${section4}`;
-  } else if (currentWords > 520) {
-    // Cap extremely long single lessons so total manual never exceeds 30 pages
+    enrichedBody = `${existingIntro}${section2}${section3}`;
+  } else if (currentWords > 650) {
     const words = enrichedBody.trim().split(/\s+/);
-    enrichedBody = words.slice(0, 480).join(' ') + '...';
+    enrichedBody = words.slice(0, 600).join(' ') + '...';
   }
 
-  const enrichedCallouts = Array.isArray(lesson.callouts) && lesson.callouts.length >= 2
+  const enrichedCallouts = Array.isArray(lesson.callouts) && lesson.callouts.length >= 1
     ? lesson.callouts
     : [
-        ...(Array.isArray(lesson.callouts) ? lesson.callouts : []),
         {
-          type: 'POPIA Note' as const,
-          title: 'Mandatory South African Data Privacy & POPIA Safeguard',
-          content: `Under ${regFramework}, never input unmasked customer ID numbers, contact details, financial records, or proprietary corporate secrets into external AI prompts. Always use anonymised or synthetic tokens during analysis.`
-        },
-        {
-          type: 'Good/Bad Example' as const,
-          title: 'Workplace Execution Standard vs. Non-Compliant Shortcut',
-          content: `GOOD PRACTICE: Validating all source inputs against the departmental checklist and recording human-in-the-loop sign-off before release.\nBAD PRACTICE: Copy-pasting unverified outputs directly into client-facing or executive deliverables to save time.`
+          type: 'Tip' as const,
+          title: `${lesson.title} — Practice Note`,
+          content: `Verify domain assumptions and inputs before finalising deliverables for "${lesson.title}". Confirm any unverified statutory or accreditation references with an SME.`
         }
       ];
 
   const enrichedWorkplaceApp =
-    countWordsInText(lesson.workplaceApplication) >= 25
+    countWordsInText(lesson.workplaceApplication) >= 12
       ? lesson.workplaceApplication
-      : `In daily operations, ${targetRoles} will apply the five-stage SOP from "${lesson.title}" to audit active workflows, eliminate ${rootCause}, verify compliance with ${regFramework}, and produce audit-ready deliverables with zero rework.`;
+      : `${targetRoles} apply the techniques in "${lesson.title}" directly to ${taskSkill}, documenting key decisions and validating outcomes within ${domain}.`;
 
   const enrichedAiApp =
-    countWordsInText(lesson.aiApplication) >= 25
+    countWordsInText(lesson.aiApplication) >= 12
       ? lesson.aiApplication
-      : `Practitioners can leverage approved enterprise AI assistants to accelerate initial structuring, pattern synthesis, and checklist drafting for "${lesson.title}", provided all inputs are de-identified under POPIA and every output undergoes mandatory human-in-the-loop verification prior to sign-off.`;
+      : `Where appropriate in ${courseTitle}, practitioners can use approved AI tools to assist with drafting or analysis for "${lesson.title}", keeping sensitive data protected and validating all technical outputs.`;
 
   const enrichedConcepts =
-    Array.isArray(lesson.concepts) && lesson.concepts.length >= 3
+    Array.isArray(lesson.concepts) && lesson.concepts.length >= 2
       ? lesson.concepts
       : [
-          `${modTitle} Operational Mechanics`,
-          'Five-Stage Standard Operating Procedure (SOP)',
-          'POPIA & Statutory Governance Controls',
-          'Human-in-the-Loop Verification & Quality Gates'
+          `${lesson.title} Core Principles`,
+          `${modTitle} Applied Decision Criteria`,
+          'Verification & Limitations'
         ];
 
   return {
     ...lesson,
-    durationMinutes: lesson.durationMinutes && lesson.durationMinutes >= 25 ? lesson.durationMinutes : 35,
+    durationMinutes: lesson.durationMinutes && lesson.durationMinutes >= 20 ? lesson.durationMinutes : 35,
     concepts: enrichedConcepts,
     contentBody: enrichedBody,
     callouts: enrichedCallouts,
@@ -296,117 +309,77 @@ export function enforceComprehensiveCourseVolume(
     }
   }
 
-  // 2. Ensure between 4 and 5 comprehensive modules so the manual spans 22–30 pages
-  const targetModuleBlueprints = [
-    {
-      title: `Foundations, Strategic Context & Operational Standards in ${courseTitle}`,
-      subtitle: 'Core Principles, Root Cause Diagnosis & Baseline Governance',
-      purpose: `Establish a rock-solid foundational understanding of ${courseTitle}, diagnosing common workplace failure modes and aligning daily execution with South African statutory standards.`
-    },
-    {
-      title: `Applied Methodology, Standard Operating Procedures & Workflow Execution`,
-      subtitle: 'Step-by-Step Operational Mechanics & Quality Gate Mastery',
-      purpose: `Equip practitioners with structured, repeatable methodologies and quality-control checkpoints to execute complex workflows accurately under timeline pressure.`
-    },
-    {
-      title: `Responsible AI Integration, Digital Tooling & Human-in-the-Loop Verification`,
-      subtitle: 'Safe Automation, Prompt Precision & Hallucination Prevention',
-      purpose: `Enable teams to leverage modern AI and digital platforms for productivity gains while enforcing POPIA data privacy and mandatory human verification.`
-    },
-    {
-      title: `Statutory Compliance, Risk Mitigation & Cross-Functional Escalation`,
-      subtitle: 'POPIA Safeguards, Audit Defensibility & Incident Remediation',
-      purpose: `Build robust risk-management and compliance auditing capabilities so practitioners can identify, escalate, and resolve operational anomalies before they become liabilities.`
-    },
-    {
-      title: `Continuous Improvement, Leadership Sign-Off & 30-60-90 Day Workplace Rollout`,
-      subtitle: 'Sustainable Capability Transfer, KPI Tracking & Operational Excellence',
-      purpose: `Consolidate programme mastery into an actionable departmental rollout plan with measurable KPIs, peer coaching protocols, and executive governance.`
-    }
-  ];
-
-  // If fewer than 4 modules exist, add supplementary modules up to 4 modules
-  while (course.modules.length < 4) {
-    const nextIdx = course.modules.length;
-    const blueprint = targetModuleBlueprints[nextIdx] || targetModuleBlueprints[0];
-    course.modules.push({
-      id: `module-${nextIdx + 1}`,
-      moduleNumber: nextIdx + 1,
-      title: blueprint.title,
-      subtitle: blueprint.subtitle,
-      purpose: blueprint.purpose,
-      learningObjectives: [
-        {
-          id: `lo-${nextIdx + 1}-1`,
-          code: `LO ${nextIdx + 1}.1`,
-          statement: `Analyze the foundational frameworks and regulatory drivers governing ${blueprint.title}.`,
-          bloomLevel: 'Analyze'
-        },
-        {
-          id: `lo-${nextIdx + 1}-2`,
-          code: `LO ${nextIdx + 1}.2`,
-          statement: `Apply structured standard operating procedures and verification checklists in workplace tasks.`,
-          bloomLevel: 'Apply'
-        },
-        {
-          id: `lo-${nextIdx + 1}-3`,
-          code: `LO ${nextIdx + 1}.3`,
-          statement: `Evaluate operational outputs and AI-assisted deliverables for POPIA compliance and quality assurance.`,
-          bloomLevel: 'Evaluate'
-        }
-      ],
-      lessons: [],
-      scenarios: [],
-      knowledgeChecks: [],
-      reflection: [
-        `Which specific workflow in your department will benefit most immediately from the standards covered in ${blueprint.title}?`,
-        `What verification checkpoint will you introduce this week to prevent compliance or quality drift?`
-      ],
-      summary: `${blueprint.title} synthesises essential operational standards, regulatory safeguards, and practical execution tools into a repeatable workplace capability.`
-    });
+  // 2. Preserve user-defined module count (only supply 1 fallback module if course has zero modules)
+  if (!Array.isArray(course.modules) || course.modules.length === 0) {
+    course.modules = [
+      {
+        id: 'module-1',
+        moduleNumber: 1,
+        title: `Foundations & Practice in ${courseTitle}`,
+        subtitle: 'Core Concepts & Workplace Application',
+        purpose: `Establish core capability in ${courseTitle}.`,
+        learningObjectives: [
+          {
+            id: 'lo-1-1',
+            code: 'LO 1.1',
+            statement: `Explain core concepts and principles of ${courseTitle}.`,
+            bloomLevel: 'Understand'
+          },
+          {
+            id: 'lo-1-2',
+            code: 'LO 1.2',
+            statement: `Apply structured methods from ${courseTitle} to realistic tasks.`,
+            bloomLevel: 'Apply'
+          },
+          {
+            id: 'lo-1-3',
+            code: 'LO 1.3',
+            statement: `Evaluate quality, trade-offs, and governance controls in ${courseTitle}.`,
+            bloomLevel: 'Evaluate'
+          }
+        ],
+        lessons: [],
+        scenarios: [],
+        knowledgeChecks: [],
+        reflection: [`How will you apply ${courseTitle} principles in your next project?`],
+        summary: `Module 1 builds core operational capability in ${courseTitle}.`
+      }
+    ];
   }
 
-  // Cap modules at 5 if there are more than 5 so we never exceed 30 pages
-  if (course.modules.length > 5) {
-    course.modules = course.modules.slice(0, 5);
-  }
-
-  // Determine optimal lessons per module (4 modules -> 3 lessons each = 12 lessons; 5 modules -> 3 lessons each = 15 lessons)
   const targetLessonsPerModule = 3;
 
   course.modules = course.modules.map((mod, mIdx) => {
-    const modNum = mIdx + 1;
+    const modNum = mod.moduleNumber || mIdx + 1;
     mod.moduleNumber = modNum;
 
-    // Ensure at least 3 learning objectives per module
     if (!Array.isArray(mod.learningObjectives) || mod.learningObjectives.length < 3) {
       mod.learningObjectives = [
         {
           id: `lo-${modNum}-1`,
           code: `LO ${modNum}.1`,
-          statement: mod.learningObjectives?.[0]?.statement || `Explain the core operational principles and compliance requirements of ${mod.title}.`,
+          statement: mod.learningObjectives?.[0]?.statement || `Explain core principles and architecture of ${mod.title}.`,
           bloomLevel: 'Understand'
         },
         {
           id: `lo-${modNum}-2`,
           code: `LO ${modNum}.2`,
-          statement: mod.learningObjectives?.[1]?.statement || `Execute the five-stage standard operating procedure for ${mod.title} in realistic workplace scenarios.`,
+          statement: mod.learningObjectives?.[1]?.statement || `Apply tools and workflows in ${mod.title} to realistic workplace problems.`,
           bloomLevel: 'Apply'
         },
         {
           id: `lo-${modNum}-3`,
           code: `LO ${modNum}.3`,
-          statement: mod.learningObjectives?.[2]?.statement || `Audit and verify departmental deliverables against ${regFramework} and quality benchmarks.`,
+          statement: mod.learningObjectives?.[2]?.statement || `Evaluate risks, trade-offs, and governance controls for ${mod.title}.`,
           bloomLevel: 'Evaluate'
         }
       ];
     }
 
-    // Ensure 3 comprehensive lessons per module
     const lessonTemplates = [
-      `${mod.title}: Theoretical Framework, Operational Scope & Baseline Standards`,
-      `${mod.title}: Applied Step-by-Step Execution, Tooling & Quality Gates`,
-      `${mod.title}: Statutory Compliance, Risk Auditing & Continuous Improvement`
+      `${mod.title}: Core Concepts & Mental Models`,
+      `${mod.title}: Applied Execution & Tooling`,
+      `${mod.title}: Edge Cases, Trade-Offs & Verification`
     ];
 
     const currentLessons = Array.isArray(mod.lessons) ? [...mod.lessons] : [];
@@ -414,7 +387,7 @@ export function enforceComprehensiveCourseVolume(
       const lIdx = currentLessons.length;
       currentLessons.push({
         id: `lesson-${modNum}-${lIdx + 1}`,
-        title: lessonTemplates[lIdx] || `${mod.title} — Part ${lIdx + 1}: Advanced Workplace Implementation`,
+        title: lessonTemplates[lIdx] || `${mod.title} — Part ${lIdx + 1}`,
         durationMinutes: 35,
         concepts: [],
         contentBody: '',
@@ -424,190 +397,153 @@ export function enforceComprehensiveCourseVolume(
       });
     }
 
-    // Enrich each lesson to full textbook standard (~550-650 words each)
-    const enrichedLessons = currentLessons
-      .slice(0, 4) // max 4 lessons per module to stay within 30 pages
-      .map((lesson, lIdx) =>
-        enrichLessonToTextbookStandard(lesson, lIdx, mod.title, mod.purpose, sourceCourse)
-      );
+    const enrichedLessons = currentLessons.map((lesson, lIdx) =>
+      enrichLessonToTextbookStandard(lesson, lIdx, mod.title, mod.purpose, sourceCourse)
+    );
 
-    // Ensure 4 rich scenarios per module (3 Workplace + 1 AI Specific)
+    const cities = ['Cape Town', 'Johannesburg', 'Pretoria', 'Durban', 'Midrand', 'Gqeberha'];
+    const cityBase = cities[mIdx % cities.length];
+
     const currentScenarios = Array.isArray(mod.scenarios) ? [...mod.scenarios] : [];
     const fallbackScenarios: GeneratedScenario[] = [
       {
         id: `scenario-${modNum}-1`,
-        title: `High-Pressure Delivery vs. Quality Gate Compliance in ${mod.title}`,
+        title: `${mod.title}: Delivery Trade-Off in ${cityBase}`,
         type: 'Workplace',
-        situation: `During a high-volume quarter-end cycle in a South African enterprise, a senior stakeholder requests that the ${targetRoles} team bypass the Stage 4 verification protocol for ${mod.title} to meet an urgent client deadline.`,
-        challenge: `Preliminary spot-checks indicate two unverified data anomalies that could trigger non-compliance under ${regFramework} if released without remediation, yet halting the batch will delay the departmental milestone by 4 hours.`,
-        decisionPoint: `Do you authorise the immediate release based on verbal assurances to satisfy the timeline, or enforce the mandatory quality gate hold and escalate the risk formally?`,
-        debrief: `Enforcing the quality gate hold is the only defensible professional decision. Under South African corporate governance and ${regFramework}, releasing unverified deliverables exposes both the organisation and the signing officer to statutory penalties, client distrust, and costly downstream remediation. Formal escalation with a clear 4-hour remediation timeline preserves integrity and transparency.`,
-        keyTakeaway: `Never waive mandatory verification gates for short-term schedule convenience; document and escalate all compliance anomalies immediately.`
+        situation: `In a ${cityBase} enterprise team, ${targetRoles} must implement a deliverable for ${mod.title} while navigating tight delivery constraints.`,
+        challenge: `Key design or operational assumptions have not yet been validated against ${mod.learningObjectives[0]?.statement || mod.title}.`,
+        decisionPoint: `Do you proceed with unverified assumptions to hit the deadline, or execute a targeted validation pass first?`,
+        debrief: `Targeted validation prevents compounding defects downstream while keeping stakeholders informed with transparent milestones.`,
+        keyTakeaway: `Validate foundational assumptions early in ${mod.title}.`
       },
       {
         id: `scenario-${modNum}-2`,
-        title: `Cross-Departmental Handover & Root Cause Remediation`,
+        title: `${mod.title}: Cross-Team Alignment Challenge`,
         type: 'Workplace',
-        situation: `An operational handover between two regional branches in Cape Town and Pretoria reveals recurring discrepancies in how ${mod.title} templates are completed, resulting in a 22% rework rate.`,
-        challenge: `Team members in each branch blame the other unit's practices, creating interpersonal friction and slowing down service delivery.`,
-        decisionPoint: `Should leadership issue disciplinary warnings to the individuals involved, or facilitate a structured root-cause alignment workshop using unified SOP checklists?`,
-        debrief: `Systemic variance is almost always a process and training design issue rather than individual negligence. Establishing a unified SOP checklist, clarifying handover acceptance criteria, and conducting a blame-free alignment session eliminates root causes while strengthening psychological safety.`,
-        keyTakeaway: `Standardise cross-functional handover criteria and address recurring errors through systemic SOP alignment rather than blame.`
+        situation: `Two delivery teams working on ${mod.title} use incompatible hand-off formats, causing repeated clarification delays.`,
+        challenge: `Balancing autonomous team speed with consistent quality acceptance criteria.`,
+        decisionPoint: `Should each team keep custom ad-hoc formats or agree on shared acceptance checks tied to ${mod.title}?`,
+        debrief: `Shared acceptance criteria remove ambiguity at team boundaries without slowing technical execution.`,
+        keyTakeaway: `Standardised acceptance criteria align cross-functional teams.`
       },
       {
         id: `scenario-${modNum}-3`,
-        title: `POPIA Data Privacy & Third-Party Stakeholder Request`,
-        type: 'Workplace',
-        situation: `An external partner requests raw operational logs from a ${mod.title} workflow that contain identifiable employee and client records to assist with a diagnostic review.`,
-        challenge: `The partner's diagnostic support is valuable, but the raw dataset has not been de-identified or approved by the Information Officer under POPIA.`,
-        decisionPoint: `Do you send the raw export via email to expedite troubleshooting, or apply formal de-identification and data-sharing governance first?`,
-        debrief: `Transmitting unmasked personal information to an external party without lawful justification and security safeguards violates POPIA Conditions 1 and 7. Stripping personal identifiers and using synthetic or aggregated diagnostic extracts allows technical troubleshooting while maintaining 100% statutory compliance.`,
-        keyTakeaway: `Always anonymise and de-identify operational datasets before sharing across departmental or organisational boundaries.`
-      },
-      {
-        id: `scenario-${modNum}-4`,
-        title: `AI-Assisted Drafting & Hallucination Detection in ${mod.title}`,
+        title: `${mod.title}: AI Output Verification Scenario`,
         type: 'AI Specific',
-        situation: `A practitioner uses a generative AI assistant to draft a complex compliance summary and operational recommendation report for ${mod.title}.`,
-        challenge: `The AI output is eloquently formatted and persuasive, but cites a non-existent subsection of South African legislation and miscalculates a risk threshold.`,
-        decisionPoint: `How should the practitioner and reviewing supervisor handle the AI-generated draft prior to executive submission?`,
-        debrief: `Generative AI models predict plausible text patterns and can fabricate statutory citations ("hallucinations"). Practitioners must treat AI outputs strictly as first-draft scaffolding, verifying every regulatory reference, metric, and conclusion line-by-line against primary source documents before signing off.`,
-        keyTakeaway: `Enforce strict Human-in-the-Loop verification on all AI-assisted outputs; the human practitioner remains 100% accountable for final accuracy.`
+        situation: `A practitioner uses an AI assistant to draft specifications for ${mod.title} ahead of a stakeholder review.`,
+        challenge: `The draft looks polished but includes an unsupported claim outside verified source documentation.`,
+        decisionPoint: `How should the practitioner validate and correct the AI-generated draft before sharing it?`,
+        debrief: `Treat AI outputs as drafts requiring domain verification against authoritative references and explicit flagging of uncertain claims.`,
+        keyTakeaway: `Human verification ensures AI speed never compromises technical accuracy.`
       }
     ];
 
-    while (currentScenarios.length < 4) {
+    while (currentScenarios.length < 3) {
       currentScenarios.push(fallbackScenarios[currentScenarios.length]);
     }
 
-    // Enrich existing scenarios if any fields are too short
     const enrichedScenarios = currentScenarios.slice(0, 4).map((sc, sIdx) => {
       const fb = fallbackScenarios[sIdx] || fallbackScenarios[0];
       return {
         id: sc.id || fb.id,
         title: sc.title && sc.title.length > 5 ? sc.title : fb.title,
-        type: sc.type === 'AI Specific' || sIdx === 3 ? ('AI Specific' as const) : ('Workplace' as const),
-        situation: countWordsInText(sc.situation) >= 15 ? sc.situation : fb.situation,
-        challenge: countWordsInText(sc.challenge) >= 12 ? sc.challenge : fb.challenge,
-        decisionPoint: countWordsInText(sc.decisionPoint) >= 10 ? sc.decisionPoint : fb.decisionPoint,
-        debrief: countWordsInText(sc.debrief) >= 20 ? sc.debrief : fb.debrief,
-        keyTakeaway: countWordsInText(sc.keyTakeaway) >= 8 ? sc.keyTakeaway : fb.keyTakeaway
+        type: sc.type === 'AI Specific' ? ('AI Specific' as const) : ('Workplace' as const),
+        situation: countWordsInText(sc.situation) >= 12 ? sc.situation : fb.situation,
+        challenge: countWordsInText(sc.challenge) >= 10 ? sc.challenge : fb.challenge,
+        decisionPoint: countWordsInText(sc.decisionPoint) >= 8 ? sc.decisionPoint : fb.decisionPoint,
+        debrief: countWordsInText(sc.debrief) >= 15 ? sc.debrief : fb.debrief,
+        keyTakeaway: countWordsInText(sc.keyTakeaway) >= 6 ? sc.keyTakeaway : fb.keyTakeaway
       };
     });
 
-    // Ensure 5 comprehensive Knowledge Check questions per module
     const currentKCs = Array.isArray(mod.knowledgeChecks) ? [...mod.knowledgeChecks] : [];
     const fallbackKCs: GeneratedQuestion[] = [
       {
         id: `kc-${modNum}-1`,
-        question: `When executing the five-stage Standard Operating Procedure for ${mod.title}, what is the mandatory first action required of the practitioner?`,
+        question: `Which foundational concept in ${mod.title} most directly supports accurate execution?`,
         options: [
-          'Immediately generate automated outputs and skip baseline validation to save time',
-          'Conduct Pre-Execution Readiness & Scope Verification, confirming input completeness and POPIA compliance',
-          'Delegate final sign-off responsibility to an unmonitored software script',
-          'Archive the task prior to performing quality assurance checks'
+          'Skipping prerequisite scope definition',
+          `Applying the structured principles of ${mod.title} with clear success criteria`,
+          'Relying solely on informal verbal hand-offs',
+          'Avoiding post-implementation review'
         ],
         correctAnswer: 1,
-        rationale: `Stage 1 (Pre-Execution Readiness & Scope Verification) prevents garbage-in/garbage-out failures and ensures all source data complies with ${regFramework} before processing begins.`,
+        rationale: `${mod.learningObjectives[0]?.statement || mod.title} relies on clear scope and validated domain principles.`,
         learningObjectiveRef: `LO ${modNum}.1`
       },
       {
         id: `kc-${modNum}-2`,
-        question: `Under South African POPIA (Act 4 of 2013) governance taught in ${mod.title}, how must personal or sensitive corporate records be handled when using digital or AI analysis tools?`,
+        question: `When applying techniques from ${mod.title} in ${courseTitle}, what is essential before final sign-off?`,
         options: [
-          'Personal identifiers must be masked, anonymised, or replaced with synthetic tokens prior to prompt input',
-          'Full customer ID numbers and contact lists may be uploaded to public AI models if deadlines are tight',
-          'POPIA only applies to physical paper files and does not cover digital workflows',
-          'Data privacy checks are optional for internal departmental reports'
+          'Independently verifying outputs against domain criteria and constraints',
+          'Approving the first unreviewed draft immediately',
+          'Ignoring documented anomalies',
+          'Removing traceability records'
         ],
         correctAnswer: 0,
-        rationale: `POPIA Conditions 1, 3, and 7 strictly prohibit unauthorized disclosure or processing of Personal Identifiable Information (PII) in unvetted external environments; de-identification is mandatory.`,
-        learningObjectiveRef: `LO ${modNum}.2`
+        rationale: `Verification against domain constraints prevents avoidable rework and aligns with ${mod.learningObjectives[1]?.code || `LO ${modNum}.2`}.`,
+        learningObjectiveRef: mod.learningObjectives[1]?.code || `LO ${modNum}.2`
       },
       {
         id: `kc-${modNum}-3`,
-        question: `During a busy operational cycle in ${mod.title}, a team member notices a discrepancy between an AI-generated summary and the primary source ledger. What is the required protocol?`,
+        question: `How should unverified external claims or AI-generated references encountered during ${mod.title} be handled?`,
         options: [
-          'Accept the AI summary because automated models process data faster than humans',
-          'Halt release of the draft, verify the figures directly against the authoritative source ledger, and correct the variance',
-          'Delete the source ledger so the audit trail matches the summary',
-          'Forward the unverified draft to the client with a verbal disclaimer'
+          'Publish them as verified legal facts',
+          'Cross-check against primary sources or mark them for SME validation',
+          'Delete all citations without review',
+          'Assume high confidence scores guarantee accuracy'
         ],
         correctAnswer: 1,
-        rationale: `Human-in-the-Loop (HITL) governance mandates that authoritative primary records always supersede automated drafts, and all discrepancies must be remediated prior to release.`,
-        learningObjectiveRef: `LO ${modNum}.3`
-      },
-      {
-        id: `kc-${modNum}-4`,
-        question: `Why are cross-functional handover checklists emphasised as a non-negotiable control in ${mod.title}?`,
-        options: [
-          'To increase bureaucratic paperwork without operational benefit',
-          'To ensure repeatable quality, clear accountability, and zero ambiguity when tasks transition between teams or shifts',
-          'To allow supervisors to avoid reviewing deliverables',
-          'To replace all interpersonal communication across departments'
-        ],
-        correctAnswer: 1,
-        rationale: `Structured handover checklists eliminate assumptions between teams, reduce downstream rework, and provide a transparent audit trail.`,
-        learningObjectiveRef: `LO ${modNum}.2`
-      },
-      {
-        id: `kc-${modNum}-5`,
-        question: `What is the most effective leadership response when a quality audit reveals recurring procedural variance in ${mod.title}?`,
-        options: [
-          'Conceal the audit findings from executive management',
-          'Conduct a structured root-cause analysis, refine the SOP checklist, and provide targeted coaching in a psychologically safe environment',
-          'Eliminate all quality audits to improve reported pass rates',
-          'Blame junior staff without examining workflow bottlenecks'
-        ],
-        correctAnswer: 1,
-        rationale: `Sustainable operational excellence relies on systemic root-cause remediation, clear SOPs, and constructive capability building.`,
-        learningObjectiveRef: `LO ${modNum}.3`
+        rationale: 'Unsourced claims must be validated against authoritative references or flagged for SME verification.',
+        learningObjectiveRef: mod.learningObjectives[2]?.code || `LO ${modNum}.3`
       }
     ];
 
-    while (currentKCs.length < 5) {
+    while (currentKCs.length < 3) {
       currentKCs.push(fallbackKCs[currentKCs.length]);
     }
 
     const enrichedKCs = currentKCs.slice(0, 5).map((kc, kIdx) => {
-      const fb = fallbackKCs[kIdx] || fallbackKCs[0];
+      const fb = fallbackKCs[kIdx % fallbackKCs.length];
       return {
-        id: kc.id || fb.id,
-        question: countWordsInText(kc.question) >= 8 ? kc.question : fb.question,
-        options: Array.isArray(kc.options) && kc.options.length >= 4 ? kc.options : fb.options,
-        correctAnswer: typeof kc.correctAnswer === 'number' && kc.correctAnswer >= 0 && kc.correctAnswer <= 3 ? kc.correctAnswer : fb.correctAnswer,
-        rationale: countWordsInText(kc.rationale) >= 12 ? kc.rationale : fb.rationale,
+        id: kc.id || `kc-${modNum}-${kIdx + 1}`,
+        question: countWordsInText(kc.question) >= 6 ? kc.question : fb.question,
+        options: Array.isArray(kc.options) && kc.options.length >= 2 ? kc.options : fb.options,
+        correctAnswer: typeof kc.correctAnswer === 'number' && kc.correctAnswer >= 0 ? kc.correctAnswer : fb.correctAnswer,
+        rationale: countWordsInText(kc.rationale) >= 8 ? kc.rationale : fb.rationale,
         learningObjectiveRef: kc.learningObjectiveRef || fb.learningObjectiveRef
       };
     });
 
-    // Practical task enrichment
+    const hasStructuredTask =
+      countWordsInText(mod.practicalTask?.instructions) >= 25 &&
+      /objective\s*:/i.test(mod.practicalTask?.instructions || '') &&
+      /steps?\s*:/i.test(mod.practicalTask?.instructions || '');
+
     const practicalTask: GeneratedPracticalTask = {
       id: mod.practicalTask?.id || `task-${modNum}`,
-      title: mod.practicalTask?.title || `Module ${modNum} Applied Workplace Portfolio Task: ${mod.title}`,
-      instructions:
-        countWordsInText(mod.practicalTask?.instructions) >= 35
-          ? mod.practicalTask!.instructions
-          : `1. Select an active workflow within your department that relates directly to ${mod.title}.\n2. Audit the workflow against the five-stage SOP and ${regFramework} compliance criteria taught in this module.\n3. Identify at least three operational or compliance vulnerabilities (including any unmonitored AI/digital tool usage).\n4. Formulate a remediated SOP workflow, complete with a Human-in-the-Loop verification gate and stakeholder sign-off checklist.`,
+      title: mod.practicalTask?.title || `Module ${modNum} Practical Application: ${mod.title}`,
+      instructions: hasStructuredTask
+        ? mod.practicalTask!.instructions
+        : `Objective: Demonstrate practical mastery of ${mod.title} within ${courseTitle}.\nScenario: Acting as ${targetRoles} in a ${cityBase} team, you must evaluate and improve an active deliverable related to ${mod.title}.\nResources: Approved domain tools (${r.aiToolsPlatformName || 'workplace templates'}), Module ${modNum} reference guide, and verification checklist.\nSteps: 1. Define scope, inputs, and constraints for ${mod.title}. 2. Execute the core domain workflow on a sample scenario. 3. Audit outputs against domain accuracy, security, and ${regFramework}. 4. Document corrections and stakeholder sign-off notes.\nDeliverable: Completed Module ${modNum} ${mod.title} Implementation & Review Artefact.\nSuccess criteria: All steps trace cleanly to LO ${modNum}.1–LO ${modNum}.${mod.learningObjectives.length}, with verified evidence and zero unvalidated assumptions.\nReflection: Identify one risk prevented by your verification check and one improvement for future iterations.`,
       deliverable:
-        countWordsInText(mod.practicalTask?.deliverable) >= 15
+        countWordsInText(mod.practicalTask?.deliverable) >= 8
           ? mod.practicalTask!.deliverable
-          : `Completed Module ${modNum} Operational Gap Audit & Remediated SOP Matrix (2-page workplace portfolio artefact signed off by line supervisor).`,
+          : `Completed Module ${modNum} ${mod.title} Practical Artefact with verification checklist.`,
       evaluationRubric:
-        Array.isArray(mod.practicalTask?.evaluationRubric) && mod.practicalTask!.evaluationRubric.length >= 4
+        Array.isArray(mod.practicalTask?.evaluationRubric) && mod.practicalTask!.evaluationRubric.length >= 2
           ? mod.practicalTask!.evaluationRubric
           : [
-              'Diagnostic Depth & Root-Cause Identification (30%): Accurately pinpoints genuine process bottlenecks and compliance exposures.',
-              'SOP Rigour & Operational Feasibility (30%): Remediated steps are clear, sequential, and practical for daily execution.',
-              'POPIA & Statutory Governance Alignment (25%): Incorporates explicit data privacy and Human-in-the-Loop verification controls.',
-              'Executive Clarity & Stakeholder Readiness (15%): Presented in plain, unambiguous professional language ready for team rollout.'
+              `Subject accuracy and application of ${mod.title} concepts (40%)`,
+              'Completeness and clarity of execution steps and deliverable (35%)',
+              'Verification discipline, risk awareness, and reflection quality (25%)'
             ]
     };
 
     const enrichedSummary =
-      countWordsInText(mod.summary) >= 35
+      countWordsInText(mod.summary) >= 20
         ? mod.summary
-        : `Module ${modNum} (${mod.title}) equipped participants with the theoretical grounding, five-stage standard operating procedures, POPIA compliance safeguards, and Human-in-the-Loop verification skills needed to execute high-stakes workplace deliverables with confidence and audit defensibility.`;
+        : `Module ${modNum} (${mod.title}) developed practical competence in ${mod.purpose || mod.title}, linking conceptual foundations to hands-on application and verification.`;
 
     return {
       ...mod,
@@ -705,15 +641,16 @@ export function enforceComprehensiveCourseVolume(
     },
     {
       id: 'final-q2',
-      question: `Which sequence accurately reflects the Five-Stage Standard Operating Procedure (SOP) taught across this programme?`,
+      question: `When planning and delivering work in ${courseTitle}, why must teams verify key inputs and constraints before implementation?`,
       options: [
-        '1. Sign-Off → 2. Execution → 3. Scope Check → 4. Archiving → 5. Audit',
-        '1. Pre-Execution Readiness & Scope Verification → 2. Baseline Structuring → 3. Controlled Execution → 4. Human-in-the-Loop Quality Audit → 5. Formal Sign-Off & Handover',
-        '1. Automated Drafting → 2. Immediate Client Release → 3. Post-Release Apology → 4. Rework',
-        '1. Verbal Briefing → 2. Informal Execution → 3. Optional Spot-Check'
+        'To delay delivery unnecessarily',
+        'To catch incomplete assumptions early, ensure domain feasibility, and avoid downstream rework',
+        'To bypass stakeholder review',
+        'To remove accountability records'
       ],
       correctAnswer: 1,
-      rationale: 'The five-stage SOP ensures front-loaded input verification, controlled processing, mandatory human quality auditing, and traceable sign-off.'
+      rationale: `Validating inputs and constraints early protects quality across ${courseTitle} and aligns with Module 1 foundations.`,
+      learningObjectiveRef: course.modules?.[0]?.learningObjectives?.[0]?.code || 'LO 1.1'
     },
     {
       id: 'final-q3',
@@ -819,20 +756,19 @@ export function enforceComprehensiveCourseVolume(
   }
   course.assessments.finalAssessment.questions = currentFinal.slice(0, 10);
 
-  // Enrich Capstone Case Study
+  // Enrich Capstone Case Study cleanly without generic SOP filler
   const existingCap = course.assessments.finalAssessment.capstoneCaseStudy;
-  if (!existingCap || countWordsInText(existingCap.scenario) < 60) {
+  if (!existingCap || countWordsInText(existingCap.scenario) < 40) {
     course.assessments.finalAssessment.capstoneCaseStudy = {
-      title: existingCap?.title || `Comprehensive Executive Capstone Case Study: ${courseTitle} Transformation`,
-      scenario: `A national South African enterprise operating across Johannesburg, Durban, and Cape Town is experiencing a 28% operational rework rate and growing compliance exposure in ${courseTitle}. Internal audit findings reveal that regional teams are operating with inconsistent legacy templates, bypassing pre-execution input checks under deadline pressure, and informally pasting unmasked client records into public AI tools to speed up report drafting. You have been appointed as the Lead Operational & Compliance Architect to stabilise the workflow, enforce ${regFramework}, and roll out a unified, high-performance standard within 60 days.`,
+      title: existingCap?.title || `Applied Capstone Case Study: ${courseTitle}`,
+      scenario: `A South African organisation is modernising its capabilities in ${courseTitle} for ${targetRoles}. Recent project reviews identified inconsistent workflows, unverified outputs under tight timelines, and unclear escalation boundaries under ${regFramework}. You are tasked with designing an end-to-end solution across the modules covered in this programme.`,
       tasks: [
-        `Task 1 — Root-Cause & Compliance Vulnerability Audit: Conduct a structured diagnostic of the three regional failure modes (template variance, skipped quality gates, and unmonitored AI usage) and map each to its specific operational and statutory risk under ${regFramework}.`,
-        `Task 2 — Five-Stage Standard Operating Procedure (SOP) Design: Draft the mandatory five-stage SOP for the national workflow, specifying exact input validation criteria, de-identification rules, and handover sign-off gates.`,
-        `Task 3 — Responsible AI & Human-in-the-Loop Governance Protocol: Formulate the departmental AI usage standard, defining approved prompting boundaries, mandatory primary-source cross-checking, and supervisor sign-off responsibilities.`,
-        `Task 4 — Cross-Functional Escalation & Remediation Matrix: Create a decision matrix showing how practitioners must respond when data anomalies, AI hallucinations, or timeline conflicts arise during peak cycles.`,
-        `Task 5 — 30-60-90 Day Rollout & KPI Measurement Plan: Define the phased implementation roadmap and three measurable KPIs (e.g., rework rate reduction, 100% POPIA audit pass rate, turnaround predictability) to report to the Executive Committee.`
+        `Task 1 — Diagnostic Assessment: Identify key operational gaps, assumptions, and risk points in ${courseTitle}.`,
+        `Task 2 — Applied Architecture & Workflow Design: Apply the core methods taught across Modules 1–${course.modules.length} to design a practical solution.`,
+        `Task 3 — Verification & Governance Controls: Define measurable acceptance checks and human-oversight boundaries appropriate to ${courseTitle}.`,
+        `Task 4 — 30-60-90 Day Implementation Plan: Outline phased milestones and success indicators for workplace adoption.`
       ],
-      deliverable: `A comprehensive 4-page Operational Transformation & Governance Portfolio (including Audit Matrix, 5-Stage SOP, HITL Protocol, and 30-60-90 Day KPI Roadmap) submitted for summative assessor sign-off.`
+      deliverable: `Completed ${courseTitle} Capstone Solution Brief & Implementation Plan ready for facilitator review.`
     };
   }
 

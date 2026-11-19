@@ -5,21 +5,20 @@ import {
   Minus, 
   Send, 
   Sparkles, 
-  CheckCircle2, 
-  AlertTriangle, 
-  ArrowRight, 
-  Layers, 
   ShieldCheck, 
   RefreshCw,
-  Sliders,
-  ChevronRight,
+  Layers,
   BookOpen,
-  Cpu
+  Cpu,
+  Copy,
+  Check,
+  MessageSquarePlus
 } from 'lucide-react';
-import { Course, SectionId, AIProvider } from '../types';
+import { Course, SectionId, AIProvider, CopilotAgreedRequirements, CopilotMode } from '../types';
 import { QAResult } from '../utils/qaEngine';
 import { AppView } from '../hooks/useCourseStore';
 import { processLocalCopilotChat } from '../utils/localCourseEngine';
+import { createScratchCourse } from '../data/initialCourseData';
 import { getClientModels, getDefaultModel } from '../utils/aiModels';
 
 interface FloatingCourseCopilotProps {
@@ -42,6 +41,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  mode?: CopilotMode;
   suggestedActions?: Array<{
     id: string;
     label: string;
@@ -116,6 +116,145 @@ const EStudyRobotIcon: React.FC<{ size?: number; className?: string; color?: str
   );
 };
 
+function createWelcomeMessage(): ChatMessage {
+  return {
+    id: `msg-init-${Date.now()}`,
+    role: 'assistant',
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    mode: 'chat',
+    content: `Hi! I'm your **eStudy Course Copilot**.\n\nChat with me naturally to **ask questions, brainstorm ideas, or plan a training programme** step by step—or ask me to **populate all 9 template sections** whenever you're ready!`,
+    suggestedActions: [
+      { id: 'act-plan-cloud', label: '☁️ Plan: Cloud Engineering for Beginners', actionType: 'send_prompt', payload: { prompt: 'I want to create a Cloud Engineering course for beginners.' } },
+      { id: 'act-mech', label: '⚙️ Build Template: AI in Mechanical Engineering', actionType: 'send_prompt', payload: { prompt: 'Build a template for me "The use of AI in mechanical engineering"' } },
+      { id: 'act-check', label: '🔍 Check Framework Compliance', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } }
+    ]
+  };
+}
+
+function renderInlineMarkdown(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code key={i} className="px-1 py-0.5 rounded bg-slate-800 text-[#45CC42] font-mono text-[11px]">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
+
+function renderMessageMarkdown(content: string): React.ReactNode {
+  const blocks = content.split(/\n\n+/);
+  return blocks.map((block, bIdx) => {
+    const trimmed = block.trim();
+    if (!trimmed) return null;
+
+    if (trimmed.startsWith('### ')) {
+      return (
+        <h4 key={bIdx} className="font-bold text-sm text-[#45CC42] pt-1">
+          {renderInlineMarkdown(trimmed.replace(/^###\s+/, ''))}
+        </h4>
+      );
+    }
+
+    const lines = trimmed.split('\n');
+    const isBulletBlock = lines.every(l => /^\s*[-*•]\s+/.test(l));
+    if (isBulletBlock) {
+      return (
+        <ul key={bIdx} className="list-disc pl-4 space-y-1">
+          {lines.map((l, lIdx) => (
+            <li key={lIdx}>{renderInlineMarkdown(l.replace(/^\s*[-*•]\s+/, ''))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    const isNumberedBlock = lines.every(l => /^\s*\d+[.)]\s+/.test(l));
+    if (isNumberedBlock) {
+      return (
+        <ol key={bIdx} className="list-decimal pl-4 space-y-1">
+          {lines.map((l, lIdx) => (
+            <li key={lIdx}>{renderInlineMarkdown(l.replace(/^\s*\d+[.)]\s+/, ''))}</li>
+          ))}
+        </ol>
+      );
+    }
+
+    return (
+      <p key={bIdx} className="whitespace-pre-wrap">
+        {lines.map((line, lIdx) => (
+          <React.Fragment key={lIdx}>
+            {lIdx > 0 && <br />}
+            {renderInlineMarkdown(line)}
+          </React.Fragment>
+        ))}
+      </p>
+    );
+  });
+}
+
+function applyCleanCoursePatch(prev: Course, patch: Partial<Course>): Course {
+  const cleanTitle = patch.structure?.title || patch.name || 'Untitled Course';
+  const scratchBase = createScratchCourse(cleanTitle);
+
+  return {
+    ...scratchBase,
+    id: prev.id,
+    uploadedTemplateName: prev.uploadedTemplateName,
+    flaggedFields: prev.flaggedFields && prev.name === cleanTitle ? prev.flaggedFields : {},
+    ...patch,
+    name: patch.name || patch.structure?.title || cleanTitle,
+    code: patch.code || patch.structure?.code || scratchBase.code,
+    structure: {
+      ...scratchBase.structure,
+      ...(patch.structure || {}),
+      title: patch.structure?.title || patch.name || cleanTitle
+    },
+    problem: {
+      ...scratchBase.problem,
+      ...(patch.problem || {})
+    },
+    research: {
+      ...scratchBase.research,
+      ...(patch.research || {}),
+      learnerProfile: {
+        ...(scratchBase.research?.learnerProfile || ({} as any)),
+        ...(patch.research?.learnerProfile || {})
+      }
+    },
+    modules: patch.modules && patch.modules.length > 0 ? patch.modules : scratchBase.modules,
+    learningDesign: {
+      ...scratchBase.learningDesign,
+      ...(patch.learningDesign || {})
+    },
+    ethics: {
+      ...scratchBase.ethics,
+      ...(patch.ethics || {})
+    },
+    outputRequirements: {
+      ...scratchBase.outputRequirements,
+      ...(patch.outputRequirements || {})
+    },
+    qa: {
+      ...scratchBase.qa,
+      ...(patch.qa || {}),
+      checklistItems: {
+        ...(scratchBase.qa?.checklistItems || {}),
+        ...(patch.qa?.checklistItems || {})
+      }
+    },
+    customisation: {
+      ...scratchBase.customisation,
+      ...(patch.customisation || {})
+    }
+  };
+}
+
 export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   course,
   activeSection,
@@ -137,22 +276,13 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const [lastViewedSection, setLastViewedSection] = useState<SectionId>(activeSection);
 
+  // Per-conversation isolated state
+  const [conversationId, setConversationId] = useState<string>(() => `conv-${Date.now()}`);
+  const [agreedRequirements, setAgreedRequirements] = useState<CopilotAgreedRequirements | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
   // Initial welcome message
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    return [
-      {
-        id: 'msg-init',
-        role: 'assistant',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        content: `Hi! I'm your **eStudy Course Copilot**.\n\nTell me any course topic (for example: *"The use of AI in mechanical engineering"*) and I will **immediately fill in all 9 sections** of the eStudy Master Course Template v9.0 for you—no back-and-forth questions required!`,
-        suggestedActions: [
-          { id: 'act-mech', label: '⚙️ Build: The Use of AI in Mechanical Engineering', actionType: 'send_prompt', payload: { prompt: 'Build a template for me "The use of AI in mechanical engineering"' } },
-          { id: 'act-eq', label: '🤝 Build: Emotional Intelligence for Leaders', actionType: 'send_prompt', payload: { prompt: 'Build a template for me "Emotional Intelligence for Workplace Leaders"' } },
-          { id: 'act-check', label: '🔍 Check Framework Compliance', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } }
-        ]
-      }
-    ];
-  });
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage()]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -168,9 +298,41 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   useEffect(() => {
     if (activeSection !== lastViewedSection && isOpen) {
       setLastViewedSection(activeSection);
-      // Optional subtle assistant nudge when moving between sections
     }
   }, [activeSection, lastViewedSection, isOpen]);
+
+  // Start a fresh conversation with complete context isolation
+  const handleNewConversation = () => {
+    setConversationId(`conv-${Date.now()}`);
+    setAgreedRequirements(null);
+    setCopiedMessageId(null);
+    setInputText('');
+    setMessages([createWelcomeMessage()]);
+  };
+
+  // Copy an individual assistant message cleanly
+  const handleCopyMessage = async (msgId: string, content: string) => {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(content);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = content;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedMessageId(msgId);
+      setTimeout(() => {
+        setCopiedMessageId(prev => (prev === msgId ? null : prev));
+      }, 2000);
+    } catch (err) {
+      console.warn('Clipboard copy failed:', err);
+    }
+  };
 
   // Handle sending a message
   const handleSendMessage = async (textToSend?: string) => {
@@ -184,25 +346,27 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const nextHistory = [...messages, userMsg];
+    setMessages(nextHistory);
     setInputText('');
     setIsLoading(true);
 
     try {
       let data: any = null;
-      let usedFallback = false;
 
       try {
         const response = await fetch('/api/copilot/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+            messages: nextHistory.map(m => ({ role: m.role, content: m.content })),
             currentCourse: course,
             activeSection: activeSection,
             qaResult: qaResult,
             provider: selectedProvider,
-            model: selectedModel
+            model: selectedModel,
+            agreedRequirements,
+            conversationId
           })
         });
 
@@ -210,23 +374,25 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
         if (response.ok && contentType.includes('application/json')) {
           data = await response.json();
         } else {
-          console.warn(`Copilot API response was not JSON or not OK (${response.status}). Engaging resilient local framework engine.`);
-          usedFallback = true;
+          console.warn(`Copilot API response was not JSON or not OK (${response.status}). Engaging local framework engine.`);
           data = processLocalCopilotChat({
-            messages: [...messages, userMsg],
+            messages: nextHistory,
             currentCourse: course,
             activeSection: activeSection,
-            qaResult: qaResult
+            qaResult: qaResult,
+            agreedRequirements,
+            conversationId
           });
         }
       } catch (fetchErr: any) {
         console.warn('Backend copilot fetch failed, executing via client framework engine:', fetchErr);
-        usedFallback = true;
         data = processLocalCopilotChat({
-          messages: [...messages, userMsg],
+          messages: nextHistory,
           currentCourse: course,
           activeSection: activeSection,
-          qaResult: qaResult
+          qaResult: qaResult,
+          agreedRequirements,
+          conversationId
         });
       }
 
@@ -234,10 +400,16 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
         throw new Error('No response returned from copilot engine');
       }
 
+      // Sync isolated conversation requirements state
+      if ('agreedRequirements' in data) {
+        setAgreedRequirements(data.agreedRequirements || null);
+      }
+
       const assistantMsg: ChatMessage = {
         id: `ast-${Date.now()}`,
         role: 'assistant',
-        content: data.message || 'I have analyzed your request against the eStudy Master Course Framework.',
+        mode: data.mode || (data.coursePatch ? 'course_creation' : 'chat'),
+        content: data.message || 'I have processed your request.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: data.suggestedActions || [],
         courseBrief: data.courseBrief,
@@ -246,63 +418,15 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
 
       setMessages(prev => [...prev, assistantMsg]);
 
-      // If response contained a course patch, automatically apply all 9 sections to course builder
+      // Apply 9-section template patch ONLY when explicitly in course creation mode
       if (data.coursePatch) {
-        onUpdateCourse(prev => ({
-          ...prev,
-          ...data.coursePatch,
-          name: data.coursePatch.name || data.coursePatch.structure?.title || prev.name,
-          code: data.coursePatch.code || data.coursePatch.structure?.code || prev.code,
-          structure: {
-            ...prev.structure,
-            ...(data.coursePatch.structure || {})
-          },
-          problem: {
-            ...prev.problem,
-            ...(data.coursePatch.problem || {})
-          },
-          research: {
-            ...prev.research,
-            ...(data.coursePatch.research || {}),
-            learnerProfile: {
-              ...(prev.research?.learnerProfile || ({} as any)),
-              ...(data.coursePatch.research?.learnerProfile || {})
-            }
-          },
-          modules: data.coursePatch.modules || prev.modules,
-          learningDesign: {
-            ...prev.learningDesign,
-            ...(data.coursePatch.learningDesign || {})
-          },
-          ethics: {
-            ...prev.ethics,
-            ...(data.coursePatch.ethics || {})
-          },
-          outputRequirements: {
-            ...prev.outputRequirements,
-            ...(data.coursePatch.outputRequirements || {})
-          },
-          qa: {
-            ...prev.qa,
-            ...(data.coursePatch.qa || {}),
-            checklistItems: {
-              ...(prev.qa?.checklistItems || {}),
-              ...(data.coursePatch.qa?.checklistItems || {})
-            }
-          },
-          customisation: {
-            ...prev.customisation,
-            ...(data.coursePatch.customisation || {})
-          }
-        }));
+        onUpdateCourse(prev => applyCleanCoursePatch(prev, data.coursePatch));
 
-        // If user is currently on cover or dashboard view, smoothly transition to builder view so they see the populated fields
         if (view === 'cover' || view === 'dashboard') {
           onNavigateView('builder');
         }
       }
 
-      // If response contained a brief or patch, trigger pulse notification if panel is closed
       if (!isOpen) {
         setHasNewNotification(true);
       }
@@ -311,6 +435,7 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
+        mode: 'chat',
         content: `Something went wrong while generating the response. Please check your network or try again.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: [
@@ -344,47 +469,14 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
       onNavigateView('builder');
       onJumpToSection(targetSec);
     } else if (action.actionType === 'apply_course_patch' && action.payload) {
-      onUpdateCourse(prev => ({
-        ...prev,
-        ...action.payload,
-        structure: {
-          ...prev.structure,
-          ...(action.payload.structure || {})
-        },
-        problem: {
-          ...prev.problem,
-          ...(action.payload.problem || {})
-        },
-        research: {
-          ...prev.research,
-          ...(action.payload.research || {})
-        },
-        modules: action.payload.modules || prev.modules,
-        learningDesign: {
-          ...prev.learningDesign,
-          ...(action.payload.learningDesign || {})
-        },
-        ethics: {
-          ...prev.ethics,
-          ...(action.payload.ethics || {})
-        },
-        outputRequirements: {
-          ...prev.outputRequirements,
-          ...(action.payload.outputRequirements || {})
-        },
-        qa: {
-          ...prev.qa,
-          ...(action.payload.qa || {})
-        }
-      }));
-
+      onUpdateCourse(prev => applyCleanCoursePatch(prev, action.payload));
       onNavigateView('builder');
 
-      // Confirmation message
       const confirmMsg: ChatMessage = {
         id: `ast-confirm-${Date.now()}`,
         role: 'assistant',
-        content: `✅ **Updates applied to Course Builder!**\n\nThe course outline and all 9 section parameters have been updated in your active workspace.`,
+        mode: 'course_creation',
+        content: `✅ **Updates applied to Course Builder!**\n\nAll 9 section parameters have been updated in your active workspace.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: [
           { id: 'view-qa', label: '🔍 Check Framework Readiness', actionType: 'send_prompt', payload: { prompt: 'Check my course framework compliance' } },
@@ -395,12 +487,6 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
     } else if (action.actionType === 'send_prompt' && action.payload?.prompt) {
       handleSendMessage(action.payload.prompt);
     }
-  };
-
-  // Quick contextual prompt suggestions
-  const handleContextualHelp = () => {
-    const prompt = `You're currently working on ${SECTION_TITLES[activeSection] || 'this section'}. How can I help you complete its requirements?`;
-    handleSendMessage(prompt);
   };
 
   // Toggle chat open/close
@@ -415,7 +501,7 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
   };
 
   return (
-    <div id="estudy-floating-copilot-container" className="fixed z-50 bottom-6 right-6 select-none">
+    <div id="estudy-floating-copilot-container" className="fixed z-50 bottom-6 right-6">
       {/* Floating Robot Button */}
       <div className="relative flex items-center justify-end">
         {/* Tooltip on hover (when chat is closed) */}
@@ -511,6 +597,16 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
               {/* Window Controls */}
               <div className="flex items-center gap-1">
                 <button
+                  id="copilot-new-chat-btn"
+                  onClick={handleNewConversation}
+                  className="px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-200 hover:text-white hover:bg-white/15 transition-colors cursor-pointer flex items-center gap-1 border border-white/15"
+                  title="Start New Conversation (clears chat history & planned requirements)"
+                  aria-label="Start New Conversation"
+                >
+                  <MessageSquarePlus className="w-3.5 h-3.5 text-[#45CC42]" />
+                  <span>New Chat</span>
+                </button>
+                <button
                   id="copilot-minimise-btn"
                   onClick={() => setIsOpen(false)}
                   className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -536,7 +632,9 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
               <div className="flex items-center gap-1.5 truncate">
                 <BookOpen className="w-3.5 h-3.5 text-[#45CC42] flex-shrink-0" />
                 <span className="truncate font-medium text-slate-200">
-                  {course.name || course.structure.title || 'Untitled Course'}
+                  {agreedRequirements?.subject
+                    ? `Plan: ${agreedRequirements.subject}${agreedRequirements.difficultyLevel ? ` (${agreedRequirements.difficultyLevel})` : ''}`
+                    : course.name || course.structure.title || 'Untitled Course'}
                 </span>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0 pl-2 text-[11px] text-slate-400">
@@ -580,45 +678,28 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
               </div>
             </div>
 
-            {/* Messages Content Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar bg-slate-950/70">
+            {/* Messages Content Area (Explicitly Mouse-Selectable) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 custom-scrollbar bg-slate-950/70 select-text">
               {messages.map(msg => (
                 <div
                   key={msg.id}
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-[90%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
+                    className={`max-w-[90%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed select-text cursor-text ${
                       msg.role === 'user'
                         ? 'bg-[#052B66] text-white border border-blue-800/60 rounded-br-none shadow-md'
                         : 'bg-slate-900 text-slate-200 border border-slate-800 rounded-bl-none shadow-md'
                     }`}
                   >
                     {/* Message Body */}
-                    <div className="space-y-2 whitespace-pre-wrap">
-                      {msg.content.split('\n\n').map((paragraph, idx) => {
-                        // Check if paragraph starts with heading
-                        if (paragraph.startsWith('### ')) {
-                          return (
-                            <h4 key={idx} className="font-bold text-sm text-[#45CC42] pt-1">
-                              {paragraph.replace('### ', '')}
-                            </h4>
-                          );
-                        }
-                        if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
-                          return (
-                            <p key={idx} className="font-bold text-white">
-                              {paragraph.replace(/\*\*/g, '')}
-                            </p>
-                          );
-                        }
-                        return <p key={idx}>{paragraph}</p>;
-                      })}
+                    <div className="space-y-2 select-text">
+                      {renderMessageMarkdown(msg.content)}
                     </div>
 
                     {/* Render Ready Course Brief Card if present */}
                     {msg.courseBrief && msg.courseBrief.ready && (
-                      <div className="mt-3 p-3 bg-[#052B66]/80 rounded-xl border border-[#45CC42]/40 text-xs space-y-2">
+                      <div className="mt-3 p-3 bg-[#052B66]/80 rounded-xl border border-[#45CC42]/40 text-xs space-y-2 select-text">
                         <div className="flex items-center justify-between pb-1 border-b border-slate-700/50">
                           <span className="font-bold text-[#45CC42] uppercase text-[10px] tracking-wider">
                             MASTER COURSE BRIEF
@@ -637,9 +718,30 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
                       </div>
                     )}
 
-                    {/* Timestamp */}
-                    <div className={`text-[10px] mt-1.5 opacity-60 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {msg.timestamp}
+                    {/* Timestamp & Copy Button */}
+                    <div className={`mt-2 flex items-center justify-between gap-3 text-[10px] ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                      {msg.role === 'assistant' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.id, msg.content)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/70 transition-colors cursor-pointer select-none"
+                          title="Copy response text"
+                          aria-label="Copy response text"
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-[#45CC42]" />
+                              <span className="text-[#45CC42] font-semibold">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      <span className="opacity-60 select-none">{msg.timestamp}</span>
                     </div>
                   </div>
 
@@ -724,11 +826,11 @@ export const FloatingCourseCopilot: React.FC<FloatingCourseCopilotProps> = ({
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Describe the course you want to build..."
+                  placeholder="Ask anything, brainstorm a programme, or request a course..."
                   rows={1}
                   disabled={isLoading}
-                  className="flex-1 bg-slate-950 text-slate-100 text-xs sm:text-sm rounded-xl px-3.5 py-2.5 border border-slate-800 focus:border-[#45CC42] focus:outline-none focus:ring-1 focus:ring-[#45CC42] resize-none max-h-24 placeholder:text-slate-500 disabled:opacity-50"
-                  aria-label="Describe the course you want to build"
+                  className="flex-1 bg-slate-950 text-slate-100 text-xs sm:text-sm rounded-xl px-3.5 py-2.5 border border-slate-800 focus:border-[#45CC42] focus:outline-none focus:ring-1 focus:ring-[#45CC42] resize-none max-h-24 placeholder:text-slate-500 disabled:opacity-50 select-text"
+                  aria-label="Ask anything, brainstorm a programme, or request a course"
                 />
 
                 <button

@@ -1,8 +1,24 @@
-import type { Course, GeneratedCourse, AIProvider, GenerationMetadata } from '../../types.js';
+import type {
+  Course,
+  GeneratedCourse,
+  GeneratedModule,
+  AIProvider,
+  GenerationMetadata
+} from '../../types.js';
+import type { AIRequest, AIResponse } from './types.js';
 import { generateMasterPrompt } from '../../utils/promptGenerator.js';
 import { sanitizeCourse } from '../../utils/courseSanitizer.js';
 import { aiRouter } from './aiRouter.js';
-import { extractAndParseJSON, reviewGeneratedCourseQuality, validateAndSanitizeGeneratedCourse } from './courseValidator.js';
+import {
+  extractAndParseJSON,
+  reviewGeneratedCourseQuality,
+  validateAndSanitizeGeneratedCourse
+} from './courseValidator.js';
+import {
+  generateCurriculumBlueprint,
+  type CurriculumBlueprint,
+  type BlueprintModulePlan
+} from './curriculumBlueprint.js';
 import { getDefaultModelForProvider, getModelMeta } from './modelRegistry.js';
 
 export interface CourseGenerationResult {
@@ -11,34 +27,298 @@ export interface CourseGenerationResult {
   error?: string;
 }
 
+export interface CourseGenerationOptions {
+  aiExecute?: (req: AIRequest) => Promise<AIResponse>;
+  skipRepair?: boolean;
+}
+
+function accumulateUsage(
+  acc: { input: number; output: number },
+  usage?: { inputTokens?: number; outputTokens?: number }
+) {
+  if (!usage) return;
+  acc.input += usage.inputTokens || 0;
+  acc.output += usage.outputTokens || 0;
+}
+
+async function generateModuleFromBlueprint(
+  modPlan: BlueprintModulePlan,
+  blueprint: CurriculumBlueprint,
+  sourceCourse: Course,
+  provider: AIProvider,
+  model: string,
+  aiExecute: (req: AIRequest) => Promise<AIResponse>
+): Promise<{ module: Partial<GeneratedModule>; usage?: { inputTokens?: number; outputTokens?: number } }> {
+  const verifiedSources = (sourceCourse.research?.sources || [])
+    .filter(src => src.status === 'Verified')
+    .map(src => ({
+      name: src.name,
+      reference: src.reference,
+      excerpt: src.contentSnippet?.slice(0, 600)
+    }));
+
+  const forbiddenTermsList = blueprint.outOfScopeDomains
+    .flatMap(d => d.forbiddenTerms.slice(0, 5))
+    .slice(0, 20);
+
+  const systemInstruction = `You are a senior subject-matter educator and instructional designer writing Module ${modPlan.moduleNumber} of "${blueprint.subjectTitle}" (${blueprint.domainLabel}).
+NON-NEGOTIABLE EDUCATIONAL RULES:
+1. STRICT SUBJECT LOCK: Teach ONLY "${blueprint.subjectTitle}" for "${blueprint.targetAudience}" (${blueprint.learnerLevel}).
+   FORBIDDEN OFF-TOPIC CONCEPTS (NEVER include): ${forbiddenTermsList.join(', ') || 'None'}.
+2. Keep the EXACT module number (${modPlan.moduleNumber}), title ("${modPlan.title}"), learning objectives, and lesson count/titles (${modPlan.lessonPlans.length} lessons).
+3. Each lesson MUST be substantial (250–380 words), distinct, and progressive:
+   - Explain core concepts, mechanisms (how/why they work), limitations/edge cases, and one concrete worked example specific to that lesson.
+   - NEVER repeat five-stage SOP boilerplate or copy paragraphs between lessons.
+4. Vary South African workplace scenarios distinctly across the planned settings (${modPlan.scenarioContexts.map(s => `${s.cityOrSetting}: ${s.organisationType}`).join('; ')}). Include 3 Workplace scenarios and 1 AI Specific scenario (or applied governance scenario if AI is tangential).
+5. Practical task MUST contain labelled sections in instructions:
+   "Objective:", "Scenario:", "Resources:", "Steps: 1. ... 2. ... 3. ...", "Deliverable:", "Success criteria:", "Reflection:"
+   AND an "evaluationRubric" array whose percentages sum to 100%.
+6. Knowledge checks: 5 distinct scenario/application MCQs, 4 options each, accurate rationale, and "learningObjectiveRef" set to an exact LO code from this module (${modPlan.learningObjectives.map(o => o.code).join(', ')}).
+7. Accuracy & Source Grounding: Cite legislation, NQF IDs, or statistics ONLY if supported by supplied verified sources; mark unverified legal/technical claims "To Be Confirmed (Requires SME Validation)".
+Return ONLY valid JSON matching the GeneratedModule schema.`;
+
+  const prompt = `Author complete Module ${modPlan.moduleNumber} JSON for course "${blueprint.subjectTitle}" (${blueprint.courseCode}).
+
+MODULE BLUEPRINT SPECIFICATION:
+${JSON.stringify(
+  {
+    id: modPlan.moduleId,
+    moduleNumber: modPlan.moduleNumber,
+    title: modPlan.title,
+    purpose: modPlan.purpose,
+    learningObjectives: modPlan.learningObjectives,
+    lessonPlans: modPlan.lessonPlans,
+    scenarioContexts: modPlan.scenarioContexts,
+    practicalTaskSpec: modPlan.practicalTaskSpec,
+    assessmentTargets: modPlan.assessmentTargets
+  },
+  null,
+  2
+)}
+
+VERIFIED SOURCES:
+${JSON.stringify(verifiedSources)}
+
+Return a single JSON object:
+{
+  "id": "${modPlan.moduleId}",
+  "moduleNumber": ${modPlan.moduleNumber},
+  "title": "${modPlan.title}",
+  "subtitle": "Concise module subtitle",
+  "purpose": "${modPlan.purpose}",
+  "learningObjectives": ${JSON.stringify(modPlan.learningObjectives)},
+  "lessons": [
+    {
+      "id": "lesson-${modPlan.moduleNumber}-1",
+      "title": "Exact lesson title from lessonPlans",
+      "durationMinutes": 35,
+      "concepts": ["Concept 1", "Concept 2", "Concept 3"],
+      "contentBody": "Deep, multi-paragraph subject teaching (250-380 words) with mechanism, limitations, and worked example",
+      "callouts": [{ "type": "Tip", "title": "Domain Practice Tip", "content": "Actionable insight" }],
+      "workplaceApplication": "Concrete application in target role",
+      "aiApplication": "Relevant AI workflow or state 'Not applicable' where inappropriate"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "scenario-${modPlan.moduleNumber}-1",
+      "title": "Distinct scenario title",
+      "type": "Workplace",
+      "situation": "Realistic domain situation",
+      "challenge": "Specific technical/operational constraint",
+      "decisionPoint": "Concrete choice the learner must make",
+      "debrief": "Domain-grounded reasoning explaining the right choice",
+      "keyTakeaway": "Memorable rule"
+    }
+  ],
+  "knowledgeChecks": [
+    {
+      "id": "kc-${modPlan.moduleNumber}-1",
+      "question": "Distinct question testing a taught concept",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 1,
+      "rationale": "Why correct answer is right and strongest distractor is wrong",
+      "learningObjectiveRef": "LO ${modPlan.moduleNumber}.1"
+    }
+  ],
+  "practicalTask": {
+    "id": "task-${modPlan.moduleNumber}",
+    "title": "${modPlan.practicalTaskSpec.title}",
+    "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nSteps: 1. ... 2. ... 3. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...",
+    "deliverable": "${modPlan.practicalTaskSpec.deliverable}",
+    "evaluationRubric": ${JSON.stringify(modPlan.practicalTaskSpec.rubricCriteria)}
+  },
+  "reflection": ["Reflection prompt 1", "Reflection prompt 2"],
+  "summary": "Concise synthesis of Module ${modPlan.moduleNumber}"
+}`;
+
+  const res = await aiExecute({
+    provider,
+    model,
+    prompt,
+    systemInstruction,
+    responseFormat: 'json',
+    temperature: 0.25,
+    maxTokens: 3900,
+    timeoutMs: 65000
+  });
+
+  const parsed = extractAndParseJSON(res.text);
+  // Enforce module structural integrity from blueprint
+  parsed.id = modPlan.moduleId;
+  parsed.moduleNumber = modPlan.moduleNumber;
+  parsed.title = modPlan.title;
+  if (!Array.isArray(parsed.learningObjectives) || parsed.learningObjectives.length === 0) {
+    parsed.learningObjectives = modPlan.learningObjectives;
+  }
+  if (Array.isArray(parsed.lessons)) {
+    parsed.lessons = parsed.lessons.map((l: any, lIdx: number) => {
+      const bpLesson = modPlan.lessonPlans[lIdx];
+      return {
+        ...l,
+        id: bpLesson?.id || l.id || `lesson-${modPlan.moduleNumber}-${lIdx + 1}`,
+        title: bpLesson?.title || l.title
+      };
+    });
+  }
+
+  return {
+    module: parsed,
+    usage: res.usage
+  };
+}
+
+async function generateCourseWrapperAndAssessments(
+  blueprint: CurriculumBlueprint,
+  synthesizedModules: Partial<GeneratedModule>[],
+  sourceCourse: Course,
+  provider: AIProvider,
+  model: string,
+  aiExecute: (req: AIRequest) => Promise<AIResponse>
+): Promise<{
+  overview: string;
+  purpose: string;
+  targetAudience: string;
+  estimatedDuration: string;
+  learningOutcomes: string[];
+  assessments: any;
+  usage?: { inputTokens?: number; outputTokens?: number };
+}> {
+  const allObjectiveCodes = synthesizedModules.flatMap(m =>
+    (m.learningObjectives || []).map((o: any) => `${o.code}: ${o.statement}`)
+  );
+
+  const systemInstruction = `You are authoring the Executive Overview, Course Outcomes, Pre-Course Diagnostic, Final Summative Exam, and Capstone Case Study for "${blueprint.subjectTitle}" (${blueprint.domainLabel}).
+STRICT RULES:
+- Stay 100% faithful to "${blueprint.subjectTitle}" and ONLY assess concepts covered in the synthesized modules below.
+- Do NOT introduce unrelated domains (${blueprint.outOfScopeDomains.map(d => d.domain).join(', ') || 'None'}).
+- Pre-course diagnostic: 5 realistic baseline questions (4 options each).
+- Final assessment: 10 distinct scenario/application questions mapped via "learningObjectiveRef" to exact LO codes below, plus a domain-authentic Capstone Case Study with 4 sequential tasks and deliverable.
+- Mark unverified legal or accreditation facts "To Be Confirmed (Requires SME Validation)".
+Return ONLY valid JSON.`;
+
+  const prompt = `Create Overview, Outcomes, Diagnostic, and Final Summative Assessment for "${blueprint.subjectTitle}" (${blueprint.courseCode}).
+Audience: ${blueprint.targetAudience} (${blueprint.learnerLevel})
+Duration: ${blueprint.estimatedDuration}
+
+Modules & Taught Objectives:
+${JSON.stringify(
+  synthesizedModules.map(m => ({
+    moduleNumber: m.moduleNumber,
+    title: m.title,
+    lessonTitles: (m.lessons || []).map((l: any) => l.title),
+    objectives: m.learningObjectives
+  })),
+  null,
+  2
+)}
+
+Available Learning Objective Codes: ${allObjectiveCodes.join(' | ')}
+
+Return ONLY valid JSON:
+{
+  "overview": "2 cohesive paragraphs describing this programme and learner journey",
+  "purpose": "Clear workplace capability purpose statement",
+  "targetAudience": "${blueprint.targetAudience}",
+  "estimatedDuration": "${blueprint.estimatedDuration}",
+  "learningOutcomes": ["Outcome 1", "Outcome 2", "Outcome 3", "Outcome 4", "Outcome 5", "Outcome 6"],
+  "assessments": {
+    "preCourseDiagnostic": {
+      "title": "Pre-Course Knowledge & Readiness Diagnostic",
+      "instructions": "Complete these 5 baseline diagnostic questions.",
+      "questions": [
+        { "id": "diag-1", "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": 1, "rationale": "..." }
+      ]
+    },
+    "finalAssessment": {
+      "title": "Summative Capstone & Final Knowledge Assessment",
+      "passMark": "80%",
+      "instructions": "Complete all 10 scenario-based questions and the capstone case study.",
+      "questions": [
+        { "id": "final-q1", "question": "...", "options": ["A", "B", "C", "D"], "correctAnswer": 1, "rationale": "...", "learningObjectiveRef": "LO 1.1" }
+      ],
+      "capstoneCaseStudy": {
+        "title": "Capstone title specific to ${blueprint.subjectTitle}",
+        "scenario": "Realistic South African scenario specific to ${blueprint.subjectTitle} (80-130 words)",
+        "tasks": ["1. ...", "2. ...", "3. ...", "4. ..."],
+        "deliverable": "Concrete capstone deliverable"
+      }
+    }
+  }
+}`;
+
+  const res = await aiExecute({
+    provider,
+    model,
+    prompt,
+    systemInstruction,
+    responseFormat: 'json',
+    temperature: 0.25,
+    maxTokens: 3800,
+    timeoutMs: 60000
+  });
+
+  const parsed = extractAndParseJSON(res.text);
+  return {
+    overview: parsed.overview || sourceCourse.structure?.scopeSummary || '',
+    purpose: parsed.purpose || sourceCourse.structure?.purposeStatement || '',
+    targetAudience: parsed.targetAudience || blueprint.targetAudience,
+    estimatedDuration: parsed.estimatedDuration || blueprint.estimatedDuration,
+    learningOutcomes: Array.isArray(parsed.learningOutcomes) ? parsed.learningOutcomes : [],
+    assessments: parsed.assessments || {},
+    usage: res.usage
+  };
+}
+
 async function attemptTargetedQualityRepair(
   generatedCourse: GeneratedCourse,
   targets: ReturnType<typeof reviewGeneratedCourseQuality>['repairTargets'],
   sourceCourse: Course,
   provider: AIProvider,
-  model: string
+  model: string,
+  aiExecute: (req: AIRequest) => Promise<AIResponse>
 ): Promise<{ applied: number; inputTokens?: number; outputTokens?: number }> {
-  const prompt = `Revise only the flagged lesson content, practical-task instructions, and assessment questions below. Keep all IDs, titles, module structure, and the existing GeneratedCourse schema unchanged. Do not invent facts, legal claims, statistics, or source citations. Return only JSON:
+  const prompt = `Revise only the flagged lesson content, practical-task instructions, and assessment questions below for "${generatedCourse.title}". Keep all IDs, titles, module structure, and the existing GeneratedCourse schema unchanged. Teach ONLY "${generatedCourse.title}" and do NOT introduce unrelated engineering/finance/legal filler. Return only JSON:
 {
   "lessons": [
-    { "id": "existing-lesson-id", "concepts": ["Specific concept"], "contentBody": "Revised lesson teaching text", "workplaceApplication": "Specific application", "aiApplication": "Relevant AI application or Not applicable for this subject" }
+    { "id": "existing-lesson-id", "concepts": ["Specific concept"], "contentBody": "Revised lesson teaching text", "workplaceApplication": "Specific application", "aiApplication": "Relevant AI application or Not applicable" }
   ],
   "tasks": [
     { "moduleId": "existing-module-id", "instructions": "Objective: ...\\nScenario: ...\\nResources: ...\\nSteps: 1. ... 2. ...\\nDeliverable: ...\\nSuccess criteria: ...\\nReflection: ...", "deliverable": "Expected learner artefact", "evaluationRubric": ["Criterion 1 (50%)", "Criterion 2 (50%)"] }
   ],
   "questions": [
-    { "id": "existing-question-id", "questionLocation": "module or final", "question": "Distinct question", "options": ["Option A", "Option B"], "correctAnswer": 0, "rationale": "Why the answer is correct", "learningObjectiveRef": "Exact objective code" }
+    { "id": "existing-question-id", "questionLocation": "module or final", "question": "Distinct question", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": 0, "rationale": "Why the answer is correct", "learningObjectiveRef": "Exact objective code" }
   ]
 }
 
-Lessons and tasks to improve:
+Items to improve:
 ${JSON.stringify(
   targets.map(target => {
     const module = generatedCourse.modules.find(candidate => candidate.id === target.moduleId);
     return {
       moduleId: target.moduleId,
       moduleTitle: target.moduleTitle,
-      moduleObjectives: module?.learningObjectives.map(objective => objective.statement),
+      moduleObjectives: module?.learningObjectives.map(objective => `${objective.code}: ${objective.statement}`),
       otherLessonsToAvoidRepeating: module?.lessons
         .filter(lesson => lesson.id !== target.lessonId)
         .map(lesson => ({ title: lesson.title, concepts: lesson.concepts })),
@@ -48,7 +328,7 @@ ${JSON.stringify(
       questionLocation: target.questionLocation,
       currentQuestion: target.currentQuestion,
       availableObjectives: target.availableObjectives,
-      currentContent: target.contentBody?.slice(0, 5000),
+      currentContent: target.contentBody?.slice(0, 2500),
       currentWorkplaceApplication: target.workplaceApplication,
       currentAIApplication: target.aiApplication,
       currentConcepts: target.concepts,
@@ -67,18 +347,18 @@ ${JSON.stringify(
     .map(source => ({
       name: source.name,
       reference: source.reference,
-      excerpt: source.contentSnippet?.slice(0, 1200)
+      excerpt: source.contentSnippet?.slice(0, 800)
     }))
 )}`;
 
-  const response = await aiRouter.execute({
+  const response = await aiExecute({
     provider,
     model,
     prompt,
     systemInstruction:
-      'You are an instructional editor. Improve only the specified course content. Teach the actual subject, avoid repetition and generic filler, and do not claim facts are verified unless supported by the supplied course sources.',
+      'You are an instructional editor. Improve only the specified course items. Teach the actual subject cleanly, eliminate repetition and cross-domain bleed, and mark unverified claims for SME review.',
     responseFormat: 'json',
-    maxTokens: 4096,
+    maxTokens: 3800,
     timeoutMs: 55000
   });
   const patch = extractAndParseJSON(response.text);
@@ -185,7 +465,8 @@ ${JSON.stringify(
 export async function generateCourseWithAIEngine(
   rawCourse: Course,
   providerInput?: AIProvider,
-  modelInput?: string
+  modelInput?: string,
+  options?: CourseGenerationOptions
 ): Promise<CourseGenerationResult> {
   const startTime = Date.now();
   const course = sanitizeCourse(rawCourse);
@@ -196,8 +477,10 @@ export async function generateCourseWithAIEngine(
       ? requestedModel
       : getDefaultModelForProvider(provider, 'course_generation');
   const modelInfo = getModelMeta(provider, model);
+  const aiExecute: (req: AIRequest) => Promise<AIResponse> =
+    options?.aiExecute || (req => aiRouter.execute(req));
 
-  // Validate core compulsory fields before calling the AI service
+  // Validate core compulsory fields before calling AI
   const missingCompulsory: string[] = [];
   if (!course.structure?.title?.trim() && (!course.name?.trim() || course.name === 'Untitled Course')) {
     missingCompulsory.push('Course Name (Section 3.1)');
@@ -218,74 +501,125 @@ export async function generateCourseWithAIEngine(
     );
   }
 
-  const masterPrompt = generateMasterPrompt(course);
+  const tokenUsage = { input: 0, output: 0 };
 
-  const systemInstruction = `You are an experienced subject-matter educator and instructional designer. Develop a course that teaches the specified subject, not a generic corporate compliance manual.
-
-EDUCATIONAL QUALITY RULES:
-1. Use clear South African English. Match technical depth to the specified learner level and explain specialist terms on first use.
-2. Treat the completed eStudy Master Course Template v9.0 as the source of scope, audience, module plan, and required fields. Keep its module count, titles, order, and learning objectives; do not add, remove, or rename modules. Where the template specifies lesson names or lesson counts, preserve them.
-3. Give each lesson a distinct purpose and a clear progression from prerequisite concepts to application. Explain the core concepts, how or why they work, when they apply, relevant limitations, and at least one subject-specific example. A lesson must teach new knowledge; do not repeat objectives, summaries, or generic procedures as a substitute for teaching.
-4. Vary examples and workplace contexts across the course. Use South African legal, regulatory, or compliance content only when relevant to the subject and supported by supplied verified sources. Do not invent legal requirements, interpretations, statistics, performance results, accreditations, or citations. Mark unsupported claims for SME/source verification; never represent generated content as legal advice.
-5. Practical task instructions must include labelled Objective, Scenario, Resources, Steps, Deliverable, Success criteria, and Reflection sections. Give enough concrete information for a learner to complete the task. Use a weighted rubric tied to the module objectives.
-6. Every knowledge-check and final assessment question must measure a taught concept or skill. Set learningObjectiveRef to the exact code of the relevant objective. Mix recall, explanation, and application; avoid duplicate questions and provide a correct answer with a defensible rationale.
-7. Before returning the course, review the entire draft against subject depth, accuracy and source support, lesson distinctness, activity usability, example variety, objective-assessment alignment, and audience relevance. Revise any generic, repetitive, unsupported, or non-actionable lesson, activity, or question. Do not pad content to meet a word or page target.
-8. Return only valid JSON matching the existing GeneratedCourse schema. Preserve the existing field names and structure, including modules, lessons, scenarios, practical tasks, assessments, and the capstone. Do not add a separate report or markdown fences.`;
-
-  const prompt = `Use the following completed eStudy Master Course Template v9.0 as the course specification. Preserve its structure and user-defined module plan. Treat any unsourced legal, technical, accreditation, or statistical claims as unverified, not as facts.\n\n${masterPrompt}\n\nGenerate the course with meaningful subject teaching, practical activities learners can complete, varied examples, and assessments aligned to the stated objectives. Prioritise accuracy, clarity, and learning value over length.`;
-
-  const aiResponse = await aiRouter.execute({
+  // STAGE 1: Subject & Curriculum Blueprint Generation + Alignment Validation
+  const { blueprint, tokensUsed: bpTokens } = await generateCurriculumBlueprint(
+    course,
     provider,
     model,
-    prompt,
-    systemInstruction,
-    responseFormat: 'json',
-    maxTokens: 8192,
-    timeoutMs: 95000
+    aiExecute
+  );
+  accumulateUsage(tokenUsage, {
+    inputTokens: bpTokens?.input,
+    outputTokens: bpTokens?.output
   });
 
-  if (!aiResponse.text || aiResponse.text.trim().length < 100) {
-    throw new Error('The Groq Cloud API returned an empty or incomplete response.');
-  }
+  // Ensure Master Prompt is still compiled (used for traceability/single-shot fallback)
+  const masterPrompt = generateMasterPrompt(course);
 
-  const parsedJson = extractAndParseJSON(aiResponse.text);
-  if (!parsedJson || typeof parsedJson !== 'object') {
-    throw new Error(
-      `The AI provider (Groq Cloud - ${model}) returned invalid JSON that could not be parsed. Please retry generation or select another Groq model.`
+  let parsedRawCourse: any = null;
+
+  // STAGE 2: Multi-stage deep synthesis within Groq's safe ~4096 token ceiling per call
+  if (blueprint.modules.length > 0) {
+    const synthesizedModules: Partial<GeneratedModule>[] = [];
+
+    for (const modPlan of blueprint.modules) {
+      const modResult = await generateModuleFromBlueprint(
+        modPlan,
+        blueprint,
+        course,
+        provider,
+        model,
+        aiExecute
+      );
+      accumulateUsage(tokenUsage, modResult.usage);
+      synthesizedModules.push(modResult.module);
+    }
+
+    const wrapper = await generateCourseWrapperAndAssessments(
+      blueprint,
+      synthesizedModules,
+      course,
+      provider,
+      model,
+      aiExecute
     );
+    accumulateUsage(tokenUsage, wrapper.usage);
+
+    parsedRawCourse = {
+      id: `gen-${Date.now()}`,
+      title: blueprint.subjectTitle,
+      code: blueprint.courseCode,
+      version: 'v9.0-Universal',
+      overview: wrapper.overview,
+      purpose: wrapper.purpose,
+      targetAudience: wrapper.targetAudience,
+      estimatedDuration: wrapper.estimatedDuration,
+      learningOutcomes: wrapper.learningOutcomes,
+      modules: synthesizedModules,
+      assessments: wrapper.assessments
+    };
+  } else {
+    // Edge fallback if zero modules were in course
+    const aiResponse = await aiExecute({
+      provider,
+      model,
+      prompt: `Generate a complete GeneratedCourse JSON from this template:\n\n${masterPrompt}`,
+      systemInstruction: `Teach "${blueprint.subjectTitle}" cleanly without generic filler or off-topic domains. Return only valid JSON.`,
+      responseFormat: 'json',
+      maxTokens: 4096,
+      timeoutMs: 90000
+    });
+    accumulateUsage(tokenUsage, aiResponse.usage);
+    parsedRawCourse = extractAndParseJSON(aiResponse.text);
   }
 
   const metadata: GenerationMetadata = {
     provider,
     providerDisplayName: 'Groq Cloud',
-    model: aiResponse.model || model,
-    modelDisplayName: modelInfo?.displayName || aiResponse.model || model,
+    model,
+    modelDisplayName: modelInfo?.displayName || model,
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
     fallbackUsed: false,
-    tokensUsed: aiResponse.usage
-      ? {
-          input: aiResponse.usage.inputTokens,
-          output: aiResponse.usage.outputTokens
-        }
-      : undefined
+    tokensUsed:
+      tokenUsage.input > 0 || tokenUsage.output > 0
+        ? { input: tokenUsage.input, output: tokenUsage.output }
+        : undefined
   };
 
-  const validation = validateAndSanitizeGeneratedCourse(parsedJson, course, metadata);
+  const validation = validateAndSanitizeGeneratedCourse(
+    parsedRawCourse,
+    course,
+    metadata,
+    blueprint
+  );
 
   if (validation.course) {
-    let qualityReview = reviewGeneratedCourseQuality(validation.course, course);
-    if (qualityReview.repairTargets.length) {
+    let qualityReview = reviewGeneratedCourseQuality(validation.course, course, blueprint);
+
+    if (qualityReview.repairTargets.length && !options?.skipRepair) {
       const targets = qualityReview.repairTargets;
       try {
-        const repair = await attemptTargetedQualityRepair(validation.course, targets, course, provider, model);
-        metadata.tokensUsed = {
-          input: (metadata.tokensUsed?.input || 0) + (repair.inputTokens || 0),
-          output: (metadata.tokensUsed?.output || 0) + (repair.outputTokens || 0)
-        };
-        qualityReview = reviewGeneratedCourseQuality(validation.course, course);
+        const repair = await attemptTargetedQualityRepair(
+          validation.course,
+          targets,
+          course,
+          provider,
+          model,
+          aiExecute
+        );
+        accumulateUsage(tokenUsage, {
+          inputTokens: repair.inputTokens,
+          outputTokens: repair.outputTokens
+        });
+        if (metadata.tokensUsed) {
+          metadata.tokensUsed = { input: tokenUsage.input, output: tokenUsage.output };
+        }
+        qualityReview = reviewGeneratedCourseQuality(validation.course, course, blueprint);
         qualityReview.qa.recommendations.unshift(
-          `An automatic revision was applied to ${repair.applied} flagged lesson/task item(s), then heuristic checks were rerun.`
+          `Automatic targeted revision improved ${repair.applied} flagged item(s) before final QA scoring.`
         );
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'Unknown model response error';
@@ -297,6 +631,7 @@ EDUCATIONAL QUALITY RULES:
         metadata.generationDurationMs = Date.now() - startTime;
       }
     }
+
     validation.course.qa = qualityReview.qa;
     return {
       success: true,
