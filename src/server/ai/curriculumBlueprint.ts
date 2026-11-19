@@ -256,6 +256,10 @@ export interface BlueprintModulePlan {
 export interface CurriculumBlueprint {
   subjectTitle: string;
   courseCode: string;
+  courseDescription: string;
+  keyCompetencies: string;
+  programmeOutcomes: string[];
+  aiToolsPlatform: string;
   domainCategory: SubjectDomainCategory;
   domainLabel: string;
   targetAudience: string;
@@ -270,6 +274,7 @@ export interface CurriculumBlueprint {
   };
   modules: BlueprintModulePlan[];
   alignmentChecksPassed: boolean;
+  planningSource?: 'ai' | 'deterministic';
   validationNotes: string[];
 }
 
@@ -846,9 +851,23 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
       ? domainSpec.applicableSouthAfricanFrameworks
       : ['To Be Confirmed (Requires SME Validation — no verified regulatory source supplied)'];
 
+  const descriptionParts = [
+    s.purposeStatement?.trim(),
+    s.scopeSummary?.trim(),
+    s.workplaceRelevance?.trim(),
+    p.taskOrSkill?.trim() ? `Core workplace focus: ${p.taskOrSkill.trim()}.` : '',
+    p.operationalImpact?.trim() ? `Operational need addressed: ${p.operationalImpact.trim()}.` : ''
+  ].filter(Boolean);
+
   const baseBlueprint: CurriculumBlueprint = {
     subjectTitle,
     courseCode,
+    courseDescription:
+      descriptionParts.join(' ').trim() ||
+      `Comprehensive workplace training programme on ${subjectTitle}.`,
+    keyCompetencies: (s.keyCompetencies || p.skillGaps || '').trim(),
+    programmeOutcomes: (course.learningDesign?.learningObjectivesList || []).filter(Boolean),
+    aiToolsPlatform: (r.aiToolsPlatformName || r.aiToolsReferenced || s.toolsSystems || domainSeed.practicalToolHint).trim(),
     domainCategory,
     domainLabel: domainSpec.label,
     targetAudience: (s.targetRoles || p.targetGroup || 'Working professionals').trim(),
@@ -870,6 +889,7 @@ export function buildDeterministicBlueprint(course: Course): CurriculumBlueprint
     },
     modules,
     alignmentChecksPassed: true,
+    planningSource: 'deterministic',
     validationNotes: []
   };
 
@@ -1036,8 +1056,11 @@ Return ONLY valid JSON:
 
   const prompt = `Create the validated Subject & Curriculum Blueprint for:
 Subject Title: ${deterministic.subjectTitle}
+Course Description & Workplace Context: ${deterministic.courseDescription}
 Industry Domain: ${course.structure?.industryDomain || deterministic.domainLabel}
 Core Skill / Problem: ${course.problem?.taskOrSkill || ''}
+Key Competencies: ${deterministic.keyCompetencies || 'Core practitioner execution and decision-making'}
+Programme Outcomes: ${deterministic.programmeOutcomes.join(' | ') || 'Derived from module objectives'}
 Target Audience: ${deterministic.targetAudience} (${deterministic.learnerLevel})
 Modules to plan cleanly (${deterministic.modules.length}):
 ${JSON.stringify(
@@ -1188,14 +1211,28 @@ ${JSON.stringify(
 
     const alignment = validateBlueprintAlignment(merged, course);
     merged.alignmentChecksPassed = alignment.valid;
+    merged.planningSource = alignment.valid ? 'ai' : 'deterministic';
     merged.validationNotes = [...alignment.issues, ...alignment.warnings];
 
     return {
       blueprint: alignment.valid ? merged : deterministic,
       tokensUsed: res.usage ? { input: res.usage.inputTokens, output: res.usage.outputTokens } : undefined
     };
-  } catch (err) {
-    console.warn('[CurriculumBlueprint] Using validated deterministic blueprint fallback:', (err as Error)?.message);
+  } catch (err: any) {
+    const errMsg = String(err?.message || err || '');
+    // Propagate provider configuration, auth, quota, and connectivity failures immediately — do NOT silently hide them!
+    if (
+      /not configured|api key|authentication|401|403|429|rate limit|quota|timed out|timeout|network|fetch failed|enotfound|econnrefused/i.test(
+        errMsg
+      )
+    ) {
+      throw err;
+    }
+    console.warn('[CurriculumBlueprint] Using validated deterministic blueprint due to parse/schema fallback:', errMsg);
+    deterministic.validationNotes = [
+      `Stage 1 AI blueprint response required deterministic repair: ${errMsg.slice(0, 140)}`,
+      ...deterministic.validationNotes
+    ];
     return {
       blueprint: deterministic
     };

@@ -583,6 +583,10 @@ export interface GenerationMetadata {
   generationDurationMs?: number;
   fallbackUsed: boolean;
   fallbackReason?: string;
+  isPartial?: boolean;
+  completedModules?: number;
+  totalModules?: number;
+  blueprintSource?: 'ai' | 'deterministic';
   tokensUsed?: {
     input?: number;
     output?: number;

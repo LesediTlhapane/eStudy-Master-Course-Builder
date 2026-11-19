@@ -212,9 +212,9 @@ export function enrichLessonToTextbookStandard(
       ? `${enrichedBody.trim()}\n\n`
       : `### ${angle.heading}: ${lesson.title}\nWithin **${courseTitle}** (${domain}), **${lesson.title}** ${angle.mechanism} for ${targetRoles}. ${modPurpose ? modPurpose + ' ' : ''}\n\n`;
 
-    const section2 = `### Key Concepts & How They Apply\n1. **Primary Focus**: Grounded execution of ${taskSkill} specific to *${lesson.title}* rather than generic checklists.\n2. **Practical Mechanics**: Apply domain-appropriate methods${r.aiToolsPlatformName ? ` using ${r.aiToolsPlatformName}` : ''}, documenting assumptions and acceptance criteria.\n3. **Limitations & Safeguards**: Identify edge cases where automated outputs or heuristics fail; cross-check against ${regFramework}.\n\n`;
+    const section2 = `### Key Concepts & How They Apply\n1. **Primary Focus**: Practical execution of ${taskSkill} specific to *${lesson.title}* in ${domain}.\n2. **Practical Mechanics**: Configure and apply ${r.aiToolsPlatformName ? `${r.aiToolsPlatformName} and ` : ''}${domain} techniques while documenting assumptions.\n3. **Limitations & Safeguards**: Check edge cases and validate statutory/technical claims against ${regFramework}.\n\n`;
 
-    const section3 = `### Subject-Specific Worked Example (${angle.city})\nA ${domain} practitioner team in ${angle.city} applied the principles of **${lesson.title}** while resolving a real bottleneck in ${modTitle}. By validating inputs, testing trade-offs explicitly, and recording decision rationale, the team achieved ${angle.workplaceMetric}.`;
+    const section3 = `### Subject Context Note (${angle.city})\n[Offline Draft] Expand this section via live AI synthesis to include a concrete worked calculation or walkthrough demonstrating **${lesson.title}** inside ${modTitle}.`;
 
     enrichedBody = `${existingIntro}${section2}${section3}`;
   } else if (currentWords > 650) {
@@ -528,11 +528,11 @@ export function enforceComprehensiveCourseVolume(
       title: mod.practicalTask?.title || `Module ${modNum} Applied Practice: ${mod.title}`,
       instructions: hasStructuredTask
         ? mod.practicalTask!.instructions
-        : `Objective: Apply core concepts from ${mod.title} to solve a realistic challenge in ${courseTitle}.\nScenario: Working as ${targetRoles} in a ${cityBase} team, you need to design and test an effective solution for ${mod.title}.\nResources: ${r.aiToolsPlatformName || 'Domain tools & reference materials'}, Module ${modNum} study guide, and working example template.\nInstructions: Work through the sequential steps below to build a concrete deliverable grounded in ${mod.title} principles.\nSteps: 1. Frame the problem goals, constraints, and key terminology from ${mod.title}. 2. Construct and test a practical solution applying core concepts from this module's lessons. 3. Evaluate limitations or edge cases against ${regFramework} and refine weak areas.\nDeliverable: Completed Module ${modNum} ${mod.title} Applied Portfolio Brief.\nSuccess criteria: Demonstrates accurate use of ${mod.title} concepts, addresses constraints explicitly, and provides justified decisions aligned to LO ${modNum}.1–LO ${modNum}.${mod.learningObjectives.length}.\nReflection: Which concept or misconception from ${mod.title} had the greatest impact on your solution?`,
+        : `Objective: Apply core concepts from ${mod.title} to solve a realistic challenge in ${courseTitle}.\nScenario: Acting as ${targetRoles} in a ${cityBase} team, complete a practical exercise addressing ${mod.title}.\nResources: ${r.aiToolsPlatformName || 'Domain tools & reference materials'}, Module ${modNum} study guide, and working example template.\nInstructions: Work through the sequential steps below once live AI lessons have been generated.\nSteps: 1. Review goal parameters and domain assumptions for ${mod.title}. 2. Build a working solution using tools and methods taught in Module ${modNum}. 3. Evaluate limitations against ${regFramework} and refine weak areas.\nDeliverable: Offline Draft — Module ${modNum} ${mod.title} Solution & Reflection.\nSuccess criteria: Demonstrates accurate use of ${mod.title} concepts, addresses constraints explicitly, and provides justified decisions aligned to LO ${modNum}.1–LO ${modNum}.${mod.learningObjectives.length}.\nReflection: Which concept or misconception from ${mod.title} had the greatest impact on your solution?`,
       deliverable:
         countWordsInText(mod.practicalTask?.deliverable) >= 8
           ? mod.practicalTask!.deliverable
-          : `Completed Module ${modNum} ${mod.title} Applied Portfolio Brief.`,
+          : `Offline Draft — Module ${modNum} ${mod.title} Solution & Reflection.`,
       evaluationRubric:
         Array.isArray(mod.practicalTask?.evaluationRubric) && mod.practicalTask!.evaluationRubric.length >= 2
           ? mod.practicalTask!.evaluationRubric

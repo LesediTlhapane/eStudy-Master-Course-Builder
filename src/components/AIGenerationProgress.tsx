@@ -87,6 +87,15 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
   const [hasError, setHasError] = useState(false);
   const [generatedResult, setGeneratedResult] = useState<GeneratedCourse | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [failedDetails, setFailedDetails] = useState<{
+    failedProvider?: string;
+    failedStage?: string;
+    failedModuleNumber?: number;
+    failedModuleTitle?: string;
+    completedModulesCount?: number;
+    totalModulesCount?: number;
+    partialCourse?: GeneratedCourse;
+  } | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [completedStages, setCompletedStages] = useState<Set<RealGenerationStageId>>(new Set());
   const [retryCount, setRetryCount] = useState(0);
@@ -121,6 +130,7 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
     setHasError(false);
     setGeneratedResult(null);
     setErrorNotice(null);
+    setFailedDetails(null);
     setElapsedSeconds(0);
     setCompletedStages(new Set());
 
@@ -167,10 +177,27 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
 
         const apiResponseData = await res.json().catch(() => ({}));
 
-        if (!res.ok || !apiResponseData.success || !apiResponseData.course) {
+        if (
+          !res.ok ||
+          !apiResponseData.success ||
+          !apiResponseData.course ||
+          apiResponseData.fallbackUsed === true ||
+          apiResponseData.course?.generationMetadata?.provider === 'local_fallback'
+        ) {
+          setFailedDetails({
+            failedProvider: apiResponseData.failedProvider || provider,
+            failedStage: apiResponseData.failedStage,
+            failedModuleNumber: apiResponseData.failedModuleNumber,
+            failedModuleTitle: apiResponseData.failedModuleTitle,
+            completedModulesCount: apiResponseData.completedModulesCount,
+            totalModulesCount: apiResponseData.totalModulesCount,
+            partialCourse: apiResponseData.partialCourse
+          });
           throw new Error(
             apiResponseData.error ||
-              `AI course generation via ${providerLabel} (${model}) was unsuccessful (HTTP ${res.status}).`
+              (apiResponseData.fallbackUsed
+                ? `AI generation via ${providerLabel} failed and attempted an offline fallback draft, which was blocked so generic content is never silently substituted.`
+                : `AI course generation via ${providerLabel} (${model}) was unsuccessful (HTTP ${res.status}).`)
           );
         }
 
@@ -260,13 +287,24 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
             <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             <div className="space-y-2 flex-1">
               <div className="font-extrabold text-sm text-rose-950">
-                AI Generation Could Not Be Completed
+                AI Generation Failed ({failedDetails?.failedProvider === 'gemini' ? 'Google Gemini' : failedDetails?.failedProvider === 'groq' ? 'Groq Cloud' : providerLabel})
               </div>
               <p className="text-xs text-rose-800 leading-relaxed">
                 {errorNotice}
               </p>
+              {failedDetails?.failedStage && failedDetails.failedStage !== 'unknown' && (
+                <p className="text-[11px] font-semibold text-rose-900">
+                  Failed Stage: {failedDetails.failedStage.replace(/_/g, ' ')}
+                  {failedDetails.failedModuleNumber
+                    ? ` — Module ${failedDetails.failedModuleNumber}${failedDetails.failedModuleTitle ? `: ${failedDetails.failedModuleTitle}` : ''}`
+                    : ''}
+                  {typeof failedDetails.completedModulesCount === 'number' && typeof failedDetails.totalModulesCount === 'number'
+                    ? ` (${failedDetails.completedModulesCount} of ${failedDetails.totalModulesCount} modules generated before interruption)`
+                    : ''}
+                </p>
+              )}
               <p className="text-[11px] text-rose-700 font-medium">
-                No fabricated or generic fallback course was substituted. Your completed template data remains intact. You can retry generation now or return to the template to review your fields or select another model.
+                No silent generic fallback course was substituted. Your completed Master Template inputs remain intact. You can retry generation now or return to review your template or switch AI provider/model.
               </p>
               <div className="pt-2 flex flex-wrap items-center gap-2.5">
                 <button
@@ -277,6 +315,17 @@ export const AIGenerationProgress: React.FC<AIGenerationProgressProps> = ({
                   <RefreshCw className="w-3.5 h-3.5 text-[#45CC42]" />
                   <span>Retry AI Generation</span>
                 </button>
+                {failedDetails?.partialCourse && (
+                  <button
+                    type="button"
+                    onClick={() => onComplete(failedDetails.partialCourse!)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                  >
+                    <span>
+                      Inspect Partial Draft ({failedDetails.completedModulesCount}/{failedDetails.totalModulesCount} Modules)
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onCancel}

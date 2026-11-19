@@ -4,6 +4,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import {
   generateCourseWithAIEngine,
+  CourseGenerationPartialError,
   executeGranularRegeneration,
   processAIAssistedCopilotChat,
   getRegisteredModels,
@@ -11,6 +12,15 @@ import {
   extractCourseFieldsFromDocument,
   refineProblemStatementWithAI
 } from './src/server/ai';
+
+function resolveAIErrorStatus(err: any): number {
+  const msg = String(err?.message || '').toLowerCase();
+  if (err?.failedStage === 'validation' || msg.includes('compulsory fields')) return 400;
+  if (msg.includes('401') || msg.includes('403') || msg.includes('authentication') || msg.includes('api key')) return 401;
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('quota') || msg.includes('tpm')) return 429;
+  if (msg.includes('timed out') || msg.includes('timeout')) return 504;
+  return 502;
+}
 
 async function startServer() {
   const app = express();
@@ -135,8 +145,8 @@ async function startServer() {
 
   // POST /api/courses/generate - Provider-agnostic course generation (strict error reporting, no silent fallback)
   app.post('/api/courses/generate', async (req, res) => {
+    const { course, provider, model } = req.body || {};
     try {
-      const { course, provider, model } = req.body;
       if (!course) {
         return res.status(400).json({ success: false, error: 'Missing course data in request body.' });
       }
@@ -145,19 +155,30 @@ async function startServer() {
       return res.json(result);
     } catch (error: any) {
       console.error('Error generating course with AI:', error);
-      return res.status(500).json({
+      const status = resolveAIErrorStatus(error);
+      const partial = error instanceof CourseGenerationPartialError ? error : null;
+      return res.status(status).json({
         success: false,
-        error: error?.message || 'AI course generation failed. Please check your connection or selected AI model and try again.'
+        error: error?.message || 'AI course generation failed. Please check your connection or selected AI model and try again.',
+        failedProvider: partial?.failedProvider || (provider === 'gemini' ? 'gemini' : 'groq'),
+        failedModel: partial?.failedModel || model || '',
+        failedStage: partial?.failedStage || 'unknown',
+        failedModuleNumber: partial?.failedModuleNumber,
+        failedModuleTitle: partial?.failedModuleTitle,
+        completedModulesCount: partial?.completedModulesCount,
+        totalModulesCount: partial?.totalModulesCount,
+        partialCourse: partial?.partialCourse,
+        fallbackUsed: false
       });
     }
   });
 
-  // POST /api/courses/regenerate-part - Granular component regeneration
+  // POST /api/courses/regenerate-part - Granular component regeneration (strict error reporting, no silent fallback)
   app.post('/api/courses/regenerate-part', async (req, res) => {
+    const { course, partType, targetId, currentGeneratedCourse, provider, model } = req.body || {};
     try {
-      const { course, partType, targetId, currentGeneratedCourse, provider, model } = req.body;
       if (!course || !partType) {
-        return res.status(400).json({ error: 'Missing course or partType in request body.' });
+        return res.status(400).json({ success: false, error: 'Missing course or partType in request body.' });
       }
 
       const result = await executeGranularRegeneration(
@@ -171,7 +192,14 @@ async function startServer() {
       return res.json(result);
     } catch (error: any) {
       console.error('Error regenerating part:', error);
-      return res.status(500).json({ error: error?.message || 'Failed to regenerate course component.' });
+      const status = resolveAIErrorStatus(error);
+      return res.status(status).json({
+        success: false,
+        error: error?.message || 'Failed to regenerate course component with AI.',
+        failedProvider: provider === 'gemini' ? 'gemini' : 'groq',
+        failedModel: model || '',
+        fallbackUsed: false
+      });
     }
   });
 

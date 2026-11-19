@@ -4,13 +4,18 @@ import assert from 'node:assert/strict';
 import {
   processLocalCopilotChat,
   classifyCopilotIntent,
-  generateComprehensiveCoursePatch
+  generateComprehensiveCoursePatch,
+  generateLocalFallbackCourse
 } from '../src/utils/localCourseEngine.js';
 import { processAIAssistedCopilotChat } from '../src/server/ai/copilotService.js';
-import { generateCourseWithAIEngine } from '../src/server/ai/courseGenerator.js';
+import {
+  generateCourseWithAIEngine,
+  CourseGenerationPartialError
+} from '../src/server/ai/courseGenerator.js';
 import { reviewGeneratedCourseQuality } from '../src/server/ai/courseValidator.js';
 import { buildDeterministicBlueprint } from '../src/server/ai/curriculumBlueprint.js';
 import { createScratchCourse } from '../src/data/initialCourseData.js';
+import generateApiHandler from '../api/courses/generate.js';
 import type { Course, CopilotAgreedRequirements } from '../src/types.js';
 import type { AIRequest, AIResponse } from '../src/server/ai/types.js';
 
@@ -1085,3 +1090,208 @@ test('classifyCopilotIntent never misclassifies questions as course_create', () 
   assert.equal(classifyCopilotIntent('Please create the course', [{ role: 'user', content: 'hi' }], sampleAgreed), 'course_create');
   assert.equal(classifyCopilotIntent('Build a template for me "Cybersecurity Awareness"', [], null), 'course_create');
 });
+
+// ============================================================================
+// PART 5 TESTS: NO SILENT FALLBACK, PARTIAL RECOVERY, FULL CONTEXT PARITY & STRICT QA
+// ============================================================================
+
+test('API /api/courses/generate never returns HTTP 200 or silent offline local-fallback when AI provider fails', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI for Business');
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI for Business'), patch);
+
+  const savedGeminiKey = process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+
+  try {
+    let statusCode = 0;
+    let jsonBody: any = null;
+    const mockReq: any = {
+      method: 'POST',
+      body: {
+        course: courseInput,
+        provider: 'gemini',
+        model: 'gemini-4-hydrogen'
+      }
+    };
+    const mockRes: any = {
+      setHeader() {},
+      end() {},
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(payload: any) {
+        jsonBody = payload;
+        return this;
+      }
+    };
+
+    await generateApiHandler(mockReq, mockRes);
+
+    assert.ok(statusCode >= 400, `Expected non-200 failure status when Gemini key is absent, got ${statusCode}`);
+    assert.equal(jsonBody?.success, false);
+    assert.equal(jsonBody?.fallbackUsed, false);
+    assert.equal(jsonBody?.failedProvider, 'gemini');
+    assert.ok(typeof jsonBody?.error === 'string' && jsonBody.error.length > 0);
+    assert.equal(jsonBody?.course, undefined, 'Must never attach a fake full course on failure');
+  } finally {
+    if (savedGeminiKey !== undefined) {
+      process.env.GEMINI_API_KEY = savedGeminiKey;
+    }
+  }
+});
+
+test('Mid-generation rate limit / failure preserves completed modules via CourseGenerationPartialError', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI', undefined, {
+    subject: 'Generative AI',
+    difficultyLevel: 'Foundational',
+    learningGoals: ['LLM Tokenisation & Context Windows', 'Structured Prompting', 'RAG Grounding', 'AI Hallucination Governance'],
+    moduleCount: 4
+  });
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI'), patch);
+
+  const healthyMock = createDomainCourseAIMock({
+    domainTerms: ['LLM Tokens & Context Windows', 'Structured Prompt Constraints', 'RAG Retrieval Grounding', 'AI Hallucination Auditing'],
+    cities: ['Johannesburg', 'Cape Town', 'Pretoria'],
+    orgs: ['Enterprise Analytics Team', 'Financial Services AI Hub', 'Operations Digital Unit'],
+    laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+  });
+
+  await assert.rejects(
+    async () => {
+      await generateCourseWithAIEngine(courseInput, 'groq', 'openai/gpt-oss-120b', {
+        skipRepair: true,
+        aiExecute: async req => {
+          const modMatch = (req.prompt || '').match(/Author complete Module\s+(\d+)/);
+          if (modMatch && Number(modMatch[1]) >= 3) {
+            throw new Error(`429 Rate limit reached on Groq TPM quota for Module ${modMatch[1]}`);
+          }
+          return healthyMock(req);
+        }
+      });
+    },
+    (err: any) => {
+      assert.ok(err instanceof CourseGenerationPartialError, 'Must throw CourseGenerationPartialError');
+      assert.equal(err.failedStage, 'module_synthesis');
+      assert.equal(err.failedModuleNumber, 3);
+      assert.equal(err.completedModulesCount, 2);
+      assert.equal(err.totalModulesCount, 4);
+      assert.ok(err.partialCourse, 'Must include preserved completed modules');
+      assert.equal(err.partialCourse.modules.length, 2);
+      assert.equal(err.partialCourse.generationMetadata?.isPartial, true);
+      assert.equal(err.partialCourse.generationMetadata?.completedModules, 2);
+      assert.equal(err.partialCourse.generationMetadata?.totalModules, 4);
+      assert.equal(err.partialCourse.qa.overallVerdict, 'FAIL');
+      return true;
+    }
+  );
+});
+
+test('Both Gemini and Groq receive full course context (description, competencies, outcomes, target audience, 7 lesson dimensions)', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI for Engineers');
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI for Engineers'), patch);
+  courseInput.structure.purposeStatement = 'Hands-on training on transformer tokens, context windows, RAG vector search, and deterministic evaluation.';
+  courseInput.structure.targetRoles = 'South African Software & Data Engineers';
+  courseInput.structure.keyCompetencies = 'Prompt constraint engineering, RAG chunking, hallucination detection';
+  courseInput.learningDesign.learningObjectivesList = ['Build grounded RAG pipelines', 'Benchmark LLM failure modes'];
+  courseInput.research.aiToolsPlatformName = 'Groq, Gemini, Vector DB';
+
+  const capturedPrompts: Record<'groq' | 'gemini', string[]> = { groq: [], gemini: [] };
+  const healthyMock = createDomainCourseAIMock({
+    domainTerms: ['Transformer Tokens & Context Windows', 'RAG Vector Chunking & Grounding', 'Deterministic LLM Evaluation'],
+    cities: ['Johannesburg', 'Cape Town', 'Stellenbosch'],
+    orgs: ['FinTech Engineering Hub', 'HealthTech Data Platform', 'Cloud Retail Labs'],
+    laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+  });
+
+  for (const provider of ['groq', 'gemini'] as const) {
+    const model = provider === 'gemini' ? 'gemini-4-hydrogen' : 'openai/gpt-oss-120b';
+    const res = await generateCourseWithAIEngine(courseInput, provider, model, {
+      skipRepair: true,
+      aiExecute: async req => {
+        capturedPrompts[provider].push(req.prompt || '');
+        return healthyMock(req);
+      }
+    });
+    assert.equal(res.success, true);
+    assert.equal(res.course?.qa.overallVerdict, 'PASS');
+  }
+
+  for (const provider of ['groq', 'gemini'] as const) {
+    const stage1And2 = capturedPrompts[provider].slice(0, 4).join('\n');
+    assert.match(stage1And2, /Hands-on training on transformer tokens/);
+    assert.match(stage1And2, /South African Software & Data Engineers/);
+    assert.match(stage1And2, /Prompt constraint engineering/);
+    assert.match(stage1And2, /Build grounded RAG pipelines/);
+    assert.match(stage1And2, /Groq, Gemini, Vector DB/);
+  }
+});
+
+test('Semantic QA strictly verdicts FAIL on explicit offline fallback, generic boilerplate, missing LO coverage, title mismatch, and ungrounded MCQs', async () => {
+  const { patch } = generateComprehensiveCoursePatch('Generative AI for Business');
+  const courseInput = applyPatchToCourse(createScratchCourse('Generative AI for Business'), patch);
+  const blueprint = buildDeterministicBlueprint(courseInput);
+
+  // (a) Explicit offline local-fallback draft must NEVER receive PASS
+  const offlineFallback = generateLocalFallbackCourse(courseInput);
+  assert.equal(offlineFallback.generationMetadata?.provider, 'local_fallback');
+  assert.equal(offlineFallback.qa.overallVerdict, 'FAIL');
+  assert.equal(offlineFallback.qa.hasBlockingFailures, true);
+
+  const fallbackReview = reviewGeneratedCourseQuality(offlineFallback, courseInput, blueprint);
+  assert.equal(fallbackReview.qa.overallVerdict, 'FAIL');
+  assert.equal(fallbackReview.qa.hasBlockingFailures, true);
+
+  // Start from a healthy AI-generated Generative AI course for targeted negative mutation controls
+  const healthyRes = await generateCourseWithAIEngine(courseInput, 'groq', 'openai/gpt-oss-120b', {
+    skipRepair: true,
+    aiExecute: createDomainCourseAIMock({
+      domainTerms: ['LLM Tokenisation & Context Limits', 'RAG Document Grounding', 'Hallucination Detection & Guardrails'],
+      cities: ['Sandton', 'Cape Town', 'Pretoria'],
+      orgs: ['Commercial Operations Division', 'Customer Advisory Hub', 'Corporate Finance Team'],
+      laws: 'POPIA Act 4 of 2013 & King IV Principle 12'
+    })
+  });
+  assert.ok(healthyRes.course);
+
+  // (b) Fallback boilerplate phrases trigger FAIL
+  const boilerplateCourse = structuredClone(healthyRes.course!);
+  boilerplateCourse.modules[0].lessons[0].contentBody +=
+    '\n\nUnderstanding why a concept behaves predictably requires checking Frame Constraints First and Construct & Test Iteratively. Examine how inputs, structural assumptions, and domain constraints interact.';
+  const boilerplateReview = reviewGeneratedCourseQuality(boilerplateCourse, courseInput, blueprint);
+  assert.equal(boilerplateReview.qa.overallVerdict, 'FAIL');
+  assert.equal(boilerplateReview.qa.hasBlockingFailures, true);
+
+  // (c) Lesson content unrelated to its lesson title triggers lesson_relevance FAIL
+  const mismatchedLessonCourse = structuredClone(healthyRes.course!);
+  mismatchedLessonCourse.modules[0].lessons[0].title = 'Vector Embeddings and Cosine Similarity';
+  mismatchedLessonCourse.modules[0].lessons[0].contentBody =
+    'Quarterly team calendars and holiday shift rosters require advance supervisor approval every Friday afternoon before payroll submissions lock across regional South African branches.';
+  const titleMismatchReview = reviewGeneratedCourseQuality(mismatchedLessonCourse, courseInput, blueprint);
+  const relevanceCheck = titleMismatchReview.qa.qaChecks?.find(c => c.id === 'lesson_relevance');
+  assert.equal(relevanceCheck?.status, 'FAIL');
+  assert.equal(titleMismatchReview.qa.hasBlockingFailures, true);
+
+  // (d) Module LO not taught anywhere in module lessons triggers learning_objectives FAIL
+  const missingLoCourse = structuredClone(healthyRes.course!);
+  missingLoCourse.modules[0].learningObjectives = [
+    { id: 'lo-unmet-1', code: 'LO 1.1', statement: 'Calibrate quantization bit-widths and KV-cache eviction heuristics', bloomLevel: 'Apply' },
+    { id: 'lo-unmet-2', code: 'LO 1.2', statement: 'Benchmark perplexity degradation across sparse attention kernels', bloomLevel: 'Evaluate' }
+  ];
+  const loReview = reviewGeneratedCourseQuality(missingLoCourse, courseInput, blueprint);
+  const loCheck = loReview.qa.qaChecks?.find(c => c.id === 'learning_objectives');
+  assert.equal(loCheck?.status, 'FAIL');
+  assert.equal(loReview.qa.hasBlockingFailures, true);
+
+  // (e) Generic MCQ stem ("Which practice best demonstrates mastery of...") triggers assessment_alignment FAIL
+  const genericMcqCourse = structuredClone(healthyRes.course!);
+  genericMcqCourse.modules[0].knowledgeChecks[0].question =
+    'Which practice best demonstrates mastery of RAG Document Grounding?';
+  genericMcqCourse.modules[0].knowledgeChecks[1].question =
+    'Which practice best demonstrates mastery of LLM Tokenisation & Context Limits?';
+  const mcqReview = reviewGeneratedCourseQuality(genericMcqCourse, courseInput, blueprint);
+  const mcqCheck = mcqReview.qa.qaChecks?.find(c => c.id === 'assessment_alignment');
+  assert.equal(mcqCheck?.status, 'FAIL');
+  assert.equal(mcqReview.qa.hasBlockingFailures, true);
+});
+

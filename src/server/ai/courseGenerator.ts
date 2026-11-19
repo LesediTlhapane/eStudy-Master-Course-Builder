@@ -32,6 +32,49 @@ export interface CourseGenerationOptions {
   skipRepair?: boolean;
 }
 
+export type GenerationFailureStage =
+  | 'validation'
+  | 'blueprint'
+  | 'module_synthesis'
+  | 'wrapper_assessments'
+  | 'validation_schema';
+
+export class CourseGenerationPartialError extends Error {
+  failedProvider: AIProvider;
+  failedModel: string;
+  failedStage: GenerationFailureStage;
+  failedModuleNumber?: number;
+  failedModuleTitle?: string;
+  completedModulesCount?: number;
+  totalModulesCount?: number;
+  partialCourse?: GeneratedCourse;
+
+  constructor(
+    message: string,
+    details: {
+      failedProvider: AIProvider;
+      failedModel: string;
+      failedStage: GenerationFailureStage;
+      failedModuleNumber?: number;
+      failedModuleTitle?: string;
+      completedModulesCount?: number;
+      totalModulesCount?: number;
+      partialCourse?: GeneratedCourse;
+    }
+  ) {
+    super(message);
+    this.name = 'CourseGenerationPartialError';
+    this.failedProvider = details.failedProvider;
+    this.failedModel = details.failedModel;
+    this.failedStage = details.failedStage;
+    this.failedModuleNumber = details.failedModuleNumber;
+    this.failedModuleTitle = details.failedModuleTitle;
+    this.completedModulesCount = details.completedModulesCount;
+    this.totalModulesCount = details.totalModulesCount;
+    this.partialCourse = details.partialCourse;
+  }
+}
+
 function accumulateUsage(
   acc: { input: number; output: number },
   usage?: { inputTokens?: number; outputTokens?: number }
@@ -62,30 +105,40 @@ async function generateModuleFromBlueprint(
     .slice(0, 20);
 
   const systemInstruction = `You are a senior subject-matter educator and instructional designer writing Module ${modPlan.moduleNumber} of "${blueprint.subjectTitle}" (${blueprint.domainLabel}).
-NON-NEGOTIABLE EDUCATIONAL RULES:
+NON-NEGOTIABLE EDUCATIONAL RULES (IDENTICAL FOR GEMINI & GROQ):
 1. STRICT SUBJECT LOCK: Teach ONLY "${blueprint.subjectTitle}" for "${blueprint.targetAudience}" (${blueprint.learnerLevel}).
    FORBIDDEN OFF-TOPIC CONCEPTS (NEVER include): ${forbiddenTermsList.join(', ') || 'None'}.
    APPLICABLE SA REGULATORY CONTEXT: ${blueprint.regulatoryGrounding.applicableFrameworks.join('; ')}.
 2. Keep the EXACT module number (${modPlan.moduleNumber}), title ("${modPlan.title}"), learning objectives, and lesson count/titles (${modPlan.lessonPlans.length} lessons).
-3. Use ALL 7 planning dimensions provided in each lesson's blueprint plan:
-   - knowledgeToAcquire, conceptsToExplain, keyTerminology, subjectExamples, practicalSkills, commonMisconceptions, demonstrationMethod.
-   Each lesson MUST be substantial (250–400 words), genuinely educational, distinct from every other lesson, and structured to explain:
-   - What the concept/principle means and why it matters in "${blueprint.subjectTitle}"
-   - Core mechanisms / how it works in practice (using the planned keyTerminology)
-   - One concrete, subject-authentic worked example from lessonPlans.subjectExamples
-   - Common misconceptions and limitations/edge cases learners must avoid
-   NEVER inject generic five-stage SOP boilerplate, filler operational protocols, or repetitive phrasing across lessons.
-4. Vary South African scenarios distinctly across the planned settings (${modPlan.scenarioContexts.map(s => `${s.cityOrSetting}: ${s.organisationType}`).join('; ')}). Include authentic Workplace challenges and an AI Specific scenario (or state how AI applies/fails carefully).
+3. COMPLETE PEDAGOGICAL DEPTH WITHOUT REPETITIVE WORDING:
+   Use ALL 7 planning dimensions in each lesson's blueprint plan (knowledgeToAcquire, conceptsToExplain, keyTerminology, subjectExamples, practicalSkills, commonMisconceptions, demonstrationMethod).
+   Each lesson MUST be substantial (300–500 words), genuinely educational, written with natural prose adapted to its specific topic (vary openings, structure, and headings organically — NEVER reuse identical filler sentences across lessons!).
+   Each lesson MUST clearly teach:
+   - An engaging lesson introduction explaining why this topic matters in "${blueprint.subjectTitle}" and which module objective(s) it addresses
+   - Accurate definitions of the planned keyTerminology
+   - Deep mechanism explanations (how & why it actually works, parameters/architecture/trade-offs — NOT vague advice or generic constraint-framing boilerplate)
+   - Concrete subject-specific example(s) and a step-by-step worked walkthrough/demonstration where helpful
+   - Practical workplace application tailored to "${blueprint.targetAudience}"
+   - Common learner mistakes / misconceptions and how to avoid them
+   - Brief reflection / tie-in to the module's practical exercise and knowledge check
+4. Vary South African scenarios distinctly across the planned settings (${modPlan.scenarioContexts.map(s => `${s.cityOrSetting}: ${s.organisationType}`).join('; ')}). Include realistic Workplace challenges and an AI Specific scenario showing authentic benefits and failure boundaries.
 5. Practical task MUST honour all 10 elements of modPlan.practicalTaskSpec cleanly:
    Include labelled sections in instructions:
    "Objective:", "Scenario:", "Resources:", "Instructions:", "Steps: 1. ... 2. ... 3. ...", "Deliverable:", "Success criteria:", "Reflection:"
    AND an "evaluationRubric" array whose percentages sum to 100%.
-   Do NOT turn technical/creative/leadership modules into generic "audit workflow failures / corrective action checklist / human sign-off" exercises unless the module genuinely teaches compliance auditing.
-6. Knowledge checks: 5 distinct concept/application MCQs testing concepts explicitly taught in this module's lessons, 4 plausible options each, misconception-addressing rationale, and "learningObjectiveRef" set to an exact LO code from this module (${modPlan.learningObjectives.map(o => o.code).join(', ')}). Never insert generic POPIA/SOP/sign-off MCQs if unrelated to the module.
+   Make the exercise authentic hands-on domain work using real tools/artefacts — NEVER default to generic checklists or assumption-framing templates.
+6. Knowledge checks: 5 distinct concept/application MCQs testing SPECIFIC mechanisms, terminology, examples, or misconceptions EXPLICITLY taught inside this module's lessons above (with 4 plausible distractors, detailed rationale, and exact "learningObjectiveRef" from ${modPlan.learningObjectives.map(o => o.code).join(', ')}). NEVER use generic meta-questions like "Which practice best demonstrates mastery of..." or unrelated POPIA/SOP trivia.
 7. Accuracy & Source Grounding: ${blueprint.regulatoryGrounding.strictTruthRule}
 Return ONLY valid JSON matching the GeneratedModule schema.`;
 
   const prompt = `Author complete Module ${modPlan.moduleNumber} JSON for course "${blueprint.subjectTitle}" (${blueprint.courseCode}).
+
+COURSE CONTEXT:
+- Description & Need: ${blueprint.courseDescription}
+- Target Audience & Level: ${blueprint.targetAudience} (${blueprint.learnerLevel})
+- Key Competencies: ${blueprint.keyCompetencies || 'Applied practitioner mastery'}
+- Programme Learning Outcomes: ${blueprint.programmeOutcomes.join(' | ') || 'Derived from module objectives'}
+- Tools / Environment: ${blueprint.aiToolsPlatform}
 
 MODULE BLUEPRINT SPECIFICATION (WITH 7 LESSON DIMENSIONS & 10-ELEMENT PRACTICAL TASK SPEC):
 ${JSON.stringify(
@@ -134,7 +187,7 @@ Return a single JSON object:
       "title": "Exact lesson title from lessonPlans",
       "durationMinutes": 35,
       "concepts": ["Concept from conceptsToExplain", "Key terminology", "Applied skill"],
-      "contentBody": "Deep, multi-paragraph subject teaching (250-400 words) explaining conceptsToExplain, keyTerminology, worked example from subjectExamples, practicalSkills, and commonMisconceptions",
+      "contentBody": "Rich, well-structured subject teaching (300-500 words) covering intro/relevance, terminology definitions, underlying mechanisms, concrete worked example/walkthrough from subjectExamples, practical guidance, and commonMisconceptions",
       "callouts": [{ "type": "Tip", "title": "Domain Practice Tip", "content": "Actionable subject insight addressing commonMisconceptions" }],
       "workplaceApplication": "Concrete application aligned to practicalSkills & demonstrationMethod",
       "aiApplication": "Relevant AI workflow or state 'Not applicable' where inappropriate"
@@ -155,10 +208,10 @@ Return a single JSON object:
   "knowledgeChecks": [
     {
       "id": "kc-${modPlan.moduleNumber}-1",
-      "question": "Distinct question testing a concept taught in this module's lessons",
+      "question": "Specific domain question testing a mechanism, term, or example actually taught in this module's lessons",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": 1,
-      "rationale": "Why correct answer is right and why the common misconception/distractor is wrong",
+      "rationale": "Why correct answer is right using lesson concepts and why distractors reflect common misconceptions",
       "learningObjectiveRef": "LO ${modPlan.moduleNumber}.1"
     }
   ],
@@ -180,7 +233,7 @@ Return a single JSON object:
     systemInstruction,
     responseFormat: 'json',
     temperature: 0.25,
-    maxTokens: 3900,
+    maxTokens: 4096,
     timeoutMs: 65000
   });
 
@@ -521,55 +574,155 @@ export async function generateCourseWithAIEngine(
   }
 
   if (missingCompulsory.length > 0) {
-    throw new Error(
-      `Please complete the following compulsory fields before generating the course: ${missingCompulsory.join(', ')}.`
+    throw new CourseGenerationPartialError(
+      `Please complete the following compulsory fields before generating the course: ${missingCompulsory.join(', ')}.`,
+      {
+        failedProvider: provider,
+        failedModel: model,
+        failedStage: 'validation'
+      }
     );
   }
 
   const tokenUsage = { input: 0, output: 0 };
 
   // STAGE 1: Subject & Curriculum Blueprint Generation + Alignment Validation
-  const { blueprint, tokensUsed: bpTokens } = await generateCurriculumBlueprint(
-    course,
-    provider,
-    model,
-    aiExecute
-  );
+  let bpResult: Awaited<ReturnType<typeof generateCurriculumBlueprint>>;
+  try {
+    bpResult = await generateCurriculumBlueprint(course, provider, model, aiExecute);
+  } catch (err: any) {
+    throw new CourseGenerationPartialError(
+      err?.message || `Stage 1 curriculum blueprint failed via ${provider} (${model}).`,
+      {
+        failedProvider: provider,
+        failedModel: model,
+        failedStage: 'blueprint',
+        totalModulesCount: course.modules?.length || 0
+      }
+    );
+  }
+
+  const { blueprint, tokensUsed: bpTokens } = bpResult;
   accumulateUsage(tokenUsage, {
     inputTokens: bpTokens?.input,
     outputTokens: bpTokens?.output
   });
+
+  // Helper to package any completed partial modules cleanly without discarding successful work
+  const buildPartialDraftCourse = (completedModules: Partial<GeneratedModule>[]): GeneratedCourse | undefined => {
+    if (completedModules.length === 0) return undefined;
+    try {
+      const partialMeta: GenerationMetadata = {
+        provider,
+        providerDisplayName: provider === 'gemini' ? 'Google Gemini' : 'Groq Cloud',
+        model,
+        modelDisplayName: modelInfo?.displayName || model,
+        generatedAt: new Date().toISOString(),
+        generationDurationMs: Date.now() - startTime,
+        fallbackUsed: false,
+        isPartial: true,
+        completedModules: completedModules.length,
+        totalModules: blueprint.modules.length,
+        blueprintSource: blueprint.planningSource || 'deterministic',
+        tokensUsed:
+          tokenUsage.input > 0 || tokenUsage.output > 0
+            ? { input: tokenUsage.input, output: tokenUsage.output }
+            : undefined
+      };
+      const partialRaw = {
+        id: `gen-partial-${Date.now()}`,
+        title: blueprint.subjectTitle,
+        code: blueprint.courseCode,
+        version: 'v9.0-Partial-Draft',
+        overview: blueprint.courseDescription,
+        purpose: course.structure?.purposeStatement || blueprint.courseDescription,
+        targetAudience: blueprint.targetAudience,
+        estimatedDuration: blueprint.estimatedDuration,
+        learningOutcomes: blueprint.programmeOutcomes,
+        modules: completedModules,
+        assessments: {}
+      };
+      return validateAndSanitizeGeneratedCourse(partialRaw, course, partialMeta, blueprint).course;
+    } catch {
+      return undefined;
+    }
+  };
 
   // Ensure Master Prompt is still compiled (used for traceability/single-shot fallback)
   const masterPrompt = generateMasterPrompt(course);
 
   let parsedRawCourse: any = null;
 
-  // STAGE 2: Multi-stage deep synthesis within Groq's safe ~4096 token ceiling per call
+  // STAGE 2: Bounded-parallel deep module synthesis (conserves serverless runtime & rate-limit headroom)
   if (blueprint.modules.length > 0) {
-    const synthesizedModules: Partial<GeneratedModule>[] = [];
+    const synthesizedSlots: Array<Partial<GeneratedModule> | undefined> = new Array(blueprint.modules.length);
+    const concurrencyBatchSize = 2;
 
-    for (const modPlan of blueprint.modules) {
-      const modResult = await generateModuleFromBlueprint(
-        modPlan,
+    for (let batchStart = 0; batchStart < blueprint.modules.length; batchStart += concurrencyBatchSize) {
+      const batch = blueprint.modules.slice(batchStart, batchStart + concurrencyBatchSize);
+      const settled = await Promise.allSettled(
+        batch.map(modPlan =>
+          generateModuleFromBlueprint(modPlan, blueprint, course, provider, model, aiExecute)
+        )
+      );
+
+      let firstFailure: { modPlan: BlueprintModulePlan; error: any } | null = null;
+      settled.forEach((outcome, offset) => {
+        const idx = batchStart + offset;
+        const modPlan = batch[offset];
+        if (outcome.status === 'fulfilled') {
+          accumulateUsage(tokenUsage, outcome.value.usage);
+          synthesizedSlots[idx] = outcome.value.module;
+        } else if (!firstFailure) {
+          firstFailure = { modPlan, error: outcome.reason };
+        }
+      });
+
+      if (firstFailure) {
+        const completed = synthesizedSlots.filter((m): m is Partial<GeneratedModule> => Boolean(m));
+        const reason = firstFailure.error?.message || String(firstFailure.error || 'Module synthesis failed');
+        throw new CourseGenerationPartialError(
+          `AI generation failed at Module ${firstFailure.modPlan.moduleNumber} ("${firstFailure.modPlan.title}") via ${provider} (${model}): ${reason}`,
+          {
+            failedProvider: provider,
+            failedModel: model,
+            failedStage: 'module_synthesis',
+            failedModuleNumber: firstFailure.modPlan.moduleNumber,
+            failedModuleTitle: firstFailure.modPlan.title,
+            completedModulesCount: completed.length,
+            totalModulesCount: blueprint.modules.length,
+            partialCourse: buildPartialDraftCourse(completed)
+          }
+        );
+      }
+    }
+
+    const synthesizedModules = synthesizedSlots.filter((m): m is Partial<GeneratedModule> => Boolean(m));
+
+    let wrapper: Awaited<ReturnType<typeof generateCourseWrapperAndAssessments>>;
+    try {
+      wrapper = await generateCourseWrapperAndAssessments(
         blueprint,
+        synthesizedModules,
         course,
         provider,
         model,
         aiExecute
       );
-      accumulateUsage(tokenUsage, modResult.usage);
-      synthesizedModules.push(modResult.module);
+    } catch (err: any) {
+      const reason = err?.message || 'Failed to generate overview and final summative assessments.';
+      throw new CourseGenerationPartialError(
+        `AI generation failed during Overview & Final Assessments via ${provider} (${model}): ${reason}`,
+        {
+          failedProvider: provider,
+          failedModel: model,
+          failedStage: 'wrapper_assessments',
+          completedModulesCount: synthesizedModules.length,
+          totalModulesCount: blueprint.modules.length,
+          partialCourse: buildPartialDraftCourse(synthesizedModules)
+        }
+      );
     }
-
-    const wrapper = await generateCourseWrapperAndAssessments(
-      blueprint,
-      synthesizedModules,
-      course,
-      provider,
-      model,
-      aiExecute
-    );
     accumulateUsage(tokenUsage, wrapper.usage);
 
     parsedRawCourse = {
@@ -608,6 +761,7 @@ export async function generateCourseWithAIEngine(
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
     fallbackUsed: false,
+    blueprintSource: blueprint.planningSource || 'deterministic',
     tokensUsed:
       tokenUsage.input > 0 || tokenUsage.output > 0
         ? { input: tokenUsage.input, output: tokenUsage.output }

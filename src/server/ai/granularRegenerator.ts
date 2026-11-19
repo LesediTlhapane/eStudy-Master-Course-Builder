@@ -2,7 +2,6 @@ import type { Course, GeneratedCourse, GeneratedModule, GeneratedLesson, Generat
 import { aiRouter } from './aiRouter.js';
 import { extractAndParseJSON, reviewGeneratedCourseQuality } from './courseValidator.js';
 import { buildDeterministicBlueprint } from './curriculumBlueprint.js';
-import { generateLocalFallbackCourse } from '../../utils/localCourseEngine.js';
 import { sanitizeCourse } from '../../utils/courseSanitizer.js';
 
 export interface GranularRegenerationResult {
@@ -41,14 +40,15 @@ SUBJECT LOCK:
 - Cite South African legal/regulatory claims ONLY when genuinely applicable and verified; otherwise mark unverified claims for SME validation.
 - Preserve all IDs, titles, and objective codes. Return ONLY valid JSON matching the requested schema.`;
 
-  let prompt = '';
-  let updatedCourse: GeneratedCourse = currentGeneratedCourse
-    ? JSON.parse(JSON.stringify(currentGeneratedCourse))
-    : generateLocalFallbackCourse(course);
-  let updatedPart: any = null;
-  let fallbackUsed = false;
+  if (!currentGeneratedCourse) {
+    throw new Error('Cannot regenerate a component without an existing generated course draft.');
+  }
 
-  try {
+  let prompt = '';
+  const updatedCourse: GeneratedCourse = JSON.parse(JSON.stringify(currentGeneratedCourse));
+  let updatedPart: any = null;
+
+  {
     if (partType === 'module') {
       // Find the specific module index and context
       const modIndex = updatedCourse.modules.findIndex(m => m.id === targetId);
@@ -443,51 +443,6 @@ Return a JSON object matching this schema:
     } else {
       throw new Error(`Unsupported regeneration partType: "${partType}".`);
     }
-
-  } catch (err: any) {
-    console.warn(`Granular regeneration via AI provider ${provider} failed, using local refinement fallback:`, err?.message || err);
-    fallbackUsed = true;
-    
-    // Provide safe subject-aligned local fallback refinement for the targeted part
-    const courseSubject = s.title || course.name || blueprint.subjectTitle;
-    const domainTerms = blueprint.requiredDomainConcepts.slice(0, 3);
-    if (partType === 'scenario') {
-      const refreshedScenario: GeneratedScenario = {
-        id: targetId,
-        title: `Workplace Scenario: Applied ${courseSubject} Decision`,
-        type: 'Workplace',
-        situation: `During an applied project in ${courseSubject}, a practitioner encounters conflicting constraints affecting ${domainTerms[0] || courseSubject}.`,
-        challenge: `Balancing delivery timelines with verified domain quality criteria in ${courseSubject}.`,
-        decisionPoint: `Investigate the root cause using domain evidence vs applying an unvalidated assumption.`,
-        debrief: `Evidence-based diagnosis resolves the underlying ${domainTerms[0] || 'technical'} constraint cleanly and prevents downstream rework.`,
-        keyTakeaway: `Validate assumptions against domain criteria before committing ${courseSubject} deliverables.`
-      };
-      updatedCourse.modules = updatedCourse.modules.map(m => ({
-        ...m,
-        scenarios: m.scenarios.map(sc => sc.id === targetId ? refreshedScenario : sc)
-      }));
-      updatedPart = refreshedScenario;
-    } else if (partType === 'lesson') {
-      const refreshedLesson: GeneratedLesson = {
-        id: targetId,
-        title: `${courseSubject}: Applied Mechanisms & Worked Practice`,
-        durationMinutes: 30,
-        concepts: domainTerms.length >= 2 ? domainTerms : [courseSubject, 'Core Mechanisms', 'Practical Application'],
-        contentBody: `### Applied Implementation in ${courseSubject}\nThis lesson explains the practical mechanics and decision criteria behind **${domainTerms[0] || courseSubject}** within ${blueprint.domainLabel}.\n\n### Core Principles & Worked Steps\n1. Define clear inputs, scope, and success criteria specific to ${courseSubject}.\n2. Apply the core method systematically, noting limitations and common misconceptions.\n3. Verify outcomes against domain evidence before stakeholder release.`,
-        callouts: [
-          { type: 'Tip', title: `${courseSubject} Practice Tip`, content: `Test edge cases and verify assumptions explicitly when applying ${domainTerms[0] || courseSubject}.` }
-        ],
-        workplaceApplication: `Apply ${domainTerms[0] || courseSubject} principles directly to your role in ${s.targetRoles || blueprint.targetAudience}.`,
-        aiApplication: `Where relevant to ${courseSubject}, validate AI-assisted outputs against primary evidence before adoption.`
-      };
-      updatedCourse.modules = updatedCourse.modules.map(m => ({
-        ...m,
-        lessons: m.lessons.map(l => l.id === targetId ? refreshedLesson : l)
-      }));
-      updatedPart = refreshedLesson;
-    } else {
-      updatedPart = updatedCourse;
-    }
   }
 
   // Re-run QA review after granular update so Quality Scorecard stays accurate
@@ -504,19 +459,14 @@ Return a JSON object matching this schema:
     (activeProvider === 'gemini' ? model.toLowerCase().includes('gemini') : !model.toLowerCase().includes('gemini'));
   const resolvedModel = modelCompatible ? model! : defaultModel;
 
-  // Update generation metadata to record the granular change
+  // Update generation metadata to record the live AI granular update
   updatedCourse.generationMetadata = {
-    provider: fallbackUsed ? 'local_fallback' : activeProvider,
-    providerDisplayName: fallbackUsed
-      ? 'Local Fallback Engine'
-      : activeProvider === 'gemini'
-        ? 'Google Gemini'
-        : 'Groq Cloud',
+    provider: activeProvider,
+    providerDisplayName: activeProvider === 'gemini' ? 'Google Gemini' : 'Groq Cloud',
     model: resolvedModel,
     generatedAt: new Date().toISOString(),
     generationDurationMs: Date.now() - startTime,
-    fallbackUsed,
-    fallbackReason: fallbackUsed ? `Granular regeneration executed via local engine.` : undefined
+    fallbackUsed: false
   };
 
   return {
@@ -526,6 +476,6 @@ Return a JSON object matching this schema:
     provider: activeProvider,
     model: resolvedModel,
     durationMs: Date.now() - startTime,
-    fallbackUsed
+    fallbackUsed: false
   };
 }

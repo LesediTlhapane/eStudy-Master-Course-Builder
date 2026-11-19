@@ -486,6 +486,11 @@ export const AIEngineExportModal: React.FC<AIEngineExportModalProps> = ({
                       <p className="text-xs text-slate-600 leading-relaxed mt-0.5">
                         Downloads the complete training course manual including executive overview, pre-course diagnostics, full module lessons, South African workplace scenarios, formative quizzes, and summative final assessment (with embedded Course Logo & Banner).
                       </p>
+                      {(!course.generatedCourse || course.generatedCourse.generationMetadata?.provider === 'local_fallback' || course.generatedCourse.generationMetadata?.fallbackUsed) && (
+                        <p className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-2">
+                          Notice: No live AI-generated course is saved yet — downloading now exports a clearly labelled Offline Fallback Draft. Run Tab 1 (Direct AI Generation) first for full AI-authored content.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

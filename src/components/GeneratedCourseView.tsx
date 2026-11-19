@@ -68,6 +68,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
   });
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
+  const [regenError, setRegenError] = useState<string | null>(null);
 
   // Edit Modal State
   const [editingItem, setEditingItem] = useState<{
@@ -118,6 +119,7 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
 
   const handleRegeneratePart = async (partType: string, targetId: string, moduleId?: string) => {
     setIsRegenerating(targetId);
+    setRegenError(null);
     try {
       const activeProvider: AIProvider =
         selectedProvider === 'gemini' || generatedCourse.generationMetadata?.provider === 'gemini'
@@ -136,7 +138,6 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
               : undefined) ||
             'openai/gpt-oss-120b';
 
-      // Send granular regeneration request to server or run local refinement
       const res = await fetch('/api/courses/regenerate-part', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,28 +151,31 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.course) {
-          // If regenerating a single module, update just that module
-          if (partType === 'module' && moduleId) {
-            const freshMod = data.course.modules?.find((m: GeneratedModule) => m.id === moduleId) || data.course.modules?.[0];
-            if (freshMod) {
-              onUpdateGeneratedCourse({
-                ...generatedCourse,
-                modules: generatedCourse.modules.map(m => m.id === moduleId ? freshMod : m)
-              });
-            }
-          } else {
-            onUpdateGeneratedCourse({
-              ...generatedCourse,
-              ...data.course
-            });
-          }
-        }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success || !data.course || data.fallbackUsed === true) {
+        throw new Error(
+          data.error ||
+            `Failed to regenerate ${partType} via ${activeProvider === 'gemini' ? 'Google Gemini' : 'Groq Cloud'} (HTTP ${res.status}).`
+        );
       }
-    } catch (e) {
-      console.warn('Regeneration API error, updating component state:', e);
+
+      if (partType === 'module' && moduleId) {
+        const freshMod = data.course.modules?.find((m: GeneratedModule) => m.id === moduleId) || data.course.modules?.[0];
+        if (freshMod) {
+          onUpdateGeneratedCourse({
+            ...generatedCourse,
+            modules: generatedCourse.modules.map(m => m.id === moduleId ? freshMod : m),
+            qa: data.course.qa || generatedCourse.qa
+          });
+        }
+      } else {
+        onUpdateGeneratedCourse({
+          ...generatedCourse,
+          ...data.course
+        });
+      }
+    } catch (e: any) {
+      setRegenError(e?.message || 'AI regeneration failed. Existing content was preserved untouched.');
     } finally {
       setIsRegenerating(null);
     }
@@ -514,10 +518,15 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
           </div>
 
           <div>
-            {generatedCourse.generationMetadata?.fallbackUsed ? (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold">
+            {generatedCourse.generationMetadata?.provider === 'local_fallback' || generatedCourse.generationMetadata?.fallbackUsed ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-[11px] font-bold">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                <span>Offline Fallback Draft (Not AI-Generated){generatedCourse.generationMetadata?.fallbackReason ? ` — ${generatedCourse.generationMetadata.fallbackReason}` : ''}</span>
+              </div>
+            ) : generatedCourse.generationMetadata?.isPartial ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-bold">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                <span>Source: Local Fallback Engine {generatedCourse.generationMetadata.fallbackReason ? `— ${generatedCourse.generationMetadata.fallbackReason}` : ''}</span>
+                <span>Partial AI Draft ({generatedCourse.generationMetadata.completedModules}/{generatedCourse.generationMetadata.totalModules} Modules Completed)</span>
               </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] font-bold">
@@ -527,6 +536,22 @@ export const GeneratedCourseView: React.FC<GeneratedCourseViewProps> = ({
             )}
           </div>
         </div>
+
+        {regenError && (
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span><strong>Regeneration Failed:</strong> {regenError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRegenError(null)}
+              className="text-[11px] font-bold text-rose-700 hover:text-rose-950 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Tab 1: Curriculum & Modules */}
         {activeTab === 'curriculum' && (

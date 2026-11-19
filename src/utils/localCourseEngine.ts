@@ -56,22 +56,20 @@ export interface LocalCopilotResponse {
   isLocalFallback?: boolean;
 }
 
-// Fallback subject-grounded course generator when external AI providers are unavailable or offline
+// Explicit offline local-fallback draft generator (ONLY used when explicitly invoked; never silently replaces AI failures)
 export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
   const p = course.problem;
   const s = course.structure;
-  const verifiedSourceCount = (course.research?.sources || []).filter(
-    src => src.status === 'Verified'
-  ).length;
   const regRef =
     course.research.regulatoryFramework?.trim() ||
-    'applicable organisational standards (To Be Confirmed — Requires SME Validation)';
+    'applicable domain standards (To Be Confirmed — Requires SME Validation)';
   const courseTitle = s.title || course.name || 'Training Programme';
+  const targetAudience = s.targetRoles || p.targetGroup || 'participating practitioners';
 
   const generatedModules: GeneratedModule[] = (course.modules || []).map((m, idx) => {
     const modNum = idx + 1;
     const keySkill0 = Array.isArray(m.keySkills) && m.keySkills[0] ? m.keySkills[0] : `${m.title} Principles`;
-    const keySkill1 = Array.isArray(m.keySkills) && m.keySkills[1] ? m.keySkills[1] : `${m.title} Applied Execution`;
+    const keySkill1 = Array.isArray(m.keySkills) && m.keySkills[1] ? m.keySkills[1] : `${m.title} Applied Technique`;
     const lo0 = m.learningObjectives?.[0] || `Explain core principles and mechanisms in ${m.title}`;
     const lo1 = m.learningObjectives?.[1] || `Apply ${m.title} methods to solve realistic ${courseTitle} problems`;
     const lo2 = m.learningObjectives?.[2] || `Evaluate limitations, edge cases, and quality criteria in ${m.title}`;
@@ -79,193 +77,167 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
     const lessons: GeneratedLesson[] = [
       {
         id: `lesson-${modNum}-1`,
-        title: `${m.title}: Core Concepts & Mechanisms`,
+        title: `${m.title}: ${keySkill0}`,
         durationMinutes: 30,
-        concepts: [keySkill0, `${m.title} Mental Model`, 'Common Misconceptions'],
-        contentBody: `### Foundations of ${m.title}\nWithin **${courseTitle}**, **${m.title}** builds foundational clarity around **${keySkill0}** for ${s.targetRoles || 'participating practitioners'}. Understanding *why* a concept behaves the way it does under real constraints enables sound technical judgement rather than rote guessing.\n\n### Core Principles & Terminology\n1. **Primary Mechanism**: Examine how inputs, structural assumptions, and domain constraints interact in ${m.title}.\n2. **Authentic Terminology**: Define core terms accurately so teams communicate trade-offs unambiguously.\n3. **Common Misconception**: Avoid treating surface templates as substitutes for validating underlying domain logic (${p.rootCauses[0] || 'untested assumptions'}).\n\n### Subject Worked Example\nWhen addressing ${p.taskOrSkill || m.title}, practitioners trace each design decision back to the desired learner/system outcome before implementing changes, verifying alignment with ${regRef}.`,
+        concepts: [keySkill0, m.title, `${courseTitle} Fundamentals`],
+        contentBody: `[OFFLINE FALLBACK DRAFT — REQUIRES LIVE AI GENERATION OR SME AUTHORING]\n\n### Lesson Scope & Relevance to ${courseTitle}\nThis offline placeholder outlines **${keySkill0}** within **${m.title}** for ${targetAudience} (${lo0}).\n\n### Core Subject Terminology & Mechanism Outline\n- **Focus Concept**: ${keySkill0} inside ${m.title} (${m.purpose || courseTitle}).\n- **Diagnostic Driver**: Addresses ${p.rootCauses[0] || p.taskOrSkill || m.title}.\n- **Regulatory Context**: Check alignment with ${regRef}.\n\n### Next Step\nRegenerate this module using Google Gemini or Groq Cloud to synthesise full domain explanations, concrete worked examples, terminology definitions, and misconception walkthroughs.`,
         callouts: [
           {
-            type: 'Tip',
-            title: 'Conceptual Practice Note',
-            content: `Articulate the core logic of ${keySkill0} in plain terms before selecting tools or configuring parameters.`
+            type: 'Warning',
+            title: 'Offline Draft Notice',
+            content: `This lesson is an unexpanded offline draft for "${m.title}". Run live AI generation to produce deep educational teaching material.`
           }
         ],
-        workplaceApplication: `Learners map core concepts from ${m.title} onto an active ${s.targetRoles || 'workplace'} task, identifying explicit assumptions and constraints.`,
-        aiApplication: `Where helpful in ${courseTitle}, use approved AI tools to test counter-examples or clarify trade-offs, while validating every claim independently.`
+        workplaceApplication: `Apply ${keySkill0} to ${p.taskOrSkill || m.title} within ${targetAudience} workflows once full AI/SME lesson notes are generated.`,
+        aiApplication: `Live AI synthesis required to generate subject-specific ${m.title} demonstrations.`
       },
       {
         id: `lesson-${modNum}-2`,
-        title: `${m.title}: Applied Practice & Edge Cases`,
+        title: `${m.title}: ${keySkill1}`,
         durationMinutes: 35,
-        concepts: [keySkill1, 'Worked Application', 'Limitations & Trade-Offs'],
-        contentBody: `### Applied Implementation in ${m.title}\nMoving from theory to authentic practice in **${m.title}** requires structured problem-solving with realistic constraints and explicit trade-offs.\n\n### Practical Technique & Worked Decision Flow\n- **Frame Constraints First**: Define the problem boundary, inputs, and target criteria for ${keySkill1}.\n- **Construct & Test Iteratively**: Apply domain techniques step by step, inspecting edge cases where default assumptions break down.\n- **Verify Evidence**: Cross-check any statutory or technical reference against verified materials (${regRef}).`,
+        concepts: [keySkill1, 'Applied Practice', `${m.title} Evaluation`],
+        contentBody: `[OFFLINE FALLBACK DRAFT — REQUIRES LIVE AI GENERATION OR SME AUTHORING]\n\n### Applied Focus in ${m.title}\nThis offline outline reserves space for hands-on walkthroughs covering **${keySkill1}** (${lo1}; ${lo2}).\n\n### Practical Focus Areas\n- **Primary Skill**: ${keySkill1} applied to ${p.taskOrSkill || courseTitle}.\n- **Quality Check**: Review edge cases and verify external requirements against ${regRef}.`,
         callouts: [
           {
-            type: 'Good/Bad Example',
-            title: 'Applied Judgement Standard',
-            content: `Effective: Comparing two concrete approaches for ${m.title} against explicit criteria.\nIneffective: Copying an unvalidated template without testing constraints.`
+            type: 'Tip',
+            title: 'Subject Authoring Prompt',
+            content: `Regenerate Module ${modNum} via Groq Cloud or Google Gemini to populate authentic worked demonstrations for ${keySkill1}.`
           }
         ],
-        workplaceApplication: `Apply ${keySkill1} to a representative ${courseTitle} challenge and document why your chosen approach fits the constraints.`,
-        aiApplication: `Use AI selectively for structured brainstorming or drafting alternatives, verifying technical feasibility manually.`
+        workplaceApplication: `Practise ${keySkill1} in ${courseTitle} once AI/SME content is complete.`,
+        aiApplication: `Run live AI generation to produce subject-authentic AI usage boundaries for ${m.title}.`
       }
     ];
 
     const workplaceScenarios: GeneratedScenario[] = (m.requirements?.scenarios && m.requirements.scenarios.length >= 3)
       ? m.requirements.scenarios.map((sc, scIdx) => ({
           id: `scenario-${modNum}-${scIdx + 1}`,
-          title: sc.title || `Workplace Scenario ${scIdx + 1}: ${m.title}`,
+          title: sc.title || `${m.title} Workplace Case ${scIdx + 1}`,
           type: 'Workplace' as const,
-          situation: sc.situation || `A practitioner in ${s.targetRoles || 'the team'} applies ${m.title} under realistic time and resource constraints.`,
-          challenge: sc.challenge || `Balancing solution quality and conceptual correctness under delivery pressure.`,
-          decisionPoint: sc.decisionPoint || `Should the practitioner adopt an untested shortcut or validate the core ${m.title} assumptions first?`,
-          debrief: sc.debrief || `Validating domain assumptions prevents rework and protects outcome quality in ${m.title}.`,
-          keyTakeaway: `Anchor ${m.title} decisions in verified domain principles.`
+          situation: sc.situation || `Offline draft placeholder scenario for ${m.title} (${courseTitle}).`,
+          challenge: sc.challenge || `Resolving domain challenges related to ${keySkill0}.`,
+          decisionPoint: sc.decisionPoint || `Select the verified ${m.title} approach.`,
+          debrief: sc.debrief || `Requires live AI/SME authoring for complete domain debriefing.`,
+          keyTakeaway: `Anchor ${m.title} practice in verified evidence.`
         }))
       : [
           {
             id: `scenario-${modNum}-1`,
-            title: `Applied Decision Trade-Off in ${m.title}`,
+            title: `${m.title} Case 1 (Offline Draft Placeholder)`,
             type: 'Workplace' as const,
-            situation: `A ${s.targetRoles || 'practitioner'} team is implementing ${p.taskOrSkill || m.title} when requirements shift mid-sprint.`,
-            challenge: `Adapting the ${m.title} design cleanly without introducing fragile assumptions.`,
-            decisionPoint: `Re-evaluate constraints and select the most defensible approach versus patching hastily.`,
-            debrief: `Revisiting core principles in ${m.title} enables rapid, reliable adaptation under changing constraints.`,
-            keyTakeaway: `Re-check domain constraints whenever requirements shift.`
+            situation: `A ${targetAudience} team applies ${keySkill0} inside ${courseTitle}.`,
+            challenge: `Navigating technical trade-offs affecting ${keySkill1}.`,
+            decisionPoint: `Compare candidate approaches for ${m.title} before committing.`,
+            debrief: `Regenerate with live AI to expand this ${m.title} scenario debrief.`,
+            keyTakeaway: `Test key ${keySkill0} decisions early.`
           },
           {
             id: `scenario-${modNum}-2`,
-            title: `Cross-Team Alignment on ${m.title}`,
+            title: `${m.title} Case 2 (Offline Draft Placeholder)`,
             type: 'Workplace' as const,
-            situation: `Two collaborating groups interpret deliverables for ${m.title} differently due to ambiguous terminology.`,
-            challenge: `Establishing shared conceptual clarity and measurable acceptance criteria.`,
-            decisionPoint: `Align teams around explicit definitions and a worked example from ${m.title}.`,
-            debrief: `Shared domain terminology and concrete worked examples eliminate costly hand-off misunderstandings.`,
-            keyTakeaway: `Shared terminology prevents miscommunication across teams.`
+            situation: `Two collaborating units coordinate hand-offs involving ${keySkill1}.`,
+            challenge: `Clarifying ${m.title} quality criteria across contributors.`,
+            decisionPoint: `Align teams around explicit acceptance criteria.`,
+            debrief: `Explicit ${m.title} criteria reduce avoidable rework.`,
+            keyTakeaway: `Clarify acceptance criteria across roles.`
           },
           {
             id: `scenario-${modNum}-3`,
-            title: `Preventing Misconceptions in ${m.title}`,
+            title: `${m.title} Case 3 (Offline Draft Placeholder)`,
             type: 'Workplace' as const,
-            situation: `A colleague relies on a surface heuristic in ${m.title} that fails on an edge case.`,
-            challenge: `Demonstrating clearly why the misconception breaks without creating blame.`,
-            decisionPoint: `Walk through the mechanism step by step using a test example.`,
-            debrief: `Collaborative walkthroughs turn edge-case failures into lasting conceptual mastery.`,
-            keyTakeaway: `Test assumptions on edge cases early.`
+            situation: `A team encounters an unexpected edge case while executing ${keySkill1}.`,
+            challenge: `Diagnosing why initial ${keySkill0} assumptions broke.`,
+            decisionPoint: `Inspect underlying mechanics before modifying parameters.`,
+            debrief: `Evidence-led diagnosis catches hidden limitations.`,
+            keyTakeaway: `Inspect edge cases systematically.`
           }
         ];
 
     const aiScenarios: GeneratedScenario[] = (m.requirements?.aiScenarios && m.requirements.aiScenarios.length > 0)
       ? m.requirements.aiScenarios.map((sc, scIdx) => ({
           id: `ai-scenario-${modNum}-${scIdx + 1}`,
-          title: sc.title || `AI Tool Judgement Scenario ${scIdx + 1}`,
+          title: sc.title || `${m.title} AI Judgement Case ${scIdx + 1}`,
           type: 'AI Specific' as const,
-          situation: sc.situation || `A practitioner uses an AI assistant while working on ${m.title}.`,
-          challenge: sc.challenge || `Determining whether the generated reasoning holds under domain constraints.`,
-          decisionPoint: sc.decisionPoint || `How should the practitioner validate or correct the AI draft before using it?`,
-          debrief: sc.debrief || `Always test AI outputs against domain mechanisms and authoritative sources before adopting them.`,
-          keyTakeaway: `Domain expertise—not fluent AI phrasing—determines technical accuracy.`
+          situation: sc.situation || `Evaluating AI assistance within ${m.title}.`,
+          challenge: sc.challenge || `Checking technical validity of generated outputs for ${keySkill0}.`,
+          decisionPoint: sc.decisionPoint || `Verify generated output against primary ${courseTitle} sources.`,
+          debrief: sc.debrief || `Human domain judgement must verify AI drafts.`,
+          keyTakeaway: `Validate AI drafts against domain criteria.`
         }))
       : [
           {
             id: `ai-scenario-${modNum}-ai-1`,
-            title: `Critically Evaluating AI Outputs in ${m.title}`,
+            title: `${m.title} AI Verification Case (Offline Draft)`,
             type: 'AI Specific' as const,
-            situation: `An AI assistant generates a plausible recommendation for ${m.title} referencing an unverified standard.`,
-            challenge: `Separating genuinely helpful structuring from unsupported technical or statutory claims.`,
-            decisionPoint: `Verify every key claim against primary documentation or flag it for SME review.`,
-            debrief: `Critical evaluation prevents plausible hallucinations from undermining ${m.title} deliverables.`,
-            keyTakeaway: `Verify external claims against primary evidence.`
+            situation: `An AI assistant drafts a recommendation related to ${keySkill0} in ${courseTitle}.`,
+            challenge: `Confirming accuracy and privacy compliance under ${regRef}.`,
+            decisionPoint: `Audit the output against verified sources before adoption.`,
+            debrief: `Critical verification catches unverified claims early.`,
+            keyTakeaway: `Verify AI drafts independently.`
           }
         ];
 
     const knowledgeChecks: GeneratedQuestion[] = [
       {
         id: `qc-${modNum}-1`,
-        question: `Which practice best demonstrates mastery of "${lo0}" in ${m.title}?`,
+        question: `[Offline Draft] Which statement aligns with "${lo0}" regarding ${keySkill0} in ${m.title}?`,
         options: [
-          'Relying on memorised buzzwords without testing constraints',
-          `Explaining how ${keySkill0} works and validating assumptions against domain criteria`,
-          'Skipping prerequisite scoping to save time',
-          'Copying unrelated templates without adaptation'
+          `Ignore ${keySkill0} requirements during planning`,
+          `Verify how ${keySkill0} applies to ${p.taskOrSkill || m.title} before execution`,
+          `Rely on unverified shortcuts`,
+          `Bypass review gates`
         ],
         correctAnswer: 1,
-        rationale: `Aligned to ${lo0}: conceptual mastery connects mechanisms in ${m.title} to real constraints.`,
+        rationale: `Placeholder check mapped to ${lo0}; regenerate with live AI for deeper subject-specific MCQs.`,
         learningObjectiveRef: `LO ${modNum}.1`
       },
       {
         id: `qc-${modNum}-2`,
-        question: `In relation to "${lo1}", how should practitioners validate an AI-assisted draft in ${m.title}?`,
+        question: `[Offline Draft] How does ${keySkill1} support "${lo1}" within ${m.title}?`,
         options: [
-          'Accept polished phrasing without checking domain logic',
-          `Test the draft against ${keySkill1} requirements and authoritative references`,
-          'Paste sensitive unredacted data into unvetted tools',
-          'Ignore edge-case constraints'
+          `By omitting domain checks`,
+          `By applying ${keySkill1} systematically against explicit criteria`,
+          `By duplicating unrelated templates`,
+          `By disregarding constraints`
         ],
         correctAnswer: 1,
-        rationale: `Aligned to ${lo1}: independent verification ensures drafts actually satisfy domain requirements.`,
+        rationale: `Placeholder check mapped to ${lo1}; regenerate with live AI to produce authentic subject scenarios.`,
         learningObjectiveRef: `LO ${modNum}.2`
       },
       {
         id: `qc-${modNum}-3`,
-        question: `When an edge-case limitation emerges while practising ${m.title}, what is the soundest response?`,
+        question: `[Offline Draft] In relation to "${lo2}", how should unverified references in ${m.title} be handled?`,
         options: [
-          'Hide the anomaly so schedules appear unaffected',
-          'Analyse the underlying mechanism, adjust parameters or scope, and test again',
-          'Re-run the identical failing step repeatedly',
-          'Discard evaluation criteria'
+          `Publish them without verification`,
+          `Validate against ${regRef} or mark for SME review`,
+          `Hide discrepancies from stakeholders`,
+          `Assume drafts require no checking`
         ],
         correctAnswer: 1,
-        rationale: `Diagnosing the mechanism isolates why an edge case fails and guides a targeted fix.`,
-        learningObjectiveRef: `LO ${modNum}.2`
-      },
-      {
-        id: `qc-${modNum}-4`,
-        question: `Regarding "${lo2}", how should unverified external citations or regulatory claims be handled in ${m.title}?`,
-        options: [
-          'Cite them as confirmed statutory law anyway',
-          `Verify against primary sources (${regRef}) or flag them for SME validation`,
-          'Remove all caveats when presenting to stakeholders',
-          'Assume automated outputs are legally pre-approved'
-        ],
-        correctAnswer: 1,
-        rationale: `Aligned to ${lo2}: intellectual and compliance integrity require primary verification or SME flagging.`,
-        learningObjectiveRef: `LO ${modNum}.3`
-      },
-      {
-        id: `qc-${modNum}-5`,
-        question: `What distinguishes deep competence in ${m.title} from superficial familiarity?`,
-        options: [
-          'Prioritising speed over conceptual accuracy',
-          `Evaluating trade-offs explicitly and defending design choices with evidence in ${courseTitle}`,
-          'Avoiding reflection after completing tasks',
-          'Applying one generic solution to every problem'
-        ],
-        correctAnswer: 1,
-        rationale: `Defending trade-offs with concrete evidence shows genuine mastery of ${m.title}.`,
+        rationale: `Placeholder check mapped to ${lo2}; regenerate with live AI for deep concept questions.`,
         learningObjectiveRef: `LO ${modNum}.3`
       }
     ];
 
-    const deliverableTarget = `Completed ${m.title} Applied Solution & Analysis Brief`;
+    const deliverableTarget = `[Offline Draft] ${m.title} Practical Brief`;
     const practicalTask: GeneratedPracticalTask = {
       id: `task-${modNum}`,
-      title: `${m.title} Applied Practice Task`,
+      title: `${m.title} Practical Activity (Offline Draft)`,
       instructions: [
-        `Objective: Apply ${lo0} and ${lo1} to solve a realistic ${courseTitle} challenge.`,
-        `Scenario: Acting as ${s.targetRoles || 'a practitioner'}, design and evaluate a practical solution for ${m.title} under realistic resource and quality constraints.`,
-        `Resources: Module ${modNum} reference guide, ${course.research.aiToolsPlatformName || 'domain workspace tools'}, and worked case prompt.`,
-        `Instructions: Complete the three sequential steps below, articulating your reasoning and checking key edge cases.`,
-        `Steps: 1. Define target outcomes, constraints, and key terminology for ${m.title}. 2. Build a working solution applying ${keySkill0} and ${keySkill1}. 3. Evaluate limitations or trade-offs against ${regRef} and refine weak areas.`,
+        `Objective: Practise ${lo0} and ${lo1} using ${keySkill0}.`,
+        `Scenario: Acting as ${targetAudience}, complete a practical exercise addressing ${keySkill1} in ${courseTitle}.`,
+        `Resources: ${course.research.aiToolsPlatformName || 'Domain workspace tools'} and Module ${modNum} guide.`,
+        `Instructions: Complete the domain exercise steps below after regenerating full lesson notes with live AI.`,
+        `Steps: 1. Review ${keySkill0} goals for ${m.title}. 2. Execute ${keySkill1} on a representative case. 3. Evaluate limitations against ${regRef}.`,
         `Deliverable: ${deliverableTarget}.`,
-        `Success criteria: Solution demonstrates accurate understanding of ${m.title} mechanisms, addresses constraints explicitly, and justifies key trade-offs.`,
-        `Reflection: Identify one misconception from Module ${modNum} that this exercise clarified for you.`
+        `Success criteria: Demonstrates applied ${keySkill0} and ${keySkill1} judgement aligned with ${lo1}.`,
+        `Reflection: Identify one assumption in ${m.title} that required adjustment during execution.`
       ].join('\n\n'),
       deliverable: deliverableTarget,
       evaluationRubric: [
-        `Conceptual accuracy & domain depth in ${m.title} (40%)`,
-        `Quality & completeness of the applied solution and reasoning (35%)`,
-        `Trade-off analysis, edge-case testing & reflection quality (25%)`
+        `Subject accuracy in ${keySkill0} (40%)`,
+        `Applied execution of ${keySkill1} (35%)`,
+        `Critical limitation analysis & reflection (25%)`
       ]
     };
 
@@ -273,8 +245,8 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
       id: m.id || `module-${modNum}`,
       moduleNumber: modNum,
       title: m.title,
-      subtitle: m.subtitle || `Applied Concepts & Practice`,
-      purpose: m.purpose || `Develop genuine conceptual mastery and applied skill in ${m.title}.`,
+      subtitle: m.subtitle || `Offline Draft — ${m.title}`,
+      purpose: m.purpose || `Develop conceptual and applied mastery in ${m.title}.`,
       learningObjectives: (m.learningObjectives || [`Explain core concepts of ${m.title}`, `Apply ${m.title} techniques`, `Evaluate trade-offs in ${m.title}`]).map((obj, oIdx) => ({
         id: `lo-${modNum}-${oIdx + 1}`,
         code: `LO ${modNum}.${oIdx + 1}`,
@@ -286,17 +258,17 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
       knowledgeChecks,
       practicalTask,
       reflection: [
-        `How will you apply the core concepts of ${m.title} in your current role?`,
-        `Which misconception or limitation in ${m.title} requires the most care in practice?`
+        `How will you apply ${keySkill0} from ${m.title} in your role?`,
+        `Which limitation in ${keySkill1} requires care in practice?`
       ],
-      summary: `${m.title} integrates conceptual foundations with worked examples and hands-on practice to build lasting capability in ${courseTitle}.`
+      summary: `Offline draft placeholder for ${m.title}. Regenerate with live AI to produce full educational depth.`
     };
   });
 
   const assessments: GeneratedAssessmentSet = {
     preCourseDiagnostic: {
-      title: 'Pre-Course Knowledge & Readiness Diagnostic',
-      instructions: `Complete these 5 diagnostic questions to gauge your baseline readiness in ${courseTitle}.`,
+      title: 'Pre-Course Knowledge & Readiness Diagnostic (Offline Draft)',
+      instructions: `Complete these diagnostic items to gauge baseline familiarity with ${courseTitle}.`,
       questions: (s.diagnosticQuestions || []).slice(0, 5).map((dq, idx) => ({
         id: `diag-${idx + 1}`,
         question: dq.question,
@@ -307,72 +279,46 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
           'Experienced practitioner capable of mentoring others'
         ],
         correctAnswer: 2,
-        rationale: 'Establishes your baseline familiarity before starting Module 1.'
+        rationale: `Benchmarks baseline familiarity before starting ${courseTitle}.`
       }))
     },
     moduleKnowledgeChecksCount: generatedModules.reduce((acc, m) => acc + m.knowledgeChecks.length, 0),
     practicalTasks: generatedModules.map(m => m.practicalTask!).filter(Boolean),
     finalAssessment: {
-      title: 'Summative Capstone & Final Knowledge Assessment',
+      title: 'Summative Capstone Assessment (Offline Draft Placeholder)',
       passMark: '80%',
-      instructions: `Demonstrate mastery across all modules of ${courseTitle} through scenario questions and the capstone case study.`,
+      instructions: `Offline fallback placeholder assessment for ${courseTitle}; regenerate with live AI for full case questions.`,
       questions: [
         {
           id: 'final-q1',
-          question: `In ${courseTitle}, why must practitioners test key assumptions and constraints before finalising a solution?`,
+          question: `[Offline Draft] In ${courseTitle}, why must teams validate core assumptions around ${p.taskOrSkill || courseTitle} before rollout?`,
           options: [
-            'To add unnecessary delay',
-            'To verify conceptual feasibility and avoid downstream errors',
-            'To replace stakeholder feedback',
-            'To skip edge-case analysis'
+            'To skip stakeholder review',
+            'To verify technical feasibility and prevent avoidable rework',
+            'To avoid documenting decisions',
+            'To bypass domain standards'
           ],
           correctAnswer: 1,
-          rationale: `Testing assumptions early strengthens quality across ${courseTitle}.`,
+          rationale: `Validating domain assumptions prevents rework across ${courseTitle}.`,
           learningObjectiveRef: 'LO 1.1'
-        },
-        {
-          id: 'final-q2',
-          question: `When using AI tools alongside ${courseTitle} methods, what must the practitioner verify before release?`,
-          options: [
-            'Formatting aesthetics alone',
-            'Factual accuracy, domain constraints, data confidentiality, and source reliability',
-            'Generation speed only',
-            'Nothing if output fluency looks strong'
-          ],
-          correctAnswer: 1,
-          rationale: 'Human domain verification guards against hallucinations and privacy exposures.',
-          learningObjectiveRef: generatedModules[1]?.learningObjectives?.[1]?.code || 'LO 1.2'
-        },
-        {
-          id: 'final-q3',
-          question: `How should teams translate ${courseTitle} skills into durable practice after training concludes?`,
-          options: [
-            'Memorise terminology without applying it',
-            'Execute a phased 30-60-90 day plan anchored in real tasks and structured feedback',
-            'Ignore lessons whenever deadlines tighten',
-            'Avoid reviewing outcomes after launch'
-          ],
-          correctAnswer: 1,
-          rationale: 'Phased 30-60-90 day application builds lasting workplace competence.',
-          learningObjectiveRef: generatedModules[generatedModules.length - 1]?.learningObjectives?.[2]?.code || 'LO 1.3'
         }
       ],
       capstoneCaseStudy: {
-        title: `Applied Capstone Case Study: ${courseTitle}`,
-        scenario: `Your organisation is strengthening capability in ${courseTitle} across ${s.targetRoles || 'core teams'}. Recent outcomes revealed conceptual misunderstandings and inconsistent judgement under deadline pressure.`,
+        title: `Offline Draft Capstone: ${courseTitle}`,
+        scenario: `Offline draft placeholder scenario for ${courseTitle} (${targetAudience}). Regenerate via Google Gemini or Groq Cloud for a rich South African capstone case.`,
         tasks: [
-          `1. Analyse the core problem constraints and assumptions in ${courseTitle}.`,
-          `2. Synthesise an end-to-end solution combining methods from Modules 1–${generatedModules.length}.`,
-          `3. Specify limitations, human verification points, and a 30-60-90 day adoption plan.`
+          `1. Define key problem drivers affecting ${p.taskOrSkill || courseTitle}.`,
+          `2. Synthesise an end-to-end approach across Modules 1–${generatedModules.length}.`,
+          `3. Specify human verification checks against ${regRef}.`
         ],
-        deliverable: `Completed ${courseTitle} Capstone Brief submitted for facilitator review.`
+        deliverable: `Offline Draft Capstone Brief for ${courseTitle}.`
       }
     },
     postCourseReflection: {
       prompts: [
-        `Identify the most impactful concept you learned in ${courseTitle}.`,
-        'Explain one trade-off or misconception you will guard against in your role.',
-        'What 30-60-90 day goals will you commit to after completing this course?'
+        `Identify the most important concept you explored in ${courseTitle}.`,
+        'Explain one domain trade-off you will validate carefully in your role.',
+        'What 30-60-90 day goals will you commit to after this programme?'
       ],
       actionPlanTemplate: `30-60-90 Day Implementation Plan for ${courseTitle}`
     }
@@ -390,40 +336,40 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
   }));
 
   const qa: GeneratedCourseQA = {
-    score: verifiedSourceCount > 0 ? 82 : 74,
-    status: 'review_required',
-    overallVerdict: 'WARNING',
-    hasBlockingFailures: false,
-    passedChecks: [
-      'Generated course drafted in offline local-fallback mode under eStudy v9.0 schema.'
-    ],
+    score: 35,
+    status: 'critical_issues',
+    overallVerdict: 'FAIL',
+    hasBlockingFailures: true,
+    passedChecks: [],
     warnings: [
-      'Generated in offline fallback mode rather than live AI synthesis; enrich module depth and review regulatory claims with an SME.'
+      'Generated as an explicit offline fallback draft rather than live AI synthesis.'
     ],
-    criticalIssues: [],
+    criticalIssues: [
+      'Offline fallback draft — NOT AI-generated. Regenerate with Google Gemini or Groq Cloud before QA approval or learner release.'
+    ],
     recommendations: [
-      'Regenerate with live Groq or Google Gemini when API keys are active for deep subject synthesis.',
+      'Run Direct AI Generation (Groq Cloud or Google Gemini) to produce full subject-specific lessons, worked examples, and grounded assessments.',
       'Conduct SME validation on any regulatory, NQF, or domain-specific claims before publishing.'
     ],
-    southAfricanContextVerified: verifiedSourceCount > 0,
+    southAfricanContextVerified: false,
     popiaCompliant: Boolean(course.ethics?.dataPrivacyFramework?.trim() || course.ethics?.dataPrivacySafeguards?.trim())
   };
 
   const baseGenerated: GeneratedCourse = {
-    id: `gen-${Date.now()}`,
+    id: `gen-offline-${Date.now()}`,
     courseId: course.id,
     title: courseTitle,
     code: s.code || course.code,
-    version: 'v9.0-Offline-Draft',
-    overview: s.purposeStatement || s.scopeSummary || `An applied training programme in ${courseTitle} for ${s.targetRoles || 'practitioners'}.`,
-    purpose: s.purposeStatement || `To build practical capability in ${courseTitle}.`,
-    targetAudience: `${s.targetRoles || 'Practitioners and Team Leads'} across ${s.industryDomain || 'modern'} environments. Baseline digital readiness: ${s.aiFamiliarityBaseline || 'Intermediate'}.`,
+    version: 'v9.0-Offline-Fallback-Draft',
+    overview: `[OFFLINE FALLBACK DRAFT] ${s.purposeStatement || s.scopeSummary || `Training programme outline for ${courseTitle} (${targetAudience}). Live AI generation is required to populate full instructional content.`}`,
+    purpose: s.purposeStatement || `Build applied capability in ${courseTitle}.`,
+    targetAudience: `${s.targetRoles || 'Practitioners and Team Leads'} across ${s.industryDomain || 'modern'} environments. Baseline readiness: ${s.aiFamiliarityBaseline || 'Intermediate'}.`,
     estimatedDuration: s.estimatedDuration || '16 Hours (Self-paced + Practical Tasks)',
     learningOutcomes: [
-      `Explain core mechanisms and principles behind ${p.taskOrSkill || courseTitle}.`,
-      `Apply structured methods in ${courseTitle} to realistic workplace problems.`,
-      `Critically evaluate automated or AI-assisted outputs before adopting them.`,
-      `Align practice with ${regRef}.`
+      `Explain core principles behind ${p.taskOrSkill || courseTitle}.`,
+      `Apply ${courseTitle} techniques to realistic workplace challenges.`,
+      `Evaluate outputs and limitations critically prior to adoption.`,
+      `Confirm alignment with ${regRef}.`
     ],
     modules: generatedModules,
     assessments,
@@ -432,11 +378,11 @@ export function generateLocalFallbackCourse(course: Course): GeneratedCourse {
     generatedAt: new Date().toISOString(),
     generationMetadata: {
       provider: 'local_fallback',
-      providerDisplayName: 'Offline Fallback Engine',
-      model: 'local-fallback',
+      providerDisplayName: 'Offline Fallback Draft',
+      model: 'offline-draft-only',
       generatedAt: new Date().toISOString(),
       fallbackUsed: true,
-      fallbackReason: 'Offline local fallback generation'
+      fallbackReason: 'Explicit offline fallback draft (not AI-generated)'
     }
   };
 

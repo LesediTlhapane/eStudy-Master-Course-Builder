@@ -602,6 +602,24 @@ export async function generateCourseDocx(course: Course): Promise<Blob> {
   const bannerPara = createDocxImageParagraph(course.coverVisualUrl, 480, 180);
   if (bannerPara) children.push(bannerPara);
 
+  if (isLocalFallback || rawGen.generationMetadata?.isPartial) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 160, after: 200 },
+        children: [
+          new TextRun({
+            text: isLocalFallback
+              ? 'NOTICE — OFFLINE FALLBACK DRAFT (NOT AI-GENERATED): This export was compiled from the local template draft because live AI course generation has not yet been completed. Generate with Google Gemini or Groq Cloud before SME sign-off or learner release.'
+              : `NOTICE — PARTIAL AI DRAFT (${rawGen.generationMetadata?.completedModules ?? rawGen.modules.length}/${rawGen.generationMetadata?.totalModules ?? rawGen.modules.length} MODULES COMPLETED): Generation was interrupted prior to completion.`,
+            bold: true,
+            size: 20,
+            color: 'B91C1C'
+          })
+        ]
+      })
+    );
+  }
+
   children.push(
     // Section 1: Executive Overview
     new Paragraph({

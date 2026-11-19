@@ -699,6 +699,14 @@ export function printCoursePdf(course: Course) {
     <p class="subtitle">${gen.purpose}</p>
     ${bannerHtml}
 
+    ${isLocalFallback || rawGen.generationMetadata?.isPartial ? `
+      <div style="margin: 14px 0; padding: 12px 14px; background: #fef2f2; border: 1.5px solid #dc2626; border-radius: 6px; color: #991b1b; font-size: 9.5pt; font-weight: 700;">
+        ${isLocalFallback
+          ? 'NOTICE — OFFLINE FALLBACK DRAFT (NOT AI-GENERATED): This document is an offline placeholder draft. Run live AI generation (Google Gemini or Groq Cloud) and complete SME validation before learner release.'
+          : `NOTICE — PARTIAL AI DRAFT (${rawGen.generationMetadata?.completedModules ?? rawGen.modules.length}/${rawGen.generationMetadata?.totalModules ?? rawGen.modules.length} MODULES COMPLETED): Live AI generation was interrupted before all modules finished.`}
+      </div>
+    ` : ''}
+
     <div class="meta-grid">
       <div class="meta-item">
         <strong>Course Code & Version</strong>

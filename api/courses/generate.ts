@@ -1,5 +1,13 @@
-import { generateCourseWithAIEngine } from '../../src/server/ai/index.js';
-import { generateLocalFallbackCourse } from '../../src/utils/localCourseEngine.js';
+import { CourseGenerationPartialError, generateCourseWithAIEngine } from '../../src/server/ai/index.js';
+
+function resolveErrorStatus(err: any): number {
+  const msg = String(err?.message || '').toLowerCase();
+  if (err?.failedStage === 'validation' || msg.includes('compulsory fields')) return 400;
+  if (msg.includes('401') || msg.includes('403') || msg.includes('authentication') || msg.includes('api key')) return 401;
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('quota') || msg.includes('tpm')) return 429;
+  if (msg.includes('timed out') || msg.includes('timeout')) return 504;
+  return 502;
+}
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -16,8 +24,11 @@ export default async function handler(req: any, res: any) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
   }
+
+  let requestedProvider: string | undefined;
+  let requestedModel: string | undefined;
 
   try {
     let body = req.body;
@@ -28,34 +39,32 @@ export default async function handler(req: any, res: any) {
     }
 
     const { course, provider, model } = body || {};
+    requestedProvider = provider;
+    requestedModel = model;
+
     if (!course) {
-      return res.status(400).json({ error: 'Missing course data in request body.' });
+      return res.status(400).json({ success: false, error: 'Missing course data in request body.' });
     }
 
     const result = await generateCourseWithAIEngine(course, provider, model);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error generating course in serverless function:', error);
-    try {
-      let body = req.body;
-      if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch {}
-      }
-      if (body?.course) {
-        const fallback = generateLocalFallbackCourse(body.course);
-        fallback.generationMetadata = {
-          provider: 'local_fallback',
-          providerDisplayName: 'Local Fallback Engine',
-          model: 'local-framework-v9',
-          generatedAt: new Date().toISOString(),
-          fallbackUsed: true,
-          fallbackReason: error?.message || 'Server error generating course'
-        };
-        return res.status(200).json({ success: true, course: fallback, fallbackUsed: true });
-      }
-    } catch {}
-    return res.status(500).json({
-      error: error?.message || 'Failed to generate course'
+    const status = resolveErrorStatus(error);
+    const partial = error instanceof CourseGenerationPartialError ? error : null;
+
+    return res.status(status).json({
+      success: false,
+      error: error?.message || 'AI course generation failed.',
+      failedProvider: partial?.failedProvider || (requestedProvider === 'gemini' ? 'gemini' : 'groq'),
+      failedModel: partial?.failedModel || requestedModel || '',
+      failedStage: partial?.failedStage || 'unknown',
+      failedModuleNumber: partial?.failedModuleNumber,
+      failedModuleTitle: partial?.failedModuleTitle,
+      completedModulesCount: partial?.completedModulesCount,
+      totalModulesCount: partial?.totalModulesCount,
+      partialCourse: partial?.partialCourse,
+      fallbackUsed: false
     });
   }
 }
